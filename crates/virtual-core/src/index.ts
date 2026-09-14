@@ -396,6 +396,9 @@ export interface VirtualizerOptions<
   // user is scrolling (sticky to the last known direction), so
   // compositor-async scrolling has pre-rendered content to reveal before
   // the main thread catches up. 0 disables.
+  // Keep a pixel buffer on both sides, including before the first gesture
+  // and after an abrupt direction reversal.
+  overscanPx?: number
   directionalOverscanPx?: number
   scrollEndThreshold?: number
   isScrollingResetDelay?: number
@@ -621,6 +624,7 @@ export class Virtualizer<
       anchorTo: 'start',
       followOnAppend: false,
       scrollAnchoring: 'offset',
+      overscanPx: 0,
       directionalOverscanPx: 0,
       scrollEndThreshold: 1,
       isScrollingResetDelay: 150,
@@ -1624,9 +1628,18 @@ export class Virtualizer<
       this.getScrollOffset(),
       this.options.lanes,
       this.options.directionalOverscanPx,
+      this.options.overscanPx,
       this.lastScrollDirection,
     ],
-    (measurements, outerSize, scrollOffset, lanes, overscanPx, direction) => {
+    (
+      measurements,
+      outerSize,
+      scrollOffset,
+      lanes,
+      overscanPx,
+      symmetricOverscanPx,
+      direction,
+    ) => {
       if (measurements.length === 0 || outerSize === 0) {
         this.range = null
         return null
@@ -1635,10 +1648,11 @@ export class Virtualizer<
       // is heading (sticky to the last known direction so a settling scroll
       // doesn't churn row mounts). Compositor-async viewports reveal this
       // pre-rendered band before the main thread processes the next event.
+      const base = Math.max(0, symmetricOverscanPx)
       const backwardExtra =
-        overscanPx > 0 && direction === 'backward' ? overscanPx : 0
+        base + (overscanPx > 0 && direction === 'backward' ? overscanPx : 0)
       const forwardExtra =
-        overscanPx > 0 && direction === 'forward' ? overscanPx : 0
+        base + (overscanPx > 0 && direction === 'forward' ? overscanPx : 0)
       this.range = calculateRangeImpl(
         measurements,
         outerSize + backwardExtra + forwardExtra,

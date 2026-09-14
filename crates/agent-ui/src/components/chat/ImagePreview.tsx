@@ -1,8 +1,4 @@
 import {
-  copyImagePreviewData,
-  copyUploadedImagePreview,
-  openUploadedImageInSystemViewer,
-  prepareImagePreviewSave,
   prepareUploadedImagePreviewCopy,
   supportsDirectUploadedImageCopy,
   supportsSystemImageOpen,
@@ -15,7 +11,6 @@ import {
   getImagePreviewCapabilities,
   getImagePreviewDisplayName,
   getImagePreviewDisplaySource,
-  getImagePreviewFileName,
   getImagePreviewMimeType,
   getImagePreviewSlideKey,
   IMAGE_VIEWER_MAX_SCALE,
@@ -41,9 +36,11 @@ import {
   Maximize2,
   Minimize2,
   Minus,
+  MoreHorizontal,
   Plus,
   RefreshCw,
-  RotateCwSquare,
+  RotateCcw,
+  RotateCw,
   X,
 } from "@liveagent/ui/components/IconSet";
 import {
@@ -52,21 +49,24 @@ import {
   DialogContent,
   DialogTitle,
 } from "@liveagent/ui/components/ui/dialog";
-import { toast } from "@liveagent/ui/components/ui/toast-manager";
 import { useLocale } from "@liveagent/ui/i18n";
-import { copyTextToClipboard as copySharedTextToClipboard } from "@liveagent/ui/lib/shared/clipboard";
 import { cn } from "@liveagent/ui/lib/shared/utils";
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "../ui/button";
 import {
-  memo,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import {
+  copyImagePreviewSlide,
+  ImagePreviewContextMenu,
+  ImagePreviewMenuItem,
+  openImagePreviewSlideInSystemViewer,
+  saveImagePreviewSlide,
+  toMessage,
+} from "./ImagePreviewMenu";
 
 export type { ImagePreviewAttachment, ImagePreviewSlide } from "./imagePreviewModel";
 
@@ -79,16 +79,6 @@ type ImagePreviewProps = {
 };
 
 type MenuPosition = { x: number; y: number };
-type ImagePreviewDataResolver = (
-  slide: ImagePreviewSlide,
-) => ReturnType<typeof resolveImagePreviewData>;
-
-function toMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message.trim()) return error.message;
-  const text = String(error ?? "").trim();
-  return text || fallback;
-}
-
 function formatBytes(bytes: number | undefined) {
   if (!Number.isFinite(bytes) || (bytes ?? 0) < 0) return "-";
   const normalized = bytes as number;
@@ -113,62 +103,6 @@ function imageViewerAnchor(
   };
 }
 
-async function copyTextToClipboard(value: string) {
-  if (!(await copySharedTextToClipboard(value))) {
-    throw new Error("Text clipboard is unavailable");
-  }
-}
-
-async function saveImagePreviewSlide(
-  slide: ImagePreviewSlide,
-  resolveData: ImagePreviewDataResolver = resolveImagePreviewData,
-) {
-  const writeImage = await prepareImagePreviewSave({
-    fileName: getImagePreviewFileName(slide),
-    mimeType: getImagePreviewMimeType(slide),
-  });
-  if (!writeImage) return;
-
-  const data = await resolveData(slide);
-  await writeImage({
-    dataBase64: data.dataBase64,
-    fileName: getImagePreviewFileName(slide),
-    mimeType: data.mimeType,
-  });
-}
-
-async function copyImagePreviewSlide(
-  slide: ImagePreviewSlide,
-  resolveData: ImagePreviewDataResolver = resolveImagePreviewData,
-) {
-  if (
-    supportsDirectUploadedImageCopy &&
-    getImagePreviewMimeType(slide) !== "image/svg+xml" &&
-    isVerifiedImagePreviewAttachment(slide.attachment)
-  ) {
-    await copyUploadedImagePreview({
-      workdir: slide.attachment.workdir,
-      absolutePath: slide.attachment.absolutePath,
-    });
-    return;
-  }
-  const data = resolveData(slide).then((resolved) => ({
-    dataBase64: resolved.dataBase64,
-    mimeType: resolved.mimeType,
-  }));
-  await copyImagePreviewData(data);
-}
-
-async function openImagePreviewSlideInSystemViewer(slide: ImagePreviewSlide) {
-  if (!isVerifiedImagePreviewAttachment(slide.attachment)) {
-    throw new Error("This image is not a verified uploaded attachment");
-  }
-  await openUploadedImageInSystemViewer({
-    workdir: slide.attachment.workdir,
-    absolutePath: slide.attachment.absolutePath,
-  });
-}
-
 function ImagePreviewToolButton(props: {
   label: string;
   disabled?: boolean;
@@ -178,12 +112,12 @@ function ImagePreviewToolButton(props: {
 }) {
   const { label, disabled, pressed, onClick, children } = props;
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon-sm"
       className={cn(
-        "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
-        "hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35",
-        pressed && "bg-muted text-foreground",
+        "pointer-events-auto shrink-0 rounded-full bg-white/95 text-zinc-800 shadow-sm hover:bg-white hover:text-zinc-950 focus-visible:ring-white",
+        pressed && "bg-white",
       )}
       title={label}
       aria-label={label}
@@ -192,227 +126,7 @@ function ImagePreviewToolButton(props: {
       onClick={onClick}
     >
       {children}
-    </button>
-  );
-}
-
-export function ImagePreviewMenuItem(props: {
-  children: ReactNode;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      className={cn(
-        "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left",
-        "hover:bg-accent disabled:pointer-events-none disabled:opacity-40",
-      )}
-      disabled={props.disabled}
-      onClick={props.onClick}
-    >
-      {props.children}
-    </button>
-  );
-}
-
-export function ImagePreviewActionFeedback(props: {
-  message: string | null;
-  onDismiss: () => void;
-}) {
-  const dismissRef = useRef(props.onDismiss);
-  dismissRef.current = props.onDismiss;
-  useEffect(() => {
-    if (!props.message) return;
-    let active = true;
-    const id = toast.error(props.message, {
-      onDismiss: () => {
-        if (active) dismissRef.current();
-      },
-    });
-    return () => {
-      active = false;
-      toast.dismiss(id);
-    };
-  }, [props.message]);
-  return null;
-}
-
-export function runImagePreviewContextMenuAction(params: {
-  action: () => Promise<void>;
-  fallback: string;
-  onClose: () => void;
-  onActionError: (message: string) => void;
-}) {
-  params.onClose();
-  try {
-    return params.action().catch((actionError) => {
-      params.onActionError(toMessage(actionError, params.fallback));
-    });
-  } catch (actionError) {
-    params.onActionError(toMessage(actionError, params.fallback));
-    return Promise.resolve();
-  }
-}
-
-export function ImagePreviewContextMenu(props: {
-  slide: ImagePreviewSlide;
-  position: MenuPosition;
-  onClose: () => void;
-  onOpen?: () => void;
-  onActionError: (message: string) => void;
-  children?: ReactNode;
-}) {
-  const { slide, position, onClose, onOpen, onActionError, children } = props;
-  const { t } = useLocale();
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
-  const capabilities = getImagePreviewCapabilities(slide, supportsSystemImageOpen);
-
-  const updateMenuPosition = useCallback(() => {
-    const menu = menuRef.current;
-    if (!menu) return;
-    const rect = menu.getBoundingClientRect();
-    const inset = 8;
-    setMenuPosition({
-      x: Math.max(inset, Math.min(position.x, window.innerWidth - rect.width - inset)),
-      y: Math.max(inset, Math.min(position.y, window.innerHeight - rect.height - inset)),
-    });
-  }, [position.x, position.y]);
-
-  useLayoutEffect(() => {
-    const menu = menuRef.current;
-    if (!menu) return;
-    updateMenuPosition();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(updateMenuPosition);
-    observer.observe(menu);
-    return () => observer.disconnect();
-  }, [updateMenuPosition]);
-
-  useEffect(() => {
-    window.addEventListener("resize", updateMenuPosition);
-    return () => window.removeEventListener("resize", updateMenuPosition);
-  }, [updateMenuPosition]);
-
-  useEffect(() => {
-    const onPointerDown = (event: PointerEvent) => {
-      if (menuRef.current?.contains(event.target as Node)) return;
-      onClose();
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown, true);
-    };
-  }, [onClose]);
-
-  const run = useCallback(
-    (action: () => Promise<void>, fallback: string) => {
-      void runImagePreviewContextMenuAction({ action, fallback, onClose, onActionError });
-    },
-    [onActionError, onClose],
-  );
-
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
-    <div
-      ref={menuRef}
-      role="menu"
-      className={cn(
-        "layer-popover fixed min-w-52",
-        "rounded-lg border border-border bg-popover p-1",
-        "text-xs text-popover-foreground shadow-2xl",
-      )}
-      style={{
-        left: (menuPosition ?? position).x,
-        top: (menuPosition ?? position).y,
-        visibility: menuPosition ? undefined : "hidden",
-      }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      }}
-    >
-      {children}
-      {onOpen ? (
-        <ImagePreviewMenuItem
-          onClick={() => {
-            onOpen();
-            onClose();
-          }}
-        >
-          <Maximize2 className="size-3.5" />
-          {t("chat.imageViewer.open")}
-        </ImagePreviewMenuItem>
-      ) : null}
-      {capabilities.canSave ? (
-        <ImagePreviewMenuItem
-          onClick={() => run(() => saveImagePreviewSlide(slide), t("chat.imageViewer.saveFailed"))}
-        >
-          <Download className="size-3.5" />
-          {t("chat.imageViewer.save")}
-        </ImagePreviewMenuItem>
-      ) : null}
-      {capabilities.canCopyImage ? (
-        <ImagePreviewMenuItem
-          onClick={() => run(() => copyImagePreviewSlide(slide), t("chat.imageViewer.copyFailed"))}
-        >
-          <Copy className="size-3.5" />
-          {t("chat.imageViewer.copy")}
-        </ImagePreviewMenuItem>
-      ) : null}
-      {capabilities.canCopyPaths && slide.attachment ? (
-        <ImagePreviewMenuItem
-          onClick={() =>
-            run(
-              () => copyTextToClipboard(slide.attachment?.absolutePath ?? ""),
-              t("chat.imageViewer.copyPathFailed"),
-            )
-          }
-        >
-          <Copy className="size-3.5" />
-          {t("chat.imageViewer.copyAbsolutePath")}
-        </ImagePreviewMenuItem>
-      ) : null}
-      {capabilities.canCopyPaths && slide.attachment ? (
-        <ImagePreviewMenuItem
-          onClick={() =>
-            run(
-              () => copyTextToClipboard(slide.attachment?.relativePath ?? ""),
-              t("chat.imageViewer.copyPathFailed"),
-            )
-          }
-        >
-          <Copy className="size-3.5" />
-          {t("chat.imageViewer.copyRelativePath")}
-        </ImagePreviewMenuItem>
-      ) : null}
-      {capabilities.canOpenSystem ? (
-        <ImagePreviewMenuItem
-          onClick={() =>
-            run(
-              () => openImagePreviewSlideInSystemViewer(slide),
-              t("chat.imageViewer.openSystemFailed"),
-            )
-          }
-        >
-          <ExternalLink className="size-3.5" />
-          {t("chat.imageViewer.openSystem")}
-        </ImagePreviewMenuItem>
-      ) : null}
-    </div>,
-    document.body,
+    </Button>
   );
 }
 
@@ -429,11 +143,11 @@ export const ImagePreview = memo(function ImagePreview(props: ImagePreviewProps)
   const [naturalSize, setNaturalSize] = useState<ImageViewerSize>({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [contextMenu, setContextMenu] = useState<MenuPosition | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const intentionalFullscreenExitRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const setViewportRef = useCallback((node: HTMLDivElement | null) => {
     viewportRef.current = node;
@@ -498,22 +212,36 @@ export const ImagePreview = memo(function ImagePreview(props: ImagePreviewProps)
     setViewerState(resetImageViewerState());
     setNaturalSize({ width: 0, height: 0 });
     setShowInfo(false);
-    setContextMenu(null);
     setActionError(null);
   }, [activeSlideKey, open]);
 
   useEffect(() => {
     if (!open) {
       setIsFullscreen(false);
+      intentionalFullscreenExitRef.current = false;
       return;
     }
+    let wasFullscreen = Boolean(
+      dialogRef.current && document.fullscreenElement === dialogRef.current,
+    );
     const updateFullscreenState = () => {
-      setIsFullscreen(document.fullscreenElement === dialogRef.current);
+      const fullscreen = Boolean(
+        dialogRef.current && document.fullscreenElement === dialogRef.current,
+      );
+      setIsFullscreen(fullscreen);
+      // Browsers can consume Escape before dispatching a keyboard event.
+      // A native fullscreen exit must dismiss the preview too; the toolbar's
+      // explicit exit-fullscreen action is the only exception.
+      if (wasFullscreen && !fullscreen) {
+        if (!intentionalFullscreenExitRef.current) onClose();
+        intentionalFullscreenExitRef.current = false;
+      }
+      wasFullscreen = fullscreen;
     };
     updateFullscreenState();
     document.addEventListener("fullscreenchange", updateFullscreenState);
     return () => document.removeEventListener("fullscreenchange", updateFullscreenState);
-  }, [open]);
+  }, [onClose, open]);
 
   useEffect(() => {
     if (!open || !viewportElement) return;
@@ -594,15 +322,17 @@ export const ImagePreview = memo(function ImagePreview(props: ImagePreviewProps)
 
   const handleFullscreen = useCallback(async () => {
     const dialog = dialogRef.current;
-    const dialogIsFullscreen = document.fullscreenElement === dialog;
+    const dialogIsFullscreen = dialog !== null && document.fullscreenElement === dialog;
     if (dialogIsFullscreen) {
       if (!document.exitFullscreen) {
         setActionError(t("chat.imageViewer.fullscreenFailed"));
         return;
       }
       try {
+        intentionalFullscreenExitRef.current = true;
         await document.exitFullscreen();
       } catch (error) {
+        intentionalFullscreenExitRef.current = false;
         setActionError(toMessage(error, t("chat.imageViewer.fullscreenFailed")));
       }
       return;
@@ -619,7 +349,12 @@ export const ImagePreview = memo(function ImagePreview(props: ImagePreviewProps)
   }, [t]);
 
   const closeViewer = useCallback(() => {
-    if (document.fullscreenElement === dialogRef.current && document.exitFullscreen) {
+    if (
+      dialogRef.current &&
+      document.fullscreenElement === dialogRef.current &&
+      document.exitFullscreen
+    ) {
+      intentionalFullscreenExitRef.current = true;
       void document.exitFullscreen().catch(() => undefined);
     }
     onClose();
@@ -667,51 +402,109 @@ export const ImagePreview = memo(function ImagePreview(props: ImagePreviewProps)
     setActiveIndex(clampImagePreviewIndex(nextIndex, imageCount));
   };
 
+  const viewMenuItems = (
+    <>
+      <ImagePreviewMenuItem
+        disabled={viewerState.scale <= IMAGE_VIEWER_MIN_SCALE}
+        onClick={() => {
+          zoomByStep(-1);
+        }}
+      >
+        <Minus className="size-3.5" />
+        {t("chat.imageViewer.zoomOut")}
+      </ImagePreviewMenuItem>
+      <ImagePreviewMenuItem
+        disabled={viewerState.scale >= IMAGE_VIEWER_MAX_SCALE}
+        onClick={() => {
+          zoomByStep(1);
+        }}
+      >
+        <Plus className="size-3.5" />
+        {t("chat.imageViewer.zoomIn")}
+      </ImagePreviewMenuItem>
+      <ImagePreviewMenuItem
+        onClick={() => {
+          setViewerState(resetImageViewerState());
+        }}
+      >
+        <RefreshCw className="size-3.5" />
+        {t("chat.imageViewer.reset")}
+      </ImagePreviewMenuItem>
+      <ImagePreviewMenuItem
+        onClick={() => {
+          rotateImage(-1);
+        }}
+      >
+        <RotateCcw className="size-3.5" />
+        {t("chat.imageViewer.rotateLeft")}
+      </ImagePreviewMenuItem>
+      <ImagePreviewMenuItem
+        onClick={() => {
+          rotateImage(1);
+        }}
+      >
+        <RotateCw className="size-3.5" />
+        {t("chat.imageViewer.rotateRight")}
+      </ImagePreviewMenuItem>
+      <ImagePreviewMenuItem
+        onClick={() => {
+          setShowInfo(true);
+        }}
+      >
+        <Info className="size-3.5" />
+        {t("chat.imageViewer.info")}
+      </ImagePreviewMenuItem>
+      <ImagePreviewMenuItem
+        onClick={() => {
+          void handleFullscreen();
+        }}
+      >
+        {isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+        {t(isFullscreen ? "chat.imageViewer.exitFullscreen" : "chat.imageViewer.fullscreen")}
+      </ImagePreviewMenuItem>
+    </>
+  );
+
   return (
     <Dialog
       open={open}
-      disablePointerDismissal
-      onOpenChange={(nextOpen, eventDetails) => {
-        if (nextOpen) return;
-        if (eventDetails.reason === "escape-key") {
-          if (contextMenu) {
-            eventDetails.cancel();
-            setContextMenu(null);
-            return;
-          }
-          if (showInfo) {
-            eventDetails.cancel();
-            setShowInfo(false);
-            return;
-          }
-          if (isFullscreen) {
-            eventDetails.cancel();
-            void handleFullscreen();
-            return;
-          }
-        }
-        closeViewer();
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) closeViewer();
       }}
     >
       <DialogContent
         ref={dialogRef}
         initialFocus={dialogRef}
-        className={cn(
-          "flex h-image-preview-height w-image-preview-width max-w-none min-h-0 min-w-0 flex-col overflow-hidden",
-          "rounded-xl border-border bg-background p-0 text-foreground",
-          "[&:fullscreen]:w-100vw [&:fullscreen]:h-100vh [&:fullscreen]:max-w-none [&:fullscreen]:max-h-none [&:fullscreen]:border-0 [&:fullscreen]:border-current [&:fullscreen]:rounded-none",
-        )}
+        layout="lightbox"
+        className="overflow-hidden p-0 [&:fullscreen]:bg-black/80 [&:fullscreen]:pointer-events-auto"
+        onClick={(event) => {
+          // Native fullscreen puts the popup above the shared backdrop.
+          if (isFullscreen && event.target === event.currentTarget) closeViewer();
+        }}
         onKeyDown={(event) => {
+          if (event.defaultPrevented || (event.target as HTMLElement).closest('[role="menu"]'))
+            return;
           if (
             (event.ctrlKey || event.metaKey) &&
             !event.altKey &&
-            event.key.toLowerCase() === "c"
+            event.key.toLowerCase() === "c" &&
+            !window.getSelection()?.toString()
           ) {
             event.preventDefault();
             event.stopPropagation();
             void copyImage();
           }
-          if (event.key === "0") {
+          if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+            if (event.key === "ArrowLeft" && canOpenPrevious) {
+              event.preventDefault();
+              setActiveImage(clampedIndex - 1);
+            }
+            if (event.key === "ArrowRight" && canOpenNext) {
+              event.preventDefault();
+              setActiveImage(clampedIndex + 1);
+            }
+          }
+          if (event.key === "0" && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault();
             event.stopPropagation();
             setViewerState(resetImageViewerState());
@@ -719,389 +512,300 @@ export const ImagePreview = memo(function ImagePreview(props: ImagePreviewProps)
         }}
       >
         <DialogTitle className="sr-only">{t("chat.imageViewer.viewer")}</DialogTitle>
-        <div
-          className={cn(
-            "flex h-11 shrink-0 items-center justify-between gap-2",
-            "border-b border-border bg-background/90 px-2",
-          )}
-        >
-          <div className="flex min-w-0 items-center gap-1">
-            {imageCount > 1 ? (
-              <>
+        <div className="pointer-events-auto absolute right-4 top-4 z-20 flex items-center gap-2 sm:right-6 sm:top-6">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-full bg-white/95 text-zinc-800 shadow-sm hover:bg-white hover:text-zinc-950"
+                />
+              }
+              aria-label={t("chat.imageViewer.actions")}
+              title={t("chat.imageViewer.actions")}
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              portalContainer={dialogRef.current}
+              align="end"
+              className="pointer-events-auto [&_[role=menuitem]]:gap-2"
+            >
+              {viewMenuItems}
+              <DropdownMenuItem disabled={isCopying} onClick={() => void copyImage()}>
+                <Copy className="size-3.5" />
+                {t("chat.imageViewer.copy")}
+              </DropdownMenuItem>
+              {capabilities?.canOpenSystem ? (
+                <DropdownMenuItem onClick={() => void openSystemViewer()}>
+                  <ExternalLink className="size-3.5" />
+                  {t("chat.imageViewer.openSystem")}
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <ImagePreviewToolButton
+            label={t("chat.imageViewer.save")}
+            disabled={isSaving}
+            onClick={() => void saveImage()}
+          >
+            {isSaving ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}
+          </ImagePreviewToolButton>
+          <DialogClose
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-full bg-white/95 text-zinc-800 shadow-sm hover:bg-white hover:text-zinc-950"
+              />
+            }
+            title={closeLabel}
+            aria-label={closeLabel}
+          >
+            <X className="size-4" />
+          </DialogClose>
+        </div>
+        {imageCount > 1 ? (
+          <>
+            <div className="absolute left-3 top-1/2 z-20 -translate-y-1/2 sm:left-6">
+              {canOpenPrevious ? (
                 <ImagePreviewToolButton
                   label={t("chat.imageViewer.previous")}
-                  disabled={!canOpenPrevious}
                   onClick={() => setActiveImage(clampedIndex - 1)}
                 >
                   <ChevronRight className="size-4 rotate-180" />
                 </ImagePreviewToolButton>
+              ) : null}
+            </div>
+            <div className="absolute right-3 top-1/2 z-20 -translate-y-1/2 sm:right-6">
+              {canOpenNext ? (
                 <ImagePreviewToolButton
                   label={t("chat.imageViewer.next")}
-                  disabled={!canOpenNext}
                   onClick={() => setActiveImage(clampedIndex + 1)}
                 >
                   <ChevronRight className="size-4" />
                 </ImagePreviewToolButton>
-                <span className="ml-1 shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {clampedIndex + 1} / {imageCount}
-                </span>
-              </>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-1 overflow-x-auto">
-            <ImagePreviewToolButton
-              label={t("chat.imageViewer.zoomOut")}
-              disabled={viewerState.scale <= IMAGE_VIEWER_MIN_SCALE}
-              onClick={() => zoomByStep(-1)}
-            >
-              <Minus className="size-4" />
-            </ImagePreviewToolButton>
-            <span className="w-11 text-center text-xs tabular-nums text-muted-foreground">
-              {Math.round(viewerState.scale * 100)}%
+              ) : null}
+            </div>
+            <span className="absolute left-6 top-6 text-xs tabular-nums text-white/70">
+              {clampedIndex + 1} / {imageCount}
             </span>
-            <ImagePreviewToolButton
-              label={t("chat.imageViewer.zoomIn")}
-              disabled={viewerState.scale >= IMAGE_VIEWER_MAX_SCALE}
-              onClick={() => zoomByStep(1)}
-            >
-              <Plus className="size-4" />
-            </ImagePreviewToolButton>
-            <ImagePreviewToolButton
-              label={t("chat.imageViewer.rotateLeft")}
-              onClick={() => rotateImage(-1)}
-            >
-              <RotateCwSquare className="size-4 -scale-x-100" />
-            </ImagePreviewToolButton>
-            <ImagePreviewToolButton
-              label={t("chat.imageViewer.rotateRight")}
-              onClick={() => rotateImage(1)}
-            >
-              <RotateCwSquare className="size-4" />
-            </ImagePreviewToolButton>
-            <ImagePreviewToolButton
-              label={t("chat.imageViewer.reset")}
-              onClick={() => setViewerState(resetImageViewerState())}
-            >
-              <RefreshCw className="size-4" />
-            </ImagePreviewToolButton>
-            <ImagePreviewToolButton
-              label={t("chat.imageViewer.save")}
-              disabled={isSaving}
-              onClick={() => void saveImage()}
-            >
-              {isSaving ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Download className="size-4" />
-              )}
-            </ImagePreviewToolButton>
-            {capabilities?.canOpenSystem ? (
-              <ImagePreviewToolButton
-                label={t("chat.imageViewer.openSystem")}
-                onClick={() => void openSystemViewer()}
-              >
-                <ExternalLink className="size-4" />
-              </ImagePreviewToolButton>
-            ) : null}
-            <ImagePreviewToolButton
-              label={t("chat.imageViewer.copy")}
-              disabled={isCopying}
-              onClick={() => void copyImage()}
-            >
-              {isCopying ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </ImagePreviewToolButton>
-            <ImagePreviewToolButton
-              label={t("chat.imageViewer.info")}
-              pressed={showInfo}
-              onClick={() => setShowInfo((current) => !current)}
-            >
-              <Info className="size-4" />
-            </ImagePreviewToolButton>
-            <ImagePreviewToolButton
-              label={t(
-                isFullscreen ? "chat.imageViewer.exitFullscreen" : "chat.imageViewer.fullscreen",
-              )}
-              onClick={() => void handleFullscreen()}
-            >
-              {isFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
-            </ImagePreviewToolButton>
-            <DialogClose
-              className={cn(
-                "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
-                "hover:bg-muted hover:text-foreground",
-              )}
-              title={closeLabel}
-              aria-label={closeLabel}
-            >
-              <X className="size-4" />
-            </DialogClose>
-          </div>
-        </div>
-        <div
-          ref={setViewportRef}
-          role="application"
-          aria-label={t("chat.imageViewer.viewer")}
-          className={cn(
-            "relative min-h-0 flex-1 touch-none select-none overflow-hidden bg-muted/25",
-            isDragging ? "cursor-grabbing" : canPan ? "cursor-grab" : "cursor-default",
-          )}
-          onWheel={(event) => {
-            if (event.deltaY === 0) return;
-            event.preventDefault();
-            zoomByWheel(
-              event.deltaY,
-              event.deltaMode,
-              imageViewerAnchor(event, viewportRef.current),
-            );
-          }}
-          onPointerDown={(event) => {
-            if (contextMenu) {
-              setContextMenu(null);
-              return;
-            }
-            if (event.button !== 0 || !canPan) return;
-            event.currentTarget.setPointerCapture(event.pointerId);
-            dragRef.current = {
-              pointerId: event.pointerId,
-              startX: event.clientX,
-              startY: event.clientY,
-              originX: viewerState.x,
-              originY: viewerState.y,
-            };
-            setIsDragging(true);
-          }}
-          onPointerMove={(event) => {
-            const drag = dragRef.current;
-            if (!drag || drag.pointerId !== event.pointerId) return;
-            setViewerState((current) => ({
-              ...current,
-              ...clampImageViewerPan(
-                {
-                  x: drag.originX + event.clientX - drag.startX,
-                  y: drag.originY + event.clientY - drag.startY,
-                },
-                { ...viewerOptions, scale: current.scale, rotation: current.rotation },
-              ),
-            }));
-          }}
-          onPointerUp={(event) => {
-            if (dragRef.current?.pointerId !== event.pointerId) return;
-            dragRef.current = null;
-            setIsDragging(false);
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          }}
-          onPointerCancel={() => {
-            dragRef.current = null;
-            setIsDragging(false);
-          }}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            setContextMenu({ x: event.clientX, y: event.clientY });
-          }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center">
+          </>
+        ) : null}
+        <ImagePreviewContextMenu
+          slide={slide}
+          portalContainer={dialogRef.current}
+          onActionError={setActionError}
+          trigger={
             <div
-              className="relative shrink-0"
-              style={{
-                height: `${imageSize.height}px`,
-                width: `${imageSize.width}px`,
-                transform: `translate(${viewerState.x}px, ${viewerState.y}px) scale(${viewerState.scale})`,
-                transformOrigin: "center",
-                transition: isDragging ? "none" : "transform 120ms ease-out",
+              ref={setViewportRef}
+              className={cn(
+                "pointer-events-none absolute inset-x-12 inset-y-20 touch-none select-none sm:inset-x-20",
+                isDragging ? "cursor-grabbing" : canPan ? "cursor-grab" : "cursor-default",
+              )}
+              onWheel={(event) => {
+                if (event.deltaY === 0) return;
+                event.preventDefault();
+                zoomByWheel(
+                  event.deltaY,
+                  event.deltaMode,
+                  imageViewerAnchor(event, viewportRef.current),
+                );
+              }}
+              onPointerDown={(event) => {
+                if (event.button !== 0 || !canPan) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                dragRef.current = {
+                  pointerId: event.pointerId,
+                  startX: event.clientX,
+                  startY: event.clientY,
+                  originX: viewerState.x,
+                  originY: viewerState.y,
+                };
+                setIsDragging(true);
+              }}
+              onPointerMove={(event) => {
+                const drag = dragRef.current;
+                if (!drag || drag.pointerId !== event.pointerId) return;
+                setViewerState((current) => ({
+                  ...current,
+                  ...clampImageViewerPan(
+                    {
+                      x: drag.originX + event.clientX - drag.startX,
+                      y: drag.originY + event.clientY - drag.startY,
+                    },
+                    { ...viewerOptions, scale: current.scale, rotation: current.rotation },
+                  ),
+                }));
+              }}
+              onPointerUp={(event) => {
+                if (dragRef.current?.pointerId !== event.pointerId) return;
+                dragRef.current = null;
+                setIsDragging(false);
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onPointerCancel={() => {
+                dragRef.current = null;
+                setIsDragging(false);
               }}
             >
-              <div
-                className="size-full"
-                style={{ transform: `rotate(${viewerState.rotation}deg)` }}
-              >
-                <img
-                  key={activeSlideKey ?? undefined}
-                  className="size-full select-none object-contain"
-                  src={imageSource}
-                  alt={slide.alt ?? getImagePreviewDisplayName(slide)}
-                  draggable={false}
-                  onLoad={(event) => {
-                    setNaturalSize({
-                      width: event.currentTarget.naturalWidth,
-                      height: event.currentTarget.naturalHeight,
-                    });
-                    if (
-                      supportsDirectUploadedImageCopy &&
-                      getImagePreviewMimeType(slide) !== "image/svg+xml" &&
-                      isVerifiedImagePreviewAttachment(slide.attachment)
-                    ) {
-                      void prepareUploadedImagePreviewCopy({
-                        workdir: slide.attachment.workdir,
-                        absolutePath: slide.attachment.absolutePath,
-                      }).catch(() => undefined);
-                    }
-                    if (hasInlineImageData) void resolveCachedImageData(slide);
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div
+                  className="pointer-events-auto relative shrink-0"
+                  style={{
+                    height: `${imageSize.height}px`,
+                    width: `${imageSize.width}px`,
+                    transform: `translate(${viewerState.x}px, ${viewerState.y}px) scale(${viewerState.scale})`,
+                    transformOrigin: "center",
+                    transition: isDragging ? "none" : "transform 120ms ease-out",
                   }}
-                  onError={() => setActionError(t("chat.imageViewer.unavailable"))}
-                />
+                >
+                  <div
+                    className="size-full"
+                    style={{ transform: `rotate(${viewerState.rotation}deg)` }}
+                  >
+                    <img
+                      key={activeSlideKey ?? undefined}
+                      className="size-full select-none rounded-sm object-contain shadow-2xl"
+                      src={imageSource}
+                      alt={slide.alt ?? getImagePreviewDisplayName(slide)}
+                      draggable={false}
+                      onLoad={(event) => {
+                        setNaturalSize({
+                          width: event.currentTarget.naturalWidth,
+                          height: event.currentTarget.naturalHeight,
+                        });
+                        if (
+                          supportsDirectUploadedImageCopy &&
+                          getImagePreviewMimeType(slide) !== "image/svg+xml" &&
+                          isVerifiedImagePreviewAttachment(slide.attachment)
+                        ) {
+                          void prepareUploadedImagePreviewCopy({
+                            workdir: slide.attachment.workdir,
+                            absolutePath: slide.attachment.absolutePath,
+                          }).catch(() => undefined);
+                        }
+                        if (hasInlineImageData)
+                          void resolveCachedImageData(slide).catch(() => undefined);
+                      }}
+                      onError={() => setActionError(t("chat.imageViewer.unavailable"))}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          {actionError ? (
-            <div
-              role="alert"
-              className={cn(
-                "absolute left-3 top-3 z-10 max-w-panel-28rem",
-                "rounded-md border border-destructive/30 bg-background/95 px-3 py-2",
-                "text-xs text-destructive shadow-lg backdrop-blur",
-              )}
-            >
-              {actionError}
-            </div>
-          ) : null}
-          {showInfo ? (
-            <aside
-              aria-label={t("chat.imageViewer.infoPanel")}
-              className={cn(
-                "absolute right-3 top-3 z-10 w-72",
-                "rounded-lg border border-border bg-background/90 p-3",
-                "text-xs text-foreground shadow-xl backdrop-blur",
-              )}
-            >
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="text-sm font-semibold">{t("chat.imageViewer.infoPanel")}</div>
-                <button
-                  type="button"
+              {actionError ? (
+                <div
+                  role="alert"
                   className={cn(
-                    "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground",
-                    "hover:bg-muted hover:text-foreground",
+                    "pointer-events-auto absolute left-0 top-0 z-10 max-w-panel-28rem",
+                    "rounded-md border border-destructive/30 bg-background/95 px-3 py-2",
+                    "text-xs text-destructive shadow-lg backdrop-blur",
                   )}
-                  title={closeLabel}
-                  aria-label={closeLabel}
-                  onClick={() => setShowInfo(false)}
                 >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-muted-foreground">
-                <dt>{t("chat.imageViewer.fileName")}</dt>
-                <dd
-                  className="truncate text-right text-foreground"
-                  title={getImagePreviewDisplayName(slide)}
+                  {actionError}
+                </div>
+              ) : null}
+              {showInfo ? (
+                <aside
+                  aria-label={t("chat.imageViewer.infoPanel")}
+                  className={cn(
+                    "pointer-events-auto absolute inset-x-0 top-0 z-10 sm:left-auto sm:w-72",
+                    "rounded-lg border border-border bg-background/90 p-3",
+                    "text-xs text-foreground shadow-xl backdrop-blur",
+                  )}
                 >
-                  {getImagePreviewDisplayName(slide)}
-                </dd>
-                <dt>{t("chat.imageViewer.dimensions")}</dt>
-                <dd className="text-right text-foreground">{formatDimensions(naturalSize)}</dd>
-                <dt>{t("chat.imageViewer.fileSize")}</dt>
-                <dd className="text-right text-foreground">{formatBytes(slide.sizeBytes)}</dd>
-                <dt>{t("chat.imageViewer.fileType")}</dt>
-                <dd
-                  className="truncate text-right text-foreground"
-                  title={getImagePreviewMimeType(slide)}
-                >
-                  {getImagePreviewMimeType(slide)}
-                </dd>
-                {capabilities?.canCopyPaths && verifiedAttachment ? (
-                  <>
-                    <dt>{t("chat.imageViewer.absolutePath")}</dt>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-sm font-semibold">{t("chat.imageViewer.infoPanel")}</div>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      title={closeLabel}
+                      aria-label={closeLabel}
+                      onClick={() => setShowInfo(false)}
+                    >
+                      <X className="size-3.5" />
+                    </Button>
+                  </div>
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-muted-foreground">
+                    <dt>{t("chat.imageViewer.fileName")}</dt>
                     <dd
                       className="truncate text-right text-foreground"
-                      title={verifiedAttachment.absolutePath}
+                      title={getImagePreviewDisplayName(slide)}
                     >
-                      {verifiedAttachment.absolutePath}
+                      {getImagePreviewDisplayName(slide)}
                     </dd>
-                    <dt>{t("chat.imageViewer.relativePath")}</dt>
+                    <dt>{t("chat.imageViewer.dimensions")}</dt>
+                    <dd className="text-right text-foreground">{formatDimensions(naturalSize)}</dd>
+                    <dt>{t("chat.imageViewer.fileSize")}</dt>
+                    <dd className="text-right text-foreground">{formatBytes(slide.sizeBytes)}</dd>
+                    <dt>{t("chat.imageViewer.fileType")}</dt>
                     <dd
                       className="truncate text-right text-foreground"
-                      title={verifiedAttachment.relativePath}
+                      title={getImagePreviewMimeType(slide)}
                     >
-                      {verifiedAttachment.relativePath}
+                      {getImagePreviewMimeType(slide)}
                     </dd>
-                  </>
-                ) : null}
-              </dl>
-            </aside>
-          ) : null}
-          {contextMenu ? (
-            <ImagePreviewContextMenu
-              slide={slide}
-              position={contextMenu}
-              onClose={() => setContextMenu(null)}
-              onActionError={setActionError}
-            >
-              <ImagePreviewMenuItem
-                disabled={viewerState.scale <= IMAGE_VIEWER_MIN_SCALE}
-                onClick={() => {
-                  zoomByStep(-1);
-                  setContextMenu(null);
-                }}
-              >
-                <Minus className="size-3.5" />
-                {t("chat.imageViewer.zoomOut")}
-              </ImagePreviewMenuItem>
-              <ImagePreviewMenuItem
-                disabled={viewerState.scale >= IMAGE_VIEWER_MAX_SCALE}
-                onClick={() => {
-                  zoomByStep(1);
-                  setContextMenu(null);
-                }}
-              >
-                <Plus className="size-3.5" />
-                {t("chat.imageViewer.zoomIn")}
-              </ImagePreviewMenuItem>
-              <ImagePreviewMenuItem
-                onClick={() => {
-                  setViewerState(resetImageViewerState());
-                  setContextMenu(null);
-                }}
-              >
-                <RefreshCw className="size-3.5" />
-                {t("chat.imageViewer.reset")}
-              </ImagePreviewMenuItem>
-              <ImagePreviewMenuItem
-                onClick={() => {
-                  rotateImage(-1);
-                  setContextMenu(null);
-                }}
-              >
-                <RotateCwSquare className="size-3.5 -scale-x-100" />
-                {t("chat.imageViewer.rotateLeft")}
-              </ImagePreviewMenuItem>
-              <ImagePreviewMenuItem
-                onClick={() => {
-                  rotateImage(1);
-                  setContextMenu(null);
-                }}
-              >
-                <RotateCwSquare className="size-3.5" />
-                {t("chat.imageViewer.rotateRight")}
-              </ImagePreviewMenuItem>
-              <ImagePreviewMenuItem
-                onClick={() => {
-                  setShowInfo(true);
-                  setContextMenu(null);
-                }}
-              >
-                <Info className="size-3.5" />
-                {t("chat.imageViewer.info")}
-              </ImagePreviewMenuItem>
-              <ImagePreviewMenuItem
-                onClick={() => {
-                  void handleFullscreen();
-                  setContextMenu(null);
-                }}
-              >
-                {isFullscreen ? (
-                  <Minimize2 className="size-3.5" />
-                ) : (
-                  <Maximize2 className="size-3.5" />
-                )}
-                {t(
-                  isFullscreen ? "chat.imageViewer.exitFullscreen" : "chat.imageViewer.fullscreen",
-                )}
-              </ImagePreviewMenuItem>
-            </ImagePreviewContextMenu>
-          ) : null}
+                    {capabilities?.canCopyPaths && verifiedAttachment ? (
+                      <>
+                        <dt>{t("chat.imageViewer.absolutePath")}</dt>
+                        <dd
+                          className="truncate text-right text-foreground"
+                          title={verifiedAttachment.absolutePath}
+                        >
+                          {verifiedAttachment.absolutePath}
+                        </dd>
+                        <dt>{t("chat.imageViewer.relativePath")}</dt>
+                        <dd
+                          className="truncate text-right text-foreground"
+                          title={verifiedAttachment.relativePath}
+                        >
+                          {verifiedAttachment.relativePath}
+                        </dd>
+                      </>
+                    ) : null}
+                  </dl>
+                </aside>
+              ) : null}
+            </div>
+          }
+        >
+          {viewMenuItems}
+        </ImagePreviewContextMenu>
+        <div className="pointer-events-auto absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/95 p-1 text-zinc-800 shadow-lg sm:bottom-6">
+          <ImagePreviewToolButton
+            label={t("chat.imageViewer.zoomOut")}
+            disabled={viewerState.scale <= IMAGE_VIEWER_MIN_SCALE}
+            onClick={() => zoomByStep(-1)}
+          >
+            <Minus className="size-4" />
+          </ImagePreviewToolButton>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-w-12 rounded-full px-1 text-xs tabular-nums hover:bg-black/5 hover:text-zinc-950"
+            title={t("chat.imageViewer.reset")}
+            aria-label={t("chat.imageViewer.reset")}
+            onClick={() => setViewerState(resetImageViewerState())}
+          >
+            {Math.round(
+              viewerState.scale *
+                (naturalSize.width > 0 ? imageSize.width / naturalSize.width : 1) *
+                100,
+            )}
+            %
+          </Button>
+          <ImagePreviewToolButton
+            label={t("chat.imageViewer.zoomIn")}
+            disabled={viewerState.scale >= IMAGE_VIEWER_MAX_SCALE}
+            onClick={() => zoomByStep(1)}
+          >
+            <Plus className="size-4" />
+          </ImagePreviewToolButton>
         </div>
       </DialogContent>
     </Dialog>

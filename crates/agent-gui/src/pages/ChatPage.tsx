@@ -67,10 +67,6 @@ import {
   terminalSessionBelongsToProject,
 } from "@liveagent/ui/lib/terminal/sessionStore";
 import type { TerminalSession } from "@liveagent/ui/lib/terminal/types";
-import {
-  toTrajectoryLiveAssistantMessage,
-  toTrajectoryMessages,
-} from "@liveagent/ui/lib/trajectory/transcriptMessages";
 import { useConversationViewState } from "@liveagent/ui/lib/trajectory/useConversationViewState";
 import type { LocalTunnelClient } from "@liveagent/ui/lib/tunnels/constants";
 import {
@@ -206,6 +202,7 @@ import {
   useContextUsageTokensSource,
 } from "./chat/hooks/useContextUsageTokensSource";
 import { useEditResend } from "./chat/hooks/useEditResend";
+import { useHasConversationReply } from "./chat/hooks/useHasConversationReply";
 import { useLiveTranscriptController } from "./chat/hooks/useLiveTranscriptController";
 import { useNotifyToasts } from "./chat/hooks/useNotifyToasts";
 import { MAX_UPLOAD_FILES, usePendingUploads } from "./chat/hooks/usePendingUploads";
@@ -292,8 +289,12 @@ export function ChatPage(props: ChatPageProps) {
   setPreferredMonacoNlsLocale(settings.locale);
   const effectiveTheme = resolveEffectiveTheme(settings.theme);
   const { t, locale } = useLocale();
-  const initialConversationRef = useRef(createConversationIdentity());
-  const initialConversationStateRef = useRef(createConversationStateFromContext(context));
+  // Ref arguments are evaluated on every render. Build the initial context
+  // lazily so theme/sidebar updates never walk the entire conversation again.
+  const [initialConversation] = useState(createConversationIdentity);
+  const [initialConversationState] = useState(() => createConversationStateFromContext(context));
+  const initialConversationRef = useRef(initialConversation);
+  const initialConversationStateRef = useRef(initialConversationState);
 
   const [conversationState, setConversationState] = useState<ConversationViewState>(
     () => initialConversationStateRef.current,
@@ -493,7 +494,8 @@ export function ChatPage(props: ChatPageProps) {
   } = useConversationPaneHostBridge();
   const composerBusyRef = useRef(false);
   const conversationLoadSequenceRef = useRef(0);
-  const subagentStoresRef = useRef(createSubagentStoreManager());
+  const [subagentStores] = useState(createSubagentStoreManager);
+  const subagentStoresRef = useRef(subagentStores);
   const previousSubagentRuntimeConversationRef = useRef(currentConversationId);
   const subagentWarmupSignatureRef = useRef("");
   const titleJobRef = useRef<{
@@ -547,34 +549,12 @@ export function ChatPage(props: ChatPageProps) {
   } = useLiveTranscriptController({
     currentConversationId,
   });
-  // Persisted transcript rows provide stable historical content; the synthetic live assistant
-  // supplies current streaming text/thinking/tool payloads until the final history write lands.
-  const trajectoryPersistedMessages = useMemo(
-    () => toTrajectoryMessages(transcriptItems),
-    [transcriptItems],
-  );
-  const trajectoryLiveTranscriptSnapshot = useSyncExternalStore(
-    (listener) => liveTranscriptStore.subscribe(listener),
-    () => liveTranscriptStore.getSnapshot(),
-  );
-  const trajectoryLiveAssistantMessage = useMemo(
-    () =>
-      toTrajectoryLiveAssistantMessage(
-        trajectoryLiveTranscriptSnapshot,
-        `trajectory-live-${currentConversationId}`,
-      ),
-    [currentConversationId, trajectoryLiveTranscriptSnapshot],
-  );
-  const trajectoryMessages = useMemo(
-    () =>
-      trajectoryLiveAssistantMessage === undefined
-        ? trajectoryPersistedMessages
-        : [...trajectoryPersistedMessages, trajectoryLiveAssistantMessage],
-    [trajectoryLiveAssistantMessage, trajectoryPersistedMessages],
-  );
   const isDraftConversation = !historyItems.some((item) => item.id === currentConversationId);
-  const hasConversationReply =
-    !isDraftConversation && trajectoryMessages.some((message) => message.role === "assistant");
+  const hasConversationReply = useHasConversationReply(
+    transcriptItems,
+    liveTranscriptStore,
+    isDraftConversation,
+  );
   const renderedConversationView = hasConversationReply ? activeConversationView : "conversation";
   const {
     queueGatewayBridgeEventForRequest,
@@ -2187,14 +2167,15 @@ export function ChatPage(props: ChatPageProps) {
     ),
   });
 
+  const handleEditResendError = useCallback((error: unknown) => {
+    setErrorMessage(error instanceof Error ? error.message : String(error));
+  }, []);
   const { handleResendFromEdit } = useEditResend({
     isSending,
     isConversationHydrating,
     isConversationHydrationFailed,
     currentConversationIdRef,
-    onError: (error) => {
-      setErrorMessage(error instanceof Error ? error.message : String(error));
-    },
+    onError: handleEditResendError,
     sendActionRef,
   });
 
@@ -2246,136 +2227,217 @@ export function ChatPage(props: ChatPageProps) {
   // Full-featured binding for the pane hosting the page's current
   // conversation; it is the only pane wired to page-level composer bridging,
   // uploads, native drop and usage telemetry.
-  const primaryPaneBinding: ConversationPaneBinding = {
-    controller: conversationSurfaceController,
-    changedFilesActions,
-    checkpointRewind: {
-      project: activeWorkspaceProject ?? null,
-      disabled: !currentConversationId || isSending,
-      onRewound: (info) => {
-        // 显式回退通知:让用户明确知道工作区刚被回退过。文件工具缓存
-        // 无需手动失效——注册表与 fileState 每用户轮都会重建。
-        //
-        // 已知残留:压缩摘要里的 fileLedger 是持久化在历史里的,不随轮次
-        // 重建,回退后仍会列出那些路径。账本语义是"曾被触碰的路径",不断言
-        // 当前内容,所以不算失真;真正会过时的是摘要正文里模型写的完成情况,
-        // 那要改写已落库的摘要才能修,不在本功能范围内。
-        const notice = formatCheckpointRewoundNotification(info, locale === "zh-CN");
-        addNotify(notice.level, notice.message);
+  const currentPaneRunning = isConversationRunning(currentConversationId);
+  const primaryPaneBinding = useMemo<ConversationPaneBinding>(
+    () => ({
+      controller: conversationSurfaceController,
+      changedFilesActions,
+      checkpointRewind: {
+        project: activeWorkspaceProject ?? null,
+        disabled: !currentConversationId || isSending,
+        onRewound: (info) => {
+          // 显式回退通知:让用户明确知道工作区刚被回退过。文件工具缓存
+          // 无需手动失效——注册表与 fileState 每用户轮都会重建。
+          //
+          // 已知残留:压缩摘要里的 fileLedger 是持久化在历史里的,不随轮次
+          // 重建,回退后仍会列出那些路径。账本语义是"曾被触碰的路径",不断言
+          // 当前内容,所以不算失真;真正会过时的是摘要正文里模型写的完成情况,
+          // 那要改写已落库的摘要才能修,不在本功能范围内。
+          const notice = formatCheckpointRewoundNotification(info, locale === "zh-CN");
+          addNotify(notice.level, notice.message);
+        },
       },
-    },
-    isConversationRunning: isConversationRunning(currentConversationId),
-    fileDrop: {
-      active: isFileDropActive,
-      canDropUpload,
-      title: fileDropTitle,
-      description: fileDropDescription,
-      limitHint: fileDropLimitHint,
-    },
-    // 每个会话独立保存视图；当前 Pane 使用页面级实时数据渲染自己的轨迹。
-    trajectory: {
-      active: renderedConversationView === "trajectory",
-      renderContent: () => (
-        <ConversationTrajectorySurface
-          conversationId={currentConversationId}
-          host={trajectoryHost}
-          transcriptItems={transcriptItems}
-          liveTranscriptStore={liveTranscriptStore}
-          workdir={displayedConversationWorkdir}
-          hasMoreMessages={conversationState.transcript.hasMoreBefore}
-          loadEarlierMessages={handleLoadEarlierHistory}
-        />
-      ),
-    },
-    transcript: {
-      workspaceRoot: currentConversationWorkspaceRoot,
-      gitClient: tauriGitClient,
-      hasModels,
-      onLoadEarlierHistory: handleLoadEarlierHistory,
-      isHistorySwitching: conversationOpenState.showOverlay,
-      showUsage: isAgentDevExecutionMode,
-      usageContextWindow: currentModelContextWindow,
-      liveTranscriptStore,
-      contentWidth: settings.customSettings.chatTranscript.width,
-      onContentWidthChange: handleChatTranscriptWidthChange,
-      onOpenFileLink: handleOpenChatFileLink,
-      onResendFromEdit: handleResendFromEdit,
-      onBranchConversation:
-        isConversationHydrating || isConversationHydrationFailed
-          ? undefined
-          : handleBranchConversation,
-      branchPendingMessageId,
-      onOpenSettings,
-      onSuggestionSelect: handleEmptyStateSuggestion,
-    },
-    composer: {
-      surface: "desktop",
-      conversationId: currentConversationId,
-      isUploadingFiles,
-      isInputDisabled: isComposerInputDisabled,
-      // 麦克风在开启语音输入后显示；点击设置卡片会立即切换当前供应商。
-      sttSessionKey: currentConversationId,
-      sttProvider: settings.stt.enabled
-        ? (sttProviderOverride ?? settings.stt.provider ?? "tencent_cloud")
-        : null,
-      sttProviderConfigured:
-        settings.stt.providers[sttProviderOverride ?? settings.stt.provider ?? "tencent_cloud"]
-          ?.configured,
-      sttTransport: desktopSttTransport,
-      onSttError: handleSttError,
-      inputPlaceholder: composerPlaceholder,
-      workdir: displayedConversationWorkdir,
-      enabledSkills: enabledComposerSkills,
-      mentionableConversations,
-      searchMentionableConversations,
-      mentionApps,
-      executionMode: settings.system.executionMode,
-      hasModels,
-      currentModelLabel,
-      modelOptions,
-      selectedValue,
-      chatRuntimeControls: chatRuntimeControlsForCurrentProvider,
-      commandSafetyMode: settings.system.commandSafetyMode,
-      onCommandSafetyModeChange: (mode) =>
-        setSettings((prev) =>
-          prev.system.commandSafetyMode === mode
-            ? prev
-            : updateSystem(prev, { commandSafetyMode: mode }),
+      isConversationRunning: currentPaneRunning,
+      fileDrop: {
+        active: isFileDropActive,
+        canDropUpload,
+        title: fileDropTitle,
+        description: fileDropDescription,
+        limitHint: fileDropLimitHint,
+      },
+      // 每个会话独立保存视图；当前 Pane 使用页面级实时数据渲染自己的轨迹。
+      trajectory: {
+        active: renderedConversationView === "trajectory",
+        renderContent: () => (
+          <ConversationTrajectorySurface
+            conversationId={currentConversationId}
+            host={trajectoryHost}
+            transcriptItems={transcriptItems}
+            liveTranscriptStore={liveTranscriptStore}
+            workdir={displayedConversationWorkdir}
+            hasMoreMessages={conversationState.transcript.hasMoreBefore}
+            loadEarlierMessages={handleLoadEarlierHistory}
+          />
         ),
-      reasoningOptions: chatRuntimeReasoningOptions,
-      thinkingAlwaysOn: chatRuntimeThinkingAlwaysOn,
-      contextUsageTokensSource,
-      contextWindow: currentModelContextWindow,
-      contextDisplayMode: settings.customSettings.composerContextDisplay,
-      gitClient: tauriGitClient,
-      workspaceActivityClient: tauriWorkspaceActivityClient,
-      onOpenWorktree: handleOpenWorktree,
-      onWorktreeRemoved: handleWorktreeRemoved,
-      onSend: handleSend,
-      onComposerBusyChange: handleComposerBusyChange,
-      onSelectModel: handleSelectModel,
-      onSelectExecutionMode: handleSelectExecutionMode,
+      },
+      transcript: {
+        workspaceRoot: currentConversationWorkspaceRoot,
+        gitClient: tauriGitClient,
+        hasModels,
+        onLoadEarlierHistory: handleLoadEarlierHistory,
+        isHistorySwitching: conversationOpenState.showOverlay,
+        showUsage: isAgentDevExecutionMode,
+        usageContextWindow: currentModelContextWindow,
+        liveTranscriptStore,
+        contentWidth: settings.customSettings.chatTranscript.width,
+        onContentWidthChange: handleChatTranscriptWidthChange,
+        onOpenFileLink: handleOpenChatFileLink,
+        onResendFromEdit: handleResendFromEdit,
+        onBranchConversation:
+          isConversationHydrating || isConversationHydrationFailed
+            ? undefined
+            : handleBranchConversation,
+        branchPendingMessageId,
+        onOpenSettings,
+        onSuggestionSelect: handleEmptyStateSuggestion,
+      },
+      composer: {
+        surface: "desktop",
+        conversationId: currentConversationId,
+        isUploadingFiles,
+        isInputDisabled: isComposerInputDisabled,
+        // 麦克风在开启语音输入后显示；点击设置卡片会立即切换当前供应商。
+        sttSessionKey: currentConversationId,
+        sttProvider: settings.stt.enabled
+          ? (sttProviderOverride ?? settings.stt.provider ?? "tencent_cloud")
+          : null,
+        sttProviderConfigured:
+          settings.stt.providers[sttProviderOverride ?? settings.stt.provider ?? "tencent_cloud"]
+            ?.configured,
+        sttTransport: desktopSttTransport,
+        onSttError: handleSttError,
+        inputPlaceholder: composerPlaceholder,
+        workdir: displayedConversationWorkdir,
+        enabledSkills: enabledComposerSkills,
+        mentionableConversations,
+        searchMentionableConversations,
+        mentionApps,
+        executionMode: settings.system.executionMode,
+        hasModels,
+        currentModelLabel,
+        modelOptions,
+        selectedValue,
+        chatRuntimeControls: chatRuntimeControlsForCurrentProvider,
+        commandSafetyMode: settings.system.commandSafetyMode,
+        onCommandSafetyModeChange: (mode) =>
+          setSettings((prev) =>
+            prev.system.commandSafetyMode === mode
+              ? prev
+              : updateSystem(prev, { commandSafetyMode: mode }),
+          ),
+        reasoningOptions: chatRuntimeReasoningOptions,
+        thinkingAlwaysOn: chatRuntimeThinkingAlwaysOn,
+        contextUsageTokensSource,
+        contextWindow: currentModelContextWindow,
+        contextDisplayMode: settings.customSettings.composerContextDisplay,
+        gitClient: tauriGitClient,
+        workspaceActivityClient: tauriWorkspaceActivityClient,
+        onOpenWorktree: handleOpenWorktree,
+        onWorktreeRemoved: handleWorktreeRemoved,
+        onSend: handleSend,
+        onComposerBusyChange: handleComposerBusyChange,
+        onSelectModel: handleSelectModel,
+        onSelectExecutionMode: handleSelectExecutionMode,
+        onOpenSettings,
+        onChatRuntimeControlsChange: handleChatRuntimeControlsChange,
+        onPickReadableFiles: pickReadableFiles,
+        onPickWorkspaceFolder: pickWorkspaceFolder,
+        onPasteFiles: importReadableFiles,
+        onLoadUploadedImagePreview: loadComposerUploadedImagePreview,
+        loadHistoryPrompts: loadComposerHistoryPrompts,
+        // 提示词澄清：当前会话模型跑纯文本补全；clarifyContext 只喂轻量工作区
+        // 信息（分支无现成状态，留空不为此新拉 git）。总开关关闭时不传执行器，
+        // ChatComposerBar 随之隐藏澄清按钮。
+        runClarifyTurn: settings.customSettings.promptClarifyEnabled
+          ? getConversationClarifyRunner(currentConversationId)
+          : undefined,
+        clarifyContext: { workdir: displayedConversationWorkdir },
+        onRemovePendingUpload: removePendingUpload,
+        onRunQueuedTurnNow: runQueuedTurnNow,
+        onMoveQueuedTurnUp: moveQueuedTurnUp,
+        onEditQueuedTurn: editQueuedTurn,
+        onRemoveQueuedTurn: removeQueuedTurn,
+      },
+    }),
+    [
+      currentConversationWorkspaceRoot,
+      currentModelContextWindow,
+      currentModelLabel,
+      currentPaneRunning,
+      displayedConversationWorkdir,
+      editQueuedTurn,
+      enabledComposerSkills,
+      fileDropDescription,
+      fileDropLimitHint,
+      fileDropTitle,
+      getConversationClarifyRunner,
+      handleBranchConversation,
+      handleChatRuntimeControlsChange,
+      handleChatTranscriptWidthChange,
+      handleComposerBusyChange,
+      handleEmptyStateSuggestion,
+      handleLoadEarlierHistory,
+      handleOpenChatFileLink,
+      handleOpenWorktree,
+      handleResendFromEdit,
+      handleSelectExecutionMode,
+      handleSelectModel,
+      handleSend,
+      handleSttError,
+      handleWorktreeRemoved,
+      hasModels,
+      importReadableFiles,
+      isAgentDevExecutionMode,
+      isComposerInputDisabled,
+      isConversationHydrating,
+      isConversationHydrationFailed,
+      isFileDropActive,
+      isSending,
+      isUploadingFiles,
+      liveTranscriptStore,
+      loadComposerHistoryPrompts,
+      locale,
+      mentionApps,
+      mentionableConversations,
+      modelOptions,
+      moveQueuedTurnUp,
       onOpenSettings,
-      onChatRuntimeControlsChange: handleChatRuntimeControlsChange,
-      onPickReadableFiles: pickReadableFiles,
-      onPickWorkspaceFolder: pickWorkspaceFolder,
-      onPasteFiles: importReadableFiles,
-      onLoadUploadedImagePreview: loadComposerUploadedImagePreview,
-      loadHistoryPrompts: loadComposerHistoryPrompts,
-      // 提示词澄清：当前会话模型跑纯文本补全；clarifyContext 只喂轻量工作区
-      // 信息（分支无现成状态，留空不为此新拉 git）。总开关关闭时不传执行器，
-      // ChatComposerBar 随之隐藏澄清按钮。
-      runClarifyTurn: settings.customSettings.promptClarifyEnabled
-        ? getConversationClarifyRunner(currentConversationId)
-        : undefined,
-      clarifyContext: { workdir: displayedConversationWorkdir },
-      onRemovePendingUpload: removePendingUpload,
-      onRunQueuedTurnNow: runQueuedTurnNow,
-      onMoveQueuedTurnUp: moveQueuedTurnUp,
-      onEditQueuedTurn: editQueuedTurn,
-      onRemoveQueuedTurn: removeQueuedTurn,
-    },
-  };
+      pickReadableFiles,
+      pickWorkspaceFolder,
+      removePendingUpload,
+      removeQueuedTurn,
+      renderedConversationView,
+      runQueuedTurnNow,
+      searchMentionableConversations,
+      selectedValue,
+      setSettings,
+      settings.customSettings.chatTranscript.width,
+      settings.customSettings.composerContextDisplay,
+      settings.customSettings.promptClarifyEnabled,
+      settings.stt.enabled,
+      settings.stt.provider,
+      settings.stt.providers,
+      settings.system.commandSafetyMode,
+      settings.system.executionMode,
+      sttProviderOverride,
+      trajectoryHost,
+      currentConversationId,
+      transcriptItems,
+      conversationSurfaceController,
+      conversationState.transcript.hasMoreBefore,
+      conversationOpenState.showOverlay,
+      contextUsageTokensSource,
+      composerPlaceholder,
+      chatRuntimeControlsForCurrentProvider,
+      chatRuntimeThinkingAlwaysOn,
+      changedFilesActions,
+      addNotify,
+      chatRuntimeReasoningOptions,
+      canDropUpload,
+      branchPendingMessageId,
+      activeWorkspaceProject,
+    ],
+  );
 
   // ---- Session workbench (flag-gated) ----
   // The window-level pane tree. Invariant: the focused pane's conversation is
@@ -3521,21 +3583,7 @@ export function ChatPage(props: ChatPageProps) {
             },
             binding:
               surface.conversationId === currentConversationId
-                ? {
-                    ...primaryPaneBinding,
-                    composer: {
-                      ...primaryPaneBinding.composer,
-                      // Keep Desktop aligned with Web: history hydration is a
-                      // real disabled state even when the workbench has more
-                      // than one pane, so typing cannot race stale history.
-                      isInputDisabled:
-                        isCompactionRunning ||
-                        isConversationHydrationFailed ||
-                        isImportingPastedText ||
-                        isUploadingFiles ||
-                        isConversationHydrating,
-                    },
-                  }
+                ? primaryPaneBinding
                 : buildBackgroundPaneBinding(surface),
           },
         ];

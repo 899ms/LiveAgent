@@ -9,6 +9,7 @@ import { cn } from "@liveagent/ui/lib/shared/utils";
 import { FloorNavRail } from "@liveagent/ui/pages/chat/transcript/FloorNavRail";
 import { TranscriptWidthControls } from "@liveagent/ui/pages/chat/transcript/TranscriptWidthControls";
 import {
+  type CSSProperties,
   memo,
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -254,7 +255,12 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
       <div
         ref={setScrollViewport}
         data-scroll-viewport
-        className="size-full overflow-y-auto [overflow-anchor:none] [scrollbar-gutter:stable]"
+        className="chat-transcript-scrollbar mx-1.5 h-full overflow-y-auto [overflow-anchor:none] [scrollbar-gutter:stable]"
+        style={
+          {
+            "--chat-scrollbar-bottom-inset": `${Math.ceil(bottomReservePx) + 8}px`,
+          } as CSSProperties
+        }
       >
         <div
           className={cn(

@@ -97,6 +97,7 @@ export interface VirtualizerOptions<TScrollElement extends Element | Window, TIt
      * scroll direction so compositor-async scrolling reveals pre-rendered
      * content. 0 disables.
      */
+    overscanPx?: number;
     directionalOverscanPx?: number;
     scrollEndThreshold?: number;
     isScrollingResetDelay?: number;

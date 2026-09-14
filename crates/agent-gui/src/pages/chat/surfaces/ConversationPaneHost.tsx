@@ -8,6 +8,7 @@ import { ChatComposerBar } from "@liveagent/ui/pages/chat/ChatComposerBar";
 import {
   type ForwardedRef,
   forwardRef,
+  memo,
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
@@ -26,6 +27,7 @@ import { buildQueuedChatTurnPreview } from "../queue/chatTurnQueue";
 import { ChatTranscript } from "../transcript/ChatTranscript";
 import {
   type ConversationPaneRegistration,
+  sameConversationPaneRegistration,
   useConversationPaneRegistration,
 } from "./ConversationPaneHostEnvironment";
 import { ConversationSurface } from "./ConversationSurface";
@@ -64,7 +66,7 @@ function PendingConversationPaneHost() {
   return <PaneLoadingSkeleton label={t("chat.loadingConversation")} />;
 }
 
-function RegisteredRestorableConversationPaneHost(props: {
+function RegisteredRestorableConversationPaneHostContent(props: {
   registration: ConversationPaneRegistration;
   title?: string;
   deferHydration: boolean;
@@ -145,7 +147,7 @@ export const ConversationPaneHost = forwardRef<
   return <RegisteredConversationPaneHost ref={forwardedRef} registration={registration} />;
 });
 
-const RegisteredConversationPaneHost = forwardRef<
+const RegisteredConversationPaneHostContent = forwardRef<
   ConversationPaneHostHandle,
   { registration: ConversationPaneRegistration }
 >(function RegisteredConversationPaneHost(props, forwardedRef) {
@@ -310,3 +312,17 @@ const RegisteredConversationPaneHost = forwardRef<
     />
   );
 });
+
+// Context changes reach the small lookup wrapper; unchanged bindings stop here.
+const RegisteredRestorableConversationPaneHost = memo(
+  RegisteredRestorableConversationPaneHostContent,
+  (previous, next) =>
+    sameConversationPaneRegistration(previous.registration, next.registration) &&
+    previous.title === next.title &&
+    previous.deferHydration === next.deferHydration &&
+    previous.forwardedRef === next.forwardedRef,
+);
+const RegisteredConversationPaneHost = memo(
+  RegisteredConversationPaneHostContent,
+  (previous, next) => sameConversationPaneRegistration(previous.registration, next.registration),
+);

@@ -613,6 +613,7 @@ export const EN_US_COMMON_TRANSLATIONS = {
   "chat.upload.removeFile": "Remove file",
   "chat.upload.previewImage": "Preview image",
   "chat.upload.closePreview": "Close preview",
+  "chat.imageViewer.actions": "Image actions",
   "chat.imageViewer.close": "Close image viewer",
   "chat.imageViewer.open": "Open image viewer",
   "chat.imageViewer.previous": "Previous image",

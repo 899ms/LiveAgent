@@ -8,12 +8,8 @@ import {
 import { cn } from "../../lib/shared/utils";
 import { X } from "../IconSet";
 import { getUploadedFileTypeIcon } from "./fileTypeIcons";
-import {
-  ImagePreview,
-  ImagePreviewActionFeedback,
-  ImagePreviewContextMenu,
-  type ImagePreviewSlide,
-} from "./ImagePreview";
+import { ImagePreview, type ImagePreviewSlide } from "./ImagePreview";
+import { ImagePreviewActionFeedback, ImagePreviewContextMenu } from "./ImagePreviewMenu";
 
 type ImagePreviewMode = "absolutePath" | "imageKind";
 
@@ -68,7 +64,6 @@ function UserImageAttachmentCard(props: {
   } = props;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [imageLoadState, setImageLoadState] = useState<{
     src: string | null;
     status: "loaded" | "error";
@@ -122,36 +117,38 @@ function UserImageAttachmentCard(props: {
               <FallbackIcon className="size-5" />
             </div>
           ) : (
-            <button
-              type="button"
-              className={cn(
-                "block w-full overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45",
-                canPreview ? "cursor-zoom-in" : "cursor-default",
-              )}
-              aria-label={labeledPreview}
-              title={labeledPreview}
+            <ImagePreviewContextMenu
+              slide={previewSlide}
               disabled={!canPreview}
-              onClick={() => setPreviewOpen(true)}
-              onContextMenu={(event) => {
-                if (!canPreview) return;
-                event.preventDefault();
-                setContextMenu({ x: event.clientX, y: event.clientY });
-              }}
-            >
-              <img
-                src={imageSrc}
-                alt={file.fileName}
-                className={cn(
-                  "block w-full bg-black/[0.02] dark:bg-white/5",
-                  compact ? "h-28 object-cover" : "max-h-56 object-contain",
-                )}
-                onLoad={() => setImageLoadState({ src: imageSrc, status: "loaded" })}
-                onError={() => {
-                  setImageLoadState({ src: imageSrc, status: "error" });
-                  setContextMenu(null);
-                }}
-              />
-            </button>
+              onOpen={() => setPreviewOpen(true)}
+              onActionError={setActionError}
+              trigger={
+                <button
+                  type="button"
+                  className={cn(
+                    "block w-full overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45",
+                    canPreview ? "cursor-zoom-in" : "cursor-default",
+                  )}
+                  aria-label={labeledPreview}
+                  title={labeledPreview}
+                  disabled={!canPreview}
+                  onClick={() => setPreviewOpen(true)}
+                >
+                  <img
+                    src={imageSrc}
+                    alt={file.fileName}
+                    className={cn(
+                      "block w-full bg-black/[0.02] dark:bg-white/5",
+                      compact ? "h-28 object-cover" : "max-h-56 object-contain",
+                    )}
+                    onLoad={() => setImageLoadState({ src: imageSrc, status: "loaded" })}
+                    onError={() => {
+                      setImageLoadState({ src: imageSrc, status: "error" });
+                    }}
+                  />
+                </button>
+              }
+            />
           )}
           {previewOpen ? (
             <ImagePreview
@@ -159,15 +156,6 @@ function UserImageAttachmentCard(props: {
               slides={previewSlides}
               closeLabel={closePreviewLabel}
               onClose={() => setPreviewOpen(false)}
-            />
-          ) : null}
-          {contextMenu && previewSlide ? (
-            <ImagePreviewContextMenu
-              slide={previewSlide}
-              position={contextMenu}
-              onOpen={() => setPreviewOpen(true)}
-              onClose={() => setContextMenu(null)}
-              onActionError={setActionError}
             />
           ) : null}
           <ImagePreviewActionFeedback

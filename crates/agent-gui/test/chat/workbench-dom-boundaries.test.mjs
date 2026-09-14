@@ -104,7 +104,7 @@ test("conversation view switcher lives in the chrome and waits for an assistant 
   assert.match(headerSource, /<PanelLeft[\s\S]*?\{leadingActions\}/);
   assert.match(
     chatPageSource,
-    /const hasConversationReply =[\s\S]*?!isDraftConversation &&[\s\S]*?trajectoryMessages\.some\(\(message\) => message\.role === "assistant"\)/,
+    /const hasConversationReply = useHasConversationReply\(\s*transcriptItems,\s*liveTranscriptStore,\s*isDraftConversation,/,
   );
   assert.match(chatPageSource, /activeView === "chat" && hasConversationReply/);
   assert.match(

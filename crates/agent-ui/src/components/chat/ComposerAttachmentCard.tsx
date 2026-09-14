@@ -2,12 +2,8 @@ import { X } from "@liveagent/ui/components/IconSet";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import { type ReactNode, useMemo, useState } from "react";
 import type { PendingUploadedFile } from "../../lib/chat/uploadedFiles";
-import {
-  ImagePreview,
-  ImagePreviewActionFeedback,
-  ImagePreviewContextMenu,
-  type ImagePreviewSlide,
-} from "./ImagePreview";
+import { ImagePreview, type ImagePreviewSlide } from "./ImagePreview";
+import { ImagePreviewActionFeedback, ImagePreviewContextMenu } from "./ImagePreviewMenu";
 
 export function ComposerAttachmentCard(props: {
   file?: PendingUploadedFile;
@@ -39,7 +35,6 @@ export function ComposerAttachmentCard(props: {
   } = props;
   const [previewOpen, setPreviewOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [imageLoadState, setImageLoadState] = useState<{
     src: string | null;
     status: "loaded" | "error";
@@ -88,34 +83,36 @@ export function ComposerAttachmentCard(props: {
         )}
       >
         {imageSrc && !imageLoadFailed ? (
-          <button
-            type="button"
+          <ImagePreviewContextMenu
+            slide={previewSlide}
             disabled={!canPreview}
-            onClick={() => setPreviewOpen(true)}
-            className={cn(
-              "block size-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring/60",
-              canPreview ? "cursor-zoom-in" : "cursor-default",
-            )}
-            aria-label={previewLabel ? `${previewLabel}: ${fileName}` : fileName}
-            title={previewLabel}
-            onContextMenu={(event) => {
-              if (!canPreview) return;
-              event.preventDefault();
-              setContextMenu({ x: event.clientX, y: event.clientY });
-            }}
-          >
-            <img
-              src={imageSrc}
-              alt=""
-              draggable={false}
-              className="block size-full object-cover"
-              onLoad={() => setImageLoadState({ src: imageSrc, status: "loaded" })}
-              onError={() => {
-                setImageLoadState({ src: imageSrc, status: "error" });
-                setContextMenu(null);
-              }}
-            />
-          </button>
+            onOpen={() => setPreviewOpen(true)}
+            onActionError={setActionError}
+            trigger={
+              <button
+                type="button"
+                disabled={!canPreview}
+                onClick={() => setPreviewOpen(true)}
+                className={cn(
+                  "block size-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring/60",
+                  canPreview ? "cursor-zoom-in" : "cursor-default",
+                )}
+                aria-label={previewLabel ? `${previewLabel}: ${fileName}` : fileName}
+                title={previewLabel}
+              >
+                <img
+                  src={imageSrc}
+                  alt=""
+                  draggable={false}
+                  className="block size-full object-cover"
+                  onLoad={() => setImageLoadState({ src: imageSrc, status: "loaded" })}
+                  onError={() => {
+                    setImageLoadState({ src: imageSrc, status: "error" });
+                  }}
+                />
+              </button>
+            }
+          />
         ) : imageLoadFailed ? (
           <span className="flex size-full items-center justify-center text-muted-foreground">
             {fallbackIcon}
@@ -143,15 +140,6 @@ export function ComposerAttachmentCard(props: {
             slides={previewSlides}
             closeLabel={closePreviewLabel}
             onClose={() => setPreviewOpen(false)}
-          />
-        ) : null}
-        {contextMenu && previewSlide ? (
-          <ImagePreviewContextMenu
-            slide={previewSlide}
-            position={contextMenu}
-            onOpen={() => setPreviewOpen(true)}
-            onClose={() => setContextMenu(null)}
-            onActionError={setActionError}
           />
         ) : null}
         <ImagePreviewActionFeedback message={actionError} onDismiss={() => setActionError(null)} />

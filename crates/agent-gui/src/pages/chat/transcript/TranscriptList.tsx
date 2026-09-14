@@ -41,6 +41,8 @@ import {
 import { AssistantActivityRow } from "./AssistantActivityRow";
 import { AssistantRenderUnit } from "./AssistantRenderUnit";
 import { extractRenderUnitRange } from "./renderUnitRangeExtractor";
+import { createReplyHoverStore } from "./replyHoverStore";
+import { ReplyHoverProvider } from "./rowInteraction";
 import { createTranscriptRowModel } from "./rowModel";
 import { UserMessageRow } from "./UserMessageRow";
 
@@ -85,7 +87,7 @@ export type TranscriptNavHandle = TranscriptNavigationHandle;
 
 // Distance from the top of the loaded history (in settled scroll
 // coordinates) under which the next earlier page is requested.
-const LOAD_EARLIER_THRESHOLD_PX = 480;
+const LOAD_EARLIER_THRESHOLD_PX = 1600;
 
 export type TranscriptListProps = {
   conversationId: string;
@@ -203,17 +205,17 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
   );
 
   const [editingMessageKey, setEditingMessageKey] = useState<string | null>(null);
-  const [hoveredAssistantReplyKey, setHoveredAssistantReplyKey] = useState<string | null>(null);
+  const [replyHoverStore] = useState(createReplyHoverStore);
 
-  const handleTranscriptPointerOver = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const nextReplyKey = assistantReplyKeyFromEventTarget(event.target);
-    setHoveredAssistantReplyKey((currentReplyKey) =>
-      currentReplyKey === nextReplyKey ? currentReplyKey : nextReplyKey,
-    );
-  }, []);
+  const handleTranscriptPointerOver = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      replyHoverStore.setHoveredReply(assistantReplyKeyFromEventTarget(event.target));
+    },
+    [replyHoverStore],
+  );
   const handleTranscriptPointerLeave = useCallback(() => {
-    setHoveredAssistantReplyKey(null);
-  }, []);
+    replyHoverStore.setHoveredReply(null);
+  }, [replyHoverStore]);
 
   useEffect(() => {
     if (!editingMessageKey) {
@@ -259,6 +261,8 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     overscan: 0,
     enabled: scrollViewport !== null,
     initialMeasurementsCache,
+    // Defer measurement-driven DOM writes out of WebKit's resize delivery.
+    useAnimationFrameWithResizeObserver: true,
     directDomUpdates: true,
     directDomUpdatesMode: "transform",
     // End anchoring is enabled only for a detached reader so keyed prepends
@@ -273,10 +277,13 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     // viewport never reached (a blank band until the next scroll). The debt
     // settles with one verified write when scrolling is idle.
     scrollAnchoring: "origin",
-    // WKWebView paints compositor scrolls ahead of the main thread; keep
-    // roughly a half viewport of pre-rendered rows toward the scroll
-    // direction so fast wheel ticks reveal content instead of blank space.
-    directionalOverscanPx: 480,
+    // Keep half a viewport behind and two ahead of native compositor scrolls.
+    // Bound the pixel budget so tall windows do not mount unbounded Markdown.
+    overscanPx: Math.min(800, Math.max(320, (scrollViewport?.clientHeight ?? 800) * 0.5)),
+    directionalOverscanPx: Math.min(
+      2400,
+      Math.max(960, (scrollViewport?.clientHeight ?? 800) * 1.5),
+    ),
     rangeExtractor: extractVirtualRange,
   });
 
@@ -289,46 +296,78 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     isFollowing: () => isViewportFollowing?.() ?? false,
   });
 
-  // Earlier-history paging. The prepended page is anchored by the
-  // virtualizer itself ('origin' anchoring keeps the row under the viewport
-  // in place and settles the sizer/scrollTop in one verified pass), so this
-  // only decides *when* to ask for more. It reads the settled offset, not
-  // DOM scrollTop: while the page is anchored through the origin scrollTop
-  // stays parked near the top, and a raw scrollTop check would re-arm on
-  // every wheel tick and stack page after page before the first one settled.
-  //
-  // The hard top (DOM scrollTop 0) is a trigger of its own: WebKit defers the
-  // origin rebase until the gesture settles, so a fling can pin the viewport
-  // at 0 with unsettled debt still above it — the reader is pushing against
-  // the top and cannot scroll into that debt until the rebase lands. Ask for
-  // the page right there (it lands anchored through the origin, so nothing
-  // moves), once per visit: rubber-band scroll events at 0 must not re-fire.
+  // Prefetch about two viewports before the loaded boundary. Read the
+  // virtualizer's settled offset: DOM scrollTop excludes pending origin debt.
   const loadingEarlierRef = useRef(false);
   const hardTopLatchedRef = useRef(false);
+  const earlierRequestedRef = useRef(false);
+  const firstHistoryKey = historyItems[0]?.key;
+  const lastRequestedBoundaryRef = useRef<string | null>(null);
+  const checkEarlierRef = useRef(() => {});
   useEffect(() => {
-    if (!scrollViewport || !hasMoreHistory || isHistorySwitching) return;
+    if (!scrollViewport || !hasMoreHistory || isHistorySwitching) {
+      checkEarlierRef.current = () => {};
+      return;
+    }
+    let frame = 0;
     const loadAtTop = () => {
       const atHardTop = scrollViewport.scrollTop <= 1;
       if (!atHardTop) hardTopLatchedRef.current = false;
       if (loadingEarlierRef.current) return;
-      const nearSettledTop = virtualizer.getSettledScrollOffset() <= LOAD_EARLIER_THRESHOLD_PX;
+      const nearSettledTop =
+        virtualizer.getSettledScrollOffset() <=
+        Math.max(LOAD_EARLIER_THRESHOLD_PX, scrollViewport.clientHeight * 2);
       if (!nearSettledTop && (!atHardTop || hardTopLatchedRef.current)) return;
+      // Do not request the same boundary twice while React commits a page.
+      if (!firstHistoryKey || lastRequestedBoundaryRef.current === firstHistoryKey) return;
       if (atHardTop) hardTopLatchedRef.current = true;
+      earlierRequestedRef.current = true;
+      lastRequestedBoundaryRef.current = firstHistoryKey;
       loadingEarlierRef.current = true;
+      let failed = false;
       void onLoadEarlierHistory()
-        .catch(() => undefined)
+        .catch(() => {
+          failed = true;
+          lastRequestedBoundaryRef.current = null;
+          hardTopLatchedRef.current = false;
+        })
         .finally(() => {
-          // Release once the page has had a frame to render: the settled
-          // offset now includes it, so the trigger re-arms only when the
-          // user actually scrolls up into the new rows.
           requestAnimationFrame(() => {
             loadingEarlierRef.current = false;
+            // A successful prepend can leave a fast reader inside the lead
+            // distance. Recheck after layout, without requiring another wheel.
+            if (!failed) checkEarlierRef.current();
           });
         });
     };
-    scrollViewport.addEventListener("scroll", loadAtTop, { passive: true });
-    return () => scrollViewport.removeEventListener("scroll", loadAtTop);
-  }, [hasMoreHistory, isHistorySwitching, onLoadEarlierHistory, scrollViewport, virtualizer]);
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(loadAtTop);
+    };
+    const onWheel = (event: WheelEvent) => {
+      // A wheel gesture at the hard top need not produce a scroll event.
+      if (event.deltaY < 0) schedule();
+    };
+    checkEarlierRef.current = schedule;
+    scrollViewport.addEventListener("scroll", schedule, { passive: true });
+    scrollViewport.addEventListener("scrollend", schedule, { passive: true });
+    scrollViewport.addEventListener("wheel", onWheel, { passive: true });
+    if (earlierRequestedRef.current) schedule();
+    return () => {
+      cancelAnimationFrame(frame);
+      checkEarlierRef.current = () => {};
+      scrollViewport.removeEventListener("scroll", schedule);
+      scrollViewport.removeEventListener("scrollend", schedule);
+      scrollViewport.removeEventListener("wheel", onWheel);
+    };
+  }, [
+    firstHistoryKey,
+    hasMoreHistory,
+    isHistorySwitching,
+    onLoadEarlierHistory,
+    scrollViewport,
+    virtualizer,
+  ]);
 
   // Every mounted row is already tracked by the virtualizer's ResizeObserver,
   // which updates its measured height as the centered transcript reflows.
@@ -423,92 +462,92 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
   useEffect(() => () => saveMeasurementsRef.current(), []);
 
   return (
-    <div
-      ref={virtualizer.containerRef}
-      className="relative"
-      onPointerOver={handleTranscriptPointerOver}
-      onPointerLeave={handleTranscriptPointerLeave}
-    >
-      {virtualizer.getVirtualItems().map((virtualRow) => {
-        const row = rows[virtualRow.index];
-        if (!row) return null;
-        const assistantReplyKey =
-          row.kind === "assistant-unit" || row.kind === "assistant-activity" ? row.replyKey : null;
-        const actionsVisible =
-          assistantReplyKey !== null && assistantReplyKey === hoveredAssistantReplyKey;
+    <ReplyHoverProvider value={replyHoverStore}>
+      <div
+        ref={virtualizer.containerRef}
+        className="relative"
+        onPointerOver={handleTranscriptPointerOver}
+        onPointerLeave={handleTranscriptPointerLeave}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const row = rows[virtualRow.index];
+          if (!row) return null;
+          const assistantReplyKey =
+            row.kind === "assistant-unit" || row.kind === "assistant-activity"
+              ? row.replyKey
+              : null;
 
-        let body: ReactNode;
-        if (row.kind === "summary") {
-          body = <SummaryCard item={row.item} />;
-        } else if (row.kind === "user") {
-          body = (
-            <div className="flex justify-end">
-              <UserMessageRow
-                row={row}
-                isEditing={editingMessageKey === row.key}
-                workspaceRoot={workspaceRoot}
-                loadCommitDetails={loadCommitDetails}
-                onStartEdit={handleStartEdit}
-                onCancelEdit={handleCancelEdit}
-                onResendFromEdit={onResendFromEdit}
-              />
-            </div>
-          );
-        } else if (row.kind === "assistant-activity") {
-          body = (
-            <div className="flex justify-start">
-              <AssistantActivityRow
-                row={row}
-                showUsage={showUsage}
-                usageContextWindow={usageContextWindow}
-                isCompactionRunning={isCompactionRunning}
-                hasPendingToolApproval={hasPendingToolApproval}
-                toolStatus={displayedToolStatus}
-                actionsVisible={actionsVisible}
-                retryAttempts={liveState.retryAttempts}
-                workdir={workspaceRoot}
-                onOpenFileLink={onOpenFileLink}
-                onResendFromEdit={onResendFromEdit}
-                onBranchConversation={onBranchConversation}
-              />
-            </div>
-          );
-        } else {
-          body = (
-            <div className="flex justify-start">
-              <AssistantRenderUnit
-                row={row}
-                showUsage={showUsage}
-                usageContextWindow={usageContextWindow}
-                isCompactionRunning={row.mutable ? isCompactionRunning : false}
-                toolStatus={row.mutable ? displayedToolStatus : null}
-                actionsVisible={actionsVisible}
-                retryAttempts={row.mutable ? liveState.retryAttempts : undefined}
-                workdir={workspaceRoot}
-                onOpenFileLink={onOpenFileLink}
-                onResendFromEdit={onResendFromEdit}
-                onBranchConversation={onBranchConversation}
-              />
-            </div>
-          );
-        }
+          let body: ReactNode;
+          if (row.kind === "summary") {
+            body = <SummaryCard item={row.item} />;
+          } else if (row.kind === "user") {
+            body = (
+              <div className="flex justify-end">
+                <UserMessageRow
+                  row={row}
+                  isEditing={editingMessageKey === row.key}
+                  workspaceRoot={workspaceRoot}
+                  loadCommitDetails={loadCommitDetails}
+                  onStartEdit={handleStartEdit}
+                  onCancelEdit={handleCancelEdit}
+                  onResendFromEdit={onResendFromEdit}
+                />
+              </div>
+            );
+          } else if (row.kind === "assistant-activity") {
+            body = (
+              <div className="flex justify-start">
+                <AssistantActivityRow
+                  row={row}
+                  showUsage={showUsage}
+                  usageContextWindow={usageContextWindow}
+                  isCompactionRunning={isCompactionRunning}
+                  hasPendingToolApproval={hasPendingToolApproval}
+                  toolStatus={displayedToolStatus}
+                  retryAttempts={liveState.retryAttempts}
+                  workdir={workspaceRoot}
+                  onOpenFileLink={onOpenFileLink}
+                  onResendFromEdit={onResendFromEdit}
+                  onBranchConversation={onBranchConversation}
+                />
+              </div>
+            );
+          } else {
+            body = (
+              <div className="flex justify-start">
+                <AssistantRenderUnit
+                  row={row}
+                  showUsage={showUsage}
+                  usageContextWindow={usageContextWindow}
+                  isCompactionRunning={row.mutable ? isCompactionRunning : false}
+                  toolStatus={row.mutable ? displayedToolStatus : null}
+                  retryAttempts={row.mutable ? liveState.retryAttempts : undefined}
+                  workdir={workspaceRoot}
+                  onOpenFileLink={onOpenFileLink}
+                  onResendFromEdit={onResendFromEdit}
+                  onBranchConversation={onBranchConversation}
+                />
+              </div>
+            );
+          }
 
-        return (
-          <div
-            key={virtualRow.key}
-            data-row-key={row.key}
-            data-assistant-reply-key={assistantReplyKey ?? undefined}
-            data-index={virtualRow.index}
-            ref={virtualizer.measureElement}
-            className="absolute inset-x-0 top-0"
-          >
-            {body}
-            {row.gapAfter > 0 && virtualRow.index < rows.length - 1 ? (
-              <div aria-hidden="true" style={{ height: row.gapAfter }} />
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
+          return (
+            <div
+              key={virtualRow.key}
+              data-row-key={row.key}
+              data-assistant-reply-key={assistantReplyKey ?? undefined}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
+              className="absolute inset-x-0 top-0"
+            >
+              {body}
+              {row.gapAfter > 0 && virtualRow.index < rows.length - 1 ? (
+                <div aria-hidden="true" style={{ height: row.gapAfter }} />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </ReplyHoverProvider>
   );
 });

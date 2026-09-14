@@ -400,3 +400,19 @@ body > div:not(#root) [data-streamdown="mermaid"]:has([style*="cursor:grabbing"]
     background: hsl(var(--muted-foreground) / 0.35);
   }
 }
+
+/* Keep the native transcript rail easy to grab, inset from the window, and
+   above the floating composer. No JS geometry updates on the scroll path. */
+.chat-transcript-scrollbar::-webkit-scrollbar {
+  width: 14px;
+}
+.chat-transcript-scrollbar::-webkit-scrollbar-track {
+  margin-top: 8px;
+  margin-bottom: var(--chat-scrollbar-bottom-inset, 8px);
+}
+.chat-transcript-scrollbar::-webkit-scrollbar-thumb {
+  min-height: 36px;
+  border: 4px solid transparent;
+  border-radius: 8px;
+  background-clip: padding-box;
+}

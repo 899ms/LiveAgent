@@ -7,17 +7,21 @@ export const DropdownMenu = Menu.Root;
 export const DropdownMenuTrigger = Menu.Trigger;
 export const DropdownMenuSub = Menu.SubmenuRoot;
 
-type DropdownMenuContentProps = React.ComponentPropsWithoutRef<typeof Menu.Popup> &
-  Pick<
+type DropdownMenuContentProps = React.ComponentPropsWithoutRef<typeof Menu.Popup> & {
+  portalContainer?: React.ComponentPropsWithoutRef<typeof Menu.Portal>["container"];
+} & Pick<
     React.ComponentPropsWithoutRef<typeof Menu.Positioner>,
     "side" | "align" | "sideOffset" | "collisionPadding"
   >;
 
 export const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
-  ({ className, side, align, sideOffset = 4, collisionPadding, ...props }, ref) => {
+  (
+    { className, side, align, sideOffset = 4, collisionPadding, portalContainer, ...props },
+    ref,
+  ) => {
     const zoneStyle = useZoneFontScaleStyle();
     return (
-      <Menu.Portal>
+      <Menu.Portal container={portalContainer}>
         <Menu.Positioner
           side={side}
           align={align}
@@ -86,12 +90,20 @@ DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
 
 export const DropdownMenuSubContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
   (
-    { className, side = "right", align = "start", sideOffset = 6, collisionPadding, ...props },
+    {
+      className,
+      side = "right",
+      align = "start",
+      sideOffset = 6,
+      collisionPadding,
+      portalContainer,
+      ...props
+    },
     ref,
   ) => {
     const zoneStyle = useZoneFontScaleStyle();
     return (
-      <Menu.Portal>
+      <Menu.Portal container={portalContainer}>
         <Menu.Positioner
           side={side}
           align={align}

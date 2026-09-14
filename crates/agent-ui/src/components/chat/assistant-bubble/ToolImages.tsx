@@ -1,10 +1,9 @@
 import { deferLargeToolImages } from "@liveagent/adapters/assistantBubble";
+import { ImagePreview, type ImagePreviewSlide } from "@liveagent/ui/components/chat/ImagePreview";
 import {
-  ImagePreview,
   ImagePreviewActionFeedback,
   ImagePreviewContextMenu,
-  type ImagePreviewSlide,
-} from "@liveagent/ui/components/chat/ImagePreview";
+} from "@liveagent/ui/components/chat/ImagePreviewMenu";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import type {
   DisplayImageItemDetails,
@@ -336,7 +335,6 @@ export function ToolResultImagePreview(props: {
   const [shouldLoad, setShouldLoad] = useState(readOnly ? true : !shouldDeferImage);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [imageStatus, setImageStatus] = useState<ToolImageLoadState>("loading");
   const imageRef = useRef<HTMLImageElement | null>(null);
   const src = getImageDataUrl(image);
@@ -437,40 +435,34 @@ export function ToolResultImagePreview(props: {
 
   return (
     <>
-      <button
-        type="button"
-        className={cn(
-          "relative block w-full overflow-hidden rounded-md text-left",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 disabled:opacity-100",
-          canPreview ? "cursor-zoom-in" : "cursor-default",
-        )}
+      <ImagePreviewContextMenu
+        slide={slides[0]}
         disabled={!canPreview}
-        onClick={() => {
-          if (canPreview) setPreviewOpen(true);
-        }}
-        onContextMenu={(event) => {
-          if (!canPreview) return;
-          event.preventDefault();
-          setContextMenu({ x: event.clientX, y: event.clientY });
-        }}
-        title={alt}
-        aria-label={
-          canPreview ? `${t("chat.image.preview")} ${alt}` : `${t("chat.image.loading")} ${alt}`
+        onOpen={() => setPreviewOpen(true)}
+        onActionError={setActionError}
+        trigger={
+          <button
+            type="button"
+            className={cn(
+              "relative block w-full overflow-hidden rounded-md text-left",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 disabled:opacity-100",
+              canPreview ? "cursor-zoom-in" : "cursor-default",
+            )}
+            disabled={!canPreview}
+            onClick={() => {
+              if (canPreview) setPreviewOpen(true);
+            }}
+            title={alt}
+            aria-label={
+              canPreview ? `${t("chat.image.preview")} ${alt}` : `${t("chat.image.loading")} ${alt}`
+            }
+          >
+            {imageFrame}
+          </button>
         }
-      >
-        {imageFrame}
-      </button>
+      />
       {previewOpen ? (
         <ImagePreview open={previewOpen} slides={slides} onClose={() => setPreviewOpen(false)} />
-      ) : null}
-      {contextMenu && slides[0] ? (
-        <ImagePreviewContextMenu
-          slide={slides[0]}
-          position={contextMenu}
-          onOpen={() => setPreviewOpen(true)}
-          onClose={() => setContextMenu(null)}
-          onActionError={setActionError}
-        />
       ) : null}
       <ImagePreviewActionFeedback message={actionError} onDismiss={() => setActionError(null)} />
     </>
@@ -538,10 +530,11 @@ function NativeDisplayImageTile(props: {
   isSvgImage: boolean;
   loading: "lazy" | "eager";
   onPreview: () => void;
-  onContextMenu?: (position: { x: number; y: number }) => void;
+  slide?: ImagePreviewSlide;
+  onActionError: (message: string) => void;
   readOnly?: boolean;
 }) {
-  const { source, alt, isGallery, isSvgImage, loading, onPreview, onContextMenu } = props;
+  const { source, alt, isGallery, isSvgImage, loading, onPreview, slide, onActionError } = props;
   const { t } = useLocale();
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [imageStatus, setImageStatus] = useState<ToolImageLoadState>(() =>
@@ -616,22 +609,25 @@ function NativeDisplayImageTile(props: {
   );
 
   return (
-    <button
-      type="button"
-      className={cn(className)}
+    <ImagePreviewContextMenu
+      slide={slide}
       disabled={!canPreview}
-      aria-label={canPreview ? `${t("chat.image.preview")} ${alt}` : statusTitle}
-      onClick={() => {
-        if (canPreview) onPreview();
-      }}
-      onContextMenu={(event) => {
-        if (!canPreview) return;
-        event.preventDefault();
-        onContextMenu?.({ x: event.clientX, y: event.clientY });
-      }}
-    >
-      {content}
-    </button>
+      onOpen={onPreview}
+      onActionError={onActionError}
+      trigger={
+        <button
+          type="button"
+          className={cn(className)}
+          disabled={!canPreview}
+          aria-label={canPreview ? `${t("chat.image.preview")} ${alt}` : statusTitle}
+          onClick={() => {
+            if (canPreview) onPreview();
+          }}
+        >
+          {content}
+        </button>
+      }
+    />
   );
 }
 
@@ -646,9 +642,6 @@ export const NativeDisplayImageBlock = memo(function NativeDisplayImageBlock(pro
   const isGallery = payload.entries.length > 1;
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ index: number; x: number; y: number } | null>(
-    null,
-  );
   const imageSources = useNativeDisplayImageSources(payload.entries);
   const slides = useMemo<ImagePreviewSlide[]>(
     () =>
@@ -686,7 +679,8 @@ export const NativeDisplayImageBlock = memo(function NativeDisplayImageBlock(pro
               isSvgImage={isSvgImage}
               loading={isGallery ? "eager" : "lazy"}
               onPreview={() => setPreviewIndex(index)}
-              onContextMenu={({ x, y }) => setContextMenu({ index, x, y })}
+              slide={slide}
+              onActionError={setActionError}
               readOnly={readOnly}
             />
           );
@@ -698,15 +692,6 @@ export const NativeDisplayImageBlock = memo(function NativeDisplayImageBlock(pro
           slides={slides}
           index={previewIndex}
           onClose={() => setPreviewIndex(null)}
-        />
-      ) : null}
-      {contextMenu && slides[contextMenu.index] ? (
-        <ImagePreviewContextMenu
-          slide={slides[contextMenu.index]}
-          position={contextMenu}
-          onOpen={() => setPreviewIndex(contextMenu.index)}
-          onClose={() => setContextMenu(null)}
-          onActionError={setActionError}
         />
       ) : null}
       <ImagePreviewActionFeedback message={actionError} onDismiss={() => setActionError(null)} />

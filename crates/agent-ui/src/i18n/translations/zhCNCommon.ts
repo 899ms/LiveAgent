@@ -572,6 +572,7 @@ export const ZH_CN_COMMON_TRANSLATIONS = {
   "chat.upload.removeFile": "移除文件",
   "chat.upload.previewImage": "预览图片",
   "chat.upload.closePreview": "关闭预览",
+  "chat.imageViewer.actions": "图片操作",
   "chat.imageViewer.close": "关闭图片查看器",
   "chat.imageViewer.open": "打开图片查看器",
   "chat.imageViewer.previous": "上一张图片",

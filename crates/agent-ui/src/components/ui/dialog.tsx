@@ -42,7 +42,7 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = "DialogOverlay";
 
-type DialogLayout = "center" | "fullscreen-mobile" | "bottom-sheet-mobile";
+type DialogLayout = "center" | "fullscreen-mobile" | "bottom-sheet-mobile" | "lightbox";
 
 // Dialog chrome reads one step smaller than the app default so it stays close
 // to the sidebar's 13px/11px rhythm instead of the unscaled 16/14/12.
@@ -76,13 +76,16 @@ export const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps
     const zoneFontScale = resolveZoneFontScale(style, DIALOG_FONT_SCALE);
     return (
       <DialogPortal>
-        <DialogOverlay />
+        <DialogOverlay
+          className={layout === "lightbox" ? "bg-black/80 backdrop-blur-none" : undefined}
+        />
         <DialogPrimitive.Viewport
           data-slot="dialog-viewport"
           data-layout={layout}
           className={cn(
             "layer-modal fixed inset-0 flex min-h-0 flex-col items-center overflow-y-auto",
             "overscroll-contain px-4 pb-safe-bottom pt-safe-top",
+            layout === "lightbox" && "overflow-hidden p-0",
             layout === "fullscreen-mobile" &&
               "max-[720px]:items-stretch max-[720px]:overflow-hidden max-[720px]:p-0",
             layout === "bottom-sheet-mobile" &&
@@ -114,6 +117,8 @@ export const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps
               "rounded-2xl border border-border/70 bg-background text-foreground shadow-2xl outline-none",
               "transition-[transform,opacity] duration-150 ease-out",
               "data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 motion-reduce:transition-none",
+              layout === "lightbox" &&
+                "pointer-events-none fixed inset-0 m-0 h-full w-full max-w-none rounded-none border-0 bg-transparent shadow-none data-[starting-style]:scale-100 data-[ending-style]:scale-100",
               layout === "fullscreen-mobile" &&
                 "max-[720px]:my-0 max-[720px]:h-full max-[720px]:max-w-none max-[720px]:rounded-none max-[720px]:border-0",
               layout === "bottom-sheet-mobile" &&
