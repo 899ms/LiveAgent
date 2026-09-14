@@ -32,4 +32,5 @@ export function useNotifyToasts(params: UseNotifyToastsParams) {
   return { addNotify };
 }
 
-const addNotify = (type: ToastTone, message: string) => toast[type](message);
+const addNotify = (type: ToastTone, message: string) =>
+  toast[type](message, { id: `app-notify:${type}:${message}` });

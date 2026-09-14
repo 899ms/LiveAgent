@@ -234,6 +234,7 @@ export function ConversationSearchDialog({
               }}
             >
               <Input
+                variant="plain"
                 autoFocus
                 type="search"
                 autoComplete={undefined}

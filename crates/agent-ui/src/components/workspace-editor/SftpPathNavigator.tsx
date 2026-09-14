@@ -1,5 +1,6 @@
 import { getFileTypeIcon } from "@liveagent/ui/components/chat/fileTypeIcons";
 import { AlertTriangle, ChevronRight, FolderTree, Loader2 } from "@liveagent/ui/components/IconSet";
+import { floatingSurfaceClassName } from "@liveagent/ui/components/ui/menu-surface";
 import type { SftpClient, SftpEntry, SftpSide } from "@liveagent/ui/lib/sftp/types";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -337,8 +338,7 @@ export function SftpPathNavigator(props: {
           role="listbox"
           className={cn(
             "absolute inset-x-2 top-full z-50 mt-1.5 origin-top overflow-hidden",
-            "rounded-xl border border-border/50 bg-popover/85 shadow-ui-workspacesftppanel-34 ring-1 ring-black/[0.03] backdrop-blur-2xl",
-            "dark:ring-white/[0.06]",
+            floatingSurfaceClassName,
           )}
         >
           <div className="max-h-64 overflow-y-auto p-1">

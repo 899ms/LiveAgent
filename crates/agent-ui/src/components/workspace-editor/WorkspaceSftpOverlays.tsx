@@ -1,5 +1,6 @@
 import { CheckCircle2, Download, Loader2, Upload } from "@liveagent/ui/components/IconSet";
 import { Button } from "@liveagent/ui/components/ui/button";
+import { ContextMenuItem } from "@liveagent/ui/components/ui/context-menu";
 import {
   Dialog,
   DialogActions,
@@ -11,6 +12,7 @@ import {
   DialogTitle,
 } from "@liveagent/ui/components/ui/dialog";
 import { Input } from "@liveagent/ui/components/ui/input";
+import { Textarea } from "@liveagent/ui/components/ui/textarea";
 import type { SftpEntry, SftpTransfer } from "@liveagent/ui/lib/sftp/types";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import type { ReactNode } from "react";
@@ -82,11 +84,12 @@ export function CreateFolderDialog(props: {
               {prompt}
             </label>
             <Input
+              variant="plain"
               id="workspace-sftp-new-folder-name"
               value={value}
               autoFocus
               disabled={submitting}
-              className="h-10 text-xs"
+              className="text-sm"
               onChange={(event) => onChange(event.currentTarget.value)}
             />
           </DialogBody>
@@ -124,16 +127,12 @@ export function CopyPathDialog(props: {
           <DialogDescription className="mt-1 text-xs">{prompt}</DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <textarea
+          <Textarea
+            variant="plain"
             value={text}
             readOnly
             autoFocus
-            className={cn(
-              "min-h-28 w-full resize-none",
-              "rounded-lg border border-input bg-background px-3 py-2",
-              "font-mono text-xs text-foreground outline-none transition-colors",
-              "focus:border-ring focus:ring-2 focus:ring-ring/20",
-            )}
+            className="min-h-28 resize-none font-mono text-xs"
             onFocus={(event) => event.currentTarget.select()}
           />
         </DialogBody>
@@ -227,11 +226,12 @@ export function RenameEntryDialog(props: {
               {prompt}
             </label>
             <Input
+              variant="plain"
               id="workspace-sftp-rename-entry-name"
               value={value}
               autoFocus
               disabled={submitting}
-              className="h-10 text-xs"
+              className="text-sm"
               onChange={(event) => onChange(event.currentTarget.value)}
             />
           </DialogBody>
@@ -399,25 +399,17 @@ export function MenuItem(props: {
 }) {
   const { icon, label, destructive = false, disabled = false, onClick } = props;
   return (
-    <button
-      type="button"
-      role="menuitem"
+    <ContextMenuItem
       disabled={disabled}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left",
-        "transition-colors",
+      className={
         destructive
-          ? "text-destructive hover:bg-destructive/10"
-          : "text-popover-foreground hover:bg-accent hover:text-accent-foreground",
-        disabled && "pointer-events-none opacity-45",
-      )}
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
+          ? "text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+          : undefined
+      }
+      onClick={onClick}
     >
       {icon}
       <span className="min-w-0 flex-1 truncate">{label}</span>
-    </button>
+    </ContextMenuItem>
   );
 }

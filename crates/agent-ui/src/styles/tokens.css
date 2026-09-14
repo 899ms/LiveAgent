@@ -52,8 +52,6 @@
     color-mix(in oklab, var(--color-black) 70%, transparent),
     0 var(--spacing-8px) var(--spacing-20px) var(--spacing-minus-12px)
     color-mix(in oklab, var(--color-black) 50%, transparent);
-  --shadow-editor-context-menu: 0 var(--spacing-20px) var(--spacing-60px) var(--spacing-minus-20px)
-    var(--ui-color-rgba-15-23-42-0p35);
   --shadow-ui-planmodecard-9:
     0 var(--spacing-1px) var(--spacing-2px) var(--spacing-minus-1px)
     var(--ui-color-rgba-15-23-42-0p07),

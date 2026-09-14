@@ -1,3 +1,4 @@
+import { ContextMenuItem, ContextMenuPopup } from "@liveagent/ui/components/ui/context-menu";
 // GitReview status view: staged/unstaged change lists, the commit composer
 // pinned under the change list, the working-tree/branch diff pane and the
 // change context menus.
@@ -24,7 +25,6 @@ import {
   type RefObject,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -37,14 +37,11 @@ import { GitCommitComposer } from "./CommitComposer";
 import { DiffReviewCard } from "./DiffView";
 import {
   basename,
-  CHANGE_CONTEXT_MENU_ITEM_CLASS,
   type ChangeContextMenuState,
   type ChangeListSection,
   type ChangesMenuState,
-  CONTEXT_MENU_CONTAINER_CLASS,
   canStageEntry,
   canUnstageEntry,
-  clampMenuRectWithinRect,
   type DiffViewKind,
   GIT_REVIEW_SPLIT_GRID_CLASS,
   type GitDiscardConfirmState,
@@ -114,49 +111,6 @@ export function GitReviewStatusView(props: {
   const [discardConfirm, setDiscardConfirm] = useState<GitDiscardConfirmState | null>(null);
   const listPaneRef = useRef<HTMLElement | null>(null);
   const detailPaneRef = useRef<HTMLElement | null>(null);
-  const changeContextMenuRef = useRef<HTMLDivElement | null>(null);
-  const changesMenuRef = useRef<HTMLDivElement | null>(null);
-
-  // Clamp the menus against their measured size after they render (no
-  // hard-coded menu dimensions); useLayoutEffect corrects the position before
-  // paint, so an out-of-bounds menu never flashes at the raw pointer spot.
-  useLayoutEffect(() => {
-    if (!changeContextMenu) return;
-    const menu = changeContextMenuRef.current;
-    const panel = panelRef.current;
-    if (!menu || !panel) return;
-    const { dx, dy } = clampMenuRectWithinRect(
-      menu.getBoundingClientRect(),
-      panel.getBoundingClientRect(),
-      8,
-    );
-    if (dx !== 0 || dy !== 0) {
-      setChangeContextMenu({
-        ...changeContextMenu,
-        x: changeContextMenu.x + dx,
-        y: changeContextMenu.y + dy,
-      });
-    }
-  }, [changeContextMenu, panelRef]);
-
-  useLayoutEffect(() => {
-    if (!changesMenu) return;
-    const menu = changesMenuRef.current;
-    const panel = panelRef.current;
-    if (!menu || !panel) return;
-    const { dx, dy } = clampMenuRectWithinRect(
-      menu.getBoundingClientRect(),
-      panel.getBoundingClientRect(),
-      8,
-    );
-    if (dx !== 0 || dy !== 0) {
-      setChangesMenu({
-        ...changesMenu,
-        right: changesMenu.right - dx,
-        y: changesMenu.y + dy,
-      });
-    }
-  }, [changesMenu, panelRef]);
 
   const entries = state.entries;
   const stagedEntries = useMemo(() => entries.filter(canUnstageEntry), [entries]);
@@ -201,42 +155,6 @@ export function GitReviewStatusView(props: {
   const contextEntryCanAddToGitignore =
     contextEntrySection === "changes" && Boolean(contextEntry?.untracked);
 
-  useEffect(() => {
-    if (!changeContextMenu) return;
-    const closeMenu = () => setChangeContextMenu(null);
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeMenu();
-    };
-    window.addEventListener("click", closeMenu);
-    window.addEventListener("resize", closeMenu);
-    window.addEventListener("scroll", closeMenu, true);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("click", closeMenu);
-      window.removeEventListener("resize", closeMenu);
-      window.removeEventListener("scroll", closeMenu, true);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [changeContextMenu]);
-
-  useEffect(() => {
-    if (!changesMenu) return;
-    const closeMenu = () => setChangesMenu(null);
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeMenu();
-    };
-    window.addEventListener("click", closeMenu);
-    window.addEventListener("resize", closeMenu);
-    window.addEventListener("scroll", closeMenu, true);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("click", closeMenu);
-      window.removeEventListener("resize", closeMenu);
-      window.removeEventListener("scroll", closeMenu, true);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [changesMenu]);
-
   const selectEntry = useCallback(
     (entry: GitStatusEntry) => {
       selectPath(entry.path);
@@ -253,7 +171,7 @@ export function GitReviewStatusView(props: {
       event.stopPropagation();
       setChangesMenu(null);
       const panelRect = panelRef.current?.getBoundingClientRect();
-      // Raw pointer position; the measured-clamp layout effect corrects it.
+      // Base UI positions the popup at this pointer anchor.
       setChangeContextMenu({
         x: panelRect ? event.clientX - panelRect.left : event.clientX,
         y: panelRect ? event.clientY - panelRect.top : event.clientY,
@@ -671,160 +589,110 @@ export function GitReviewStatusView(props: {
         </main>
       </div>
       {changesMenu ? (
-        <div
-          ref={changesMenuRef}
-          className="layer-popover absolute min-w-56"
-          style={{ right: changesMenu.right, top: changesMenu.y }}
+        <ContextMenuPopup
+          point={{
+            x: (panelRef.current?.clientWidth ?? window.innerWidth) - changesMenu.right,
+            y: changesMenu.y,
+          }}
+          coordinateRoot={panelRef}
+          align="end"
+          onClose={() => setChangesMenu(null)}
+          className="min-w-56"
         >
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: onClick 仅拦截冒泡防止 window "click" 关闭菜单；键盘经 Escape 与 menuitem 按钮操作。 */}
-          <div
-            role="menu"
-            className={cn("w-full", CONTEXT_MENU_CONTAINER_CLASS)}
-            style={{ transformOrigin: "top right" }}
-            onClick={(event) => event.stopPropagation()}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
+          {changesMenu.section === "changes" ? (
+            <ContextMenuItem
+              disabled={writeDisabled || busy !== "" || !hasStageableChanges}
+              onClick={stageAllChanges}
+            >
+              <FilePenLine className="size-3.5" />
+              <span>{t("projectTools.gitReview.stageAllChanges")}</span>
+            </ContextMenuItem>
+          ) : (
+            <ContextMenuItem
+              disabled={writeDisabled || busy !== "" || !hasStagedChanges}
+              onClick={unstageAllChanges}
+            >
+              <GitCommitHorizontal className="size-3.5" />
+              <span>{t("projectTools.gitReview.unstageAllChanges")}</span>
+            </ContextMenuItem>
+          )}
+          <ContextMenuItem
+            disabled={writeDisabled || busy !== "" || !hasDiscardableChanges}
+            onClick={discardAllChanges}
+          >
+            <Trash2 className="size-3.5" />
+            <span>{t("projectTools.gitReview.discardAllChanges")}</span>
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={loading}
+            onClick={() => {
+              setChangesMenu(null);
+              void refresh();
             }}
           >
-            {changesMenu.section === "changes" ? (
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
-                disabled={writeDisabled || busy !== "" || !hasStageableChanges}
-                onClick={stageAllChanges}
-              >
-                <FilePenLine className="size-3.5" />
-                <span>{t("projectTools.gitReview.stageAllChanges")}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
-                disabled={writeDisabled || busy !== "" || !hasStagedChanges}
-                onClick={unstageAllChanges}
-              >
-                <GitCommitHorizontal className="size-3.5" />
-                <span>{t("projectTools.gitReview.unstageAllChanges")}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              role="menuitem"
-              className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
-              disabled={writeDisabled || busy !== "" || !hasDiscardableChanges}
-              onClick={discardAllChanges}
-            >
-              <Trash2 className="size-3.5" />
-              <span>{t("projectTools.gitReview.discardAllChanges")}</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
-              disabled={loading}
-              onClick={() => {
-                setChangesMenu(null);
-                void refresh();
-              }}
-            >
-              <RefreshCw className="size-3.5" />
-              <span>{t("projectTools.gitReview.refreshChanges")}</span>
-            </button>
-          </div>
-        </div>
+            <RefreshCw className="size-3.5" />
+            <span>{t("projectTools.gitReview.refreshChanges")}</span>
+          </ContextMenuItem>
+        </ContextMenuPopup>
       ) : null}
       {changeContextMenu && contextEntry ? (
-        // biome-ignore lint/a11y/useKeyWithClickEvents: onClick 仅拦截冒泡防止 window "click" 关闭菜单；键盘经 Escape 与 menuitem 按钮操作。
-        <div
-          ref={changeContextMenuRef}
-          role="menu"
-          className={cn("layer-popover absolute min-w-56", CONTEXT_MENU_CONTAINER_CLASS)}
-          style={{ left: changeContextMenu.x, top: changeContextMenu.y }}
-          onClick={(event) => event.stopPropagation()}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
+        <ContextMenuPopup
+          point={changeContextMenu}
+          coordinateRoot={panelRef}
+          onClose={() => setChangeContextMenu(null)}
+          className="min-w-56"
         >
-          <button
-            type="button"
-            role="menuitem"
-            className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
-            onClick={() => viewEntryChanges(contextEntry)}
-          >
+          <ContextMenuItem onClick={() => viewEntryChanges(contextEntry)}>
             <Eye className="size-3.5" />
             <span>{t("projectTools.gitReview.viewChanges")}</span>
-          </button>
+          </ContextMenuItem>
           {contextEntrySection === "staged" ? (
-            <button
-              type="button"
-              role="menuitem"
-              className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+            <ContextMenuItem
               disabled={writeDisabled || busy !== "" || !contextEntryCanUnstage}
               onClick={() => unstageEntry(contextEntry)}
             >
               <GitCommitHorizontal className="size-3.5" />
               <span>{t("projectTools.gitReview.unstageChanges")}</span>
-            </button>
+            </ContextMenuItem>
           ) : (
-            <button
-              type="button"
-              role="menuitem"
-              className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+            <ContextMenuItem
               disabled={writeDisabled || busy !== "" || !contextEntryCanStage}
               onClick={() => stageEntry(contextEntry)}
             >
               <FilePenLine className="size-3.5" />
               <span>{t("projectTools.gitReview.stageChanges")}</span>
-            </button>
+            </ContextMenuItem>
           )}
-          <button
-            type="button"
-            role="menuitem"
-            className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+          <ContextMenuItem
             disabled={writeDisabled || busy !== ""}
             onClick={() => discardEntry(contextEntry)}
           >
             <BrushCleaning className="size-3.5" />
             <span>{t("projectTools.gitReview.discardChanges")}</span>
-          </button>
+          </ContextMenuItem>
           {contextEntryCanAddToGitignore ? (
-            <button
-              type="button"
-              role="menuitem"
-              className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+            <ContextMenuItem
               disabled={writeDisabled || busy !== ""}
               onClick={() => addEntryToGitignore(contextEntry)}
             >
               <GitCommitHorizontal className="size-3.5" />
               <span>{t("projectTools.gitReview.addToGitignore")}</span>
-            </button>
+            </ContextMenuItem>
           ) : null}
-          <button
-            type="button"
-            role="menuitem"
-            className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+          <ContextMenuItem
             disabled={!onRevealInFileTree}
             onClick={() => revealEntryInFileTree(contextEntry)}
           >
             <FolderTree className="size-3.5" />
             <span>{t("projectTools.gitReview.revealInFileTree")}</span>
-          </button>
+          </ContextMenuItem>
           {canOpenSystemFileLocation ? (
-            <button
-              type="button"
-              role="menuitem"
-              className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
-              onClick={() => openEntrySystemFileLocation(contextEntry)}
-            >
+            <ContextMenuItem onClick={() => openEntrySystemFileLocation(contextEntry)}>
               <ExternalLink className="size-3.5" />
               <span>{t("projectTools.gitReview.openSystemFileLocation")}</span>
-            </button>
+            </ContextMenuItem>
           ) : null}
-        </div>
+        </ContextMenuPopup>
       ) : null}
     </>
   );

@@ -1,28 +1,50 @@
 import { Menu } from "@base-ui/react";
 import * as React from "react";
 import { cn } from "../../lib/shared/utils";
+import { floatingSurfaceClassName, menuSurfaceClassName } from "./menu-surface";
 import { useZoneFontScaleStyle } from "./zone-font-scale";
 
 export const DropdownMenu = Menu.Root;
 export const DropdownMenuTrigger = Menu.Trigger;
 export const DropdownMenuSub = Menu.SubmenuRoot;
 
+type MenuVariant = "default" | "soft";
+const MenuVariantContext = React.createContext<MenuVariant>("default");
+const softMenuClassName = cn(menuSurfaceClassName, "p-1.5");
+const softItemClassName =
+  "rounded-lg px-2.5 data-[highlighted]:bg-settings-active data-[highlighted]:text-foreground data-[popup-open]:bg-settings-active";
+
 type DropdownMenuContentProps = React.ComponentPropsWithoutRef<typeof Menu.Popup> & {
+  variant?: MenuVariant;
   portalContainer?: React.ComponentPropsWithoutRef<typeof Menu.Portal>["container"];
 } & Pick<
     React.ComponentPropsWithoutRef<typeof Menu.Positioner>,
-    "side" | "align" | "sideOffset" | "collisionPadding"
+    "side" | "align" | "sideOffset" | "collisionPadding" | "anchor" | "positionMethod"
   >;
 
 export const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
   (
-    { className, side, align, sideOffset = 4, collisionPadding, portalContainer, ...props },
+    {
+      className,
+      variant = "default",
+      side,
+      align,
+      sideOffset = 4,
+      collisionPadding,
+      portalContainer,
+      anchor,
+      positionMethod,
+      children,
+      ...props
+    },
     ref,
   ) => {
     const zoneStyle = useZoneFontScaleStyle();
     return (
       <Menu.Portal container={portalContainer}>
         <Menu.Positioner
+          anchor={anchor}
+          positionMethod={positionMethod}
           side={side}
           align={align}
           sideOffset={sideOffset}
@@ -34,13 +56,17 @@ export const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenu
             ref={ref}
             className={cn(
               "min-w-48 max-h-select-popup overflow-x-hidden overflow-y-auto",
-              "rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+              floatingSurfaceClassName,
+              "p-1",
               "data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
               "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+              variant === "soft" && softMenuClassName,
               className,
             )}
             {...props}
-          />
+          >
+            <MenuVariantContext.Provider value={variant}>{children}</MenuVariantContext.Provider>
+          </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>
     );
@@ -80,6 +106,7 @@ export const DropdownMenuSubTrigger = React.forwardRef<HTMLElement, DropdownMenu
         "relative flex cursor-default select-none items-center rounded-xs px-2 py-1.5",
         "text-sm outline-hidden transition-colors",
         "data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[popup-open]:bg-accent data-[popup-open]:text-accent-foreground data-[disabled]:opacity-50",
+        React.useContext(MenuVariantContext) === "soft" && softItemClassName,
         className,
       )}
       {...props}
@@ -92,11 +119,15 @@ export const DropdownMenuSubContent = React.forwardRef<HTMLDivElement, DropdownM
   (
     {
       className,
+      variant = "default",
+      children,
       side = "right",
       align = "start",
       sideOffset = 6,
       collisionPadding,
       portalContainer,
+      anchor,
+      positionMethod,
       ...props
     },
     ref,
@@ -105,6 +136,8 @@ export const DropdownMenuSubContent = React.forwardRef<HTMLDivElement, DropdownM
     return (
       <Menu.Portal container={portalContainer}>
         <Menu.Positioner
+          anchor={anchor}
+          positionMethod={positionMethod}
           side={side}
           align={align}
           sideOffset={sideOffset}
@@ -116,13 +149,17 @@ export const DropdownMenuSubContent = React.forwardRef<HTMLDivElement, DropdownM
             ref={ref}
             className={cn(
               "min-w-48 max-h-select-popup overflow-x-hidden overflow-y-auto",
-              "rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+              floatingSurfaceClassName,
+              "p-1",
               "data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
               "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+              variant === "soft" && softMenuClassName,
               className,
             )}
             {...props}
-          />
+          >
+            <MenuVariantContext.Provider value={variant}>{children}</MenuVariantContext.Provider>
+          </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>
     );
@@ -142,6 +179,7 @@ export const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuIte
         "relative flex cursor-default select-none items-center rounded-xs px-2 py-1.5",
         "text-sm outline-hidden transition-colors",
         "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        React.useContext(MenuVariantContext) === "soft" && softItemClassName,
         className,
       )}
       {...props}
@@ -164,6 +202,7 @@ export const DropdownMenuRadioItem = React.forwardRef<
     className={cn(
       "flex cursor-default items-center justify-between gap-3 rounded-md px-3 py-2",
       "text-sm outline-none data-[highlighted]:bg-accent data-[disabled]:opacity-50",
+      React.useContext(MenuVariantContext) === "soft" && softItemClassName,
       className,
     )}
     {...props}

@@ -353,10 +353,7 @@ export function McpRegistryConfigureModal(props: {
                       updateDraft({ transport });
                     }}
                   >
-                    <SelectTrigger
-                      className="w-full border-0 bg-settings-tile-hover shadow-none"
-                      id="mcp-store-config-transport"
-                    >
+                    <SelectTrigger variant="plain" id="mcp-store-config-transport">
                       <SelectValue placeholder={t("mcpHub.selectTransport")} />
                     </SelectTrigger>
                     <SelectContent>

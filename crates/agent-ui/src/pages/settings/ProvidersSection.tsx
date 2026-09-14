@@ -38,7 +38,7 @@ import {
   SettingsToggleGroup,
   SettingsToggleGroupItem,
 } from "@liveagent/ui/components/settings/SettingsToggleGroup";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import {
   Dialog,
   DialogBody,
@@ -56,6 +56,7 @@ import {
   SelectValue,
 } from "@liveagent/ui/components/ui/select";
 import { Switch } from "@liveagent/ui/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@liveagent/ui/components/ui/tabs";
 import { VerticalReorderList } from "@liveagent/ui/components/ui/VerticalReorderList";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { buildModelOptions } from "@liveagent/ui/lib/models/modelOptions";
@@ -837,7 +838,8 @@ function ProviderCardRow(props: {
       <div className="settings-card-actions flex items-center gap-1">
         <ProviderCopyConfigButton provider={provider} />
         {usageDisplay.show ? (
-          <Button
+          <RefreshButton
+            aria-busy={refreshing}
             variant="ghost"
             size="icon-xs"
             className="text-muted-foreground hover:text-foreground"
@@ -846,8 +848,8 @@ function ProviderCardRow(props: {
             title={t("settings.providerUsageRefresh")}
             aria-label={t("settings.providerUsageRefresh")}
           >
-            <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
-          </Button>
+            <RefreshCw data-refresh-icon className={cn("size-3.5", refreshing && "animate-spin")} />
+          </RefreshButton>
         ) : null}
         <Button
           variant="ghost"
@@ -1087,12 +1089,30 @@ export function ProvidersSection(
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="flex shrink-0 items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold">
-            {t("settings.providerServices")}{" "}
-            <span className="ml-1 text-muted-foreground">{settings.customProviders.length}</span>
-          </h3>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          const type = PROVIDER_TABS.find((type) => type === value);
+          if (type) setActiveTab(type);
+        }}
+        className="flex min-h-0 flex-1 flex-col gap-4"
+      >
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+          <div className="max-w-full overflow-x-auto pb-1">
+            <TabsList variant="segmented" aria-label={t("settings.providerServices")}>
+              {PROVIDER_TABS.map((type) => (
+                <TabsTrigger key={type} value={type} variant="segmented" className="gap-1.5">
+                  <span aria-hidden="true" className="flex shrink-0 items-center">
+                    <ProviderBrandIcon type={type} />
+                  </span>
+                  {getProviderLabel(type)}
+                  <span className="text-muted-foreground">
+                    {settings.customProviders.filter((provider) => provider.type === type).length}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
           <ProviderActionGroup
             settings={settings}
             setSettings={setSettings}
@@ -1101,18 +1121,22 @@ export function ProvidersSection(
             onOpenCustomSettings={() => setCustomSettingsOpen(true)}
           />
         </div>
-        <ProviderList
-          type="all"
-          providers={settings.customProviders}
-          onAdd={openAdd}
-          onEdit={openEdit}
-          onDelete={handleDelete}
-          onReorder={handleProviderReorder}
-          usageByProvider={usageByProvider}
-          refreshingProviderIds={refreshingProviderIds}
-          onRefreshUsage={(providerId) => void refreshProvider(providerId)}
-        />
-      </div>
+        {PROVIDER_TABS.map((type) => (
+          <TabsContent key={type} value={type} className="flex min-h-0 flex-1 flex-col">
+            <ProviderList
+              type={type}
+              providers={settings.customProviders}
+              onAdd={openAdd}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+              onReorder={handleProviderReorder}
+              usageByProvider={usageByProvider}
+              refreshingProviderIds={refreshingProviderIds}
+              onRefreshUsage={(providerId) => void refreshProvider(providerId)}
+            />
+          </TabsContent>
+        ))}
+      </Tabs>
 
       {servicePickerOpen && (
         <Dialog

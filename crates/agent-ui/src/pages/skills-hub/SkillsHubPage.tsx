@@ -21,7 +21,7 @@ import {
 } from "@liveagent/ui/components/IconSet";
 import { ResourceTabsList } from "@liveagent/ui/components/resources/ResourceTabsList";
 import { Badge } from "@liveagent/ui/components/ui/badge";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import { ConfirmActionPopover } from "@liveagent/ui/components/ui/confirm-action-popover";
 import { Input } from "@liveagent/ui/components/ui/input";
 import {
@@ -497,7 +497,7 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
 
   const showImportToast = useCallback(
     (message: string) => {
-      toast.warning(message, { id: `${toastScope}-import`, appearance: "notice", duration: 0 });
+      toast.warning(message, { id: `${toastScope}-import`, appearance: "notice", duration: 6_000 });
     },
     [toastScope],
   );
@@ -574,14 +574,14 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
         toast.error(t("settings.skillsImportFailed"), {
           id: `${toastScope}-import`,
           appearance: "notice",
-          duration: 0,
+          duration: 10_000,
           description: failures.map((failure) => `${failure.name}: ${failure.message}`).join("\n"),
         });
       } else if (targets.length) {
         toast.success(`${t("settings.skillsImportDone")} (${targets.length})`, {
           id: `${toastScope}-import`,
           appearance: "notice",
-          duration: 0,
+          duration: 5_000,
         });
       }
       if (!skill) {
@@ -1407,7 +1407,7 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                     : t("settings.skillsHubToggleEnable")
                 }
               />
-              <Button
+              <RefreshButton
                 variant="outline"
                 size="sm"
                 className="h-8 min-w-26 justify-center gap-1.5 px-3"
@@ -1423,11 +1423,11 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                 }
               >
                 {loading ? (
-                  <RefreshCw className="size-3.5 animate-spin" />
+                  <RefreshCw data-refresh-icon className="size-3.5 animate-spin" />
                 ) : scanButtonComplete ? (
                   <Check className="size-3.5 text-[hsl(var(--chat-success))]" />
                 ) : (
-                  <RefreshCw className="size-3.5" />
+                  <RefreshCw data-refresh-icon className="size-3.5" />
                 )}
                 <span
                   className="hidden items-center whitespace-nowrap sm:inline-flex"
@@ -1441,7 +1441,7 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                         : t("settings.skillsScan")}
                   </span>
                 </span>
-              </Button>
+              </RefreshButton>
             </div>
           }
         />
@@ -1656,15 +1656,16 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                                     {t("settings.skillsNotFoundHint")}
                                   </p>
                                 </div>
-                                <Button
+                                <RefreshButton
+                                  aria-busy={loading}
                                   variant="outline"
                                   size="sm"
                                   className="mt-1 gap-1.5 rounded-full"
                                   onClick={() => void refresh({ announce: true })}
                                 >
-                                  <RefreshCw className="size-3.5" />
+                                  <RefreshCw data-refresh-icon className="size-3.5" />
                                   {t("settings.skillsRescan")}
-                                </Button>
+                                </RefreshButton>
                               </div>
                             </GlassPanel>
                           ) : null}

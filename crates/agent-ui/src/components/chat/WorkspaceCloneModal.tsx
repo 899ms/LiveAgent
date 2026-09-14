@@ -304,10 +304,7 @@ export function WorkspaceCloneModal({
                       onValueChange={setBranch}
                       disabled={!branches.length || branchesLoading}
                     >
-                      <SelectTrigger
-                        id="workspace-clone-branch"
-                        className="h-9 w-full border-0 bg-settings-tile-hover shadow-none"
-                      >
+                      <SelectTrigger variant="plain" id="workspace-clone-branch">
                         <SelectValue
                           placeholder={
                             branchesLoading

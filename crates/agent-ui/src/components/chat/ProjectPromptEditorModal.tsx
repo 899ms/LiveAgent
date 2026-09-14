@@ -154,7 +154,7 @@ export function ProjectPromptEditorModal(props: {
           </div>
         </DialogHeader>
 
-        <DialogBody className="flex flex-col p-0">
+        <DialogBody className="flex flex-col p-0 max-[820px]:p-0">
           <ProjectPromptSettingsPanel
             plain
             projectPrompt={projectPrompt}

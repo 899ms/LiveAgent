@@ -1,3 +1,4 @@
+import { ContextMenuItem, ContextMenuPopup } from "@liveagent/ui/components/ui/context-menu";
 // GitReview diff rendering: DiffContent (patch chunks, diff stat, selection
 // context menu, selection autoscroll, horizontal scrollbar) and the
 // DiffReviewCard wrapper used by the changes view.
@@ -23,7 +24,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { cn } from "../../../lib/shared/utils";
 import { Button } from "../../ui/button";
 import {
@@ -197,8 +197,6 @@ type DiffHorizontalScrollbarState = {
   maxScrollLeft: number;
   scrollLeft: number;
 };
-
-const DIFF_SELECTION_CONTEXT_MENU_MARGIN = 12;
 
 function useIsDark() {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -424,7 +422,7 @@ export function DiffContent(props: {
   const isDark = useIsDark();
   const rootRef = useRef<HTMLElement | null>(null);
   const scrollViewportRef = useRef<HTMLElement | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement | null>(null);
+
   const selectionAutoscrollViewportsRef = useRef<HTMLElement[]>([]);
   const selectionAutoscrollPointerRef = useRef<{
     x: number;
@@ -741,54 +739,6 @@ export function DiffContent(props: {
     closeSelectionContextMenu();
   }, [closeSelectionContextMenu, diff?.patch, error, loading]);
 
-  useEffect(() => {
-    if (!selectionContextMenu) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        closeSelectionContextMenu();
-        return;
-      }
-      if (contextMenuRef.current?.contains(target)) {
-        return;
-      }
-      closeSelectionContextMenu();
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        closeSelectionContextMenu();
-      }
-    };
-
-    const handleSelectionChange = () => {
-      if (!resolveContainedSelectionText(rootRef.current)) {
-        closeSelectionContextMenu();
-      }
-    };
-
-    const handleViewportChange = () => {
-      closeSelectionContextMenu();
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown, true);
-    window.addEventListener("keydown", handleKeyDown, true);
-    window.addEventListener("scroll", handleViewportChange, true);
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("blur", handleViewportChange);
-    document.addEventListener("selectionchange", handleSelectionChange);
-
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown, true);
-      window.removeEventListener("keydown", handleKeyDown, true);
-      window.removeEventListener("scroll", handleViewportChange, true);
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("blur", handleViewportChange);
-      document.removeEventListener("selectionchange", handleSelectionChange);
-    };
-  }, [closeSelectionContextMenu, selectionContextMenu]);
-
   const handleContextMenu = useCallback(
     (event: ReactMouseEvent<HTMLFieldSetElement>) => {
       if (!isDiffSelectableContentTarget(rootRef.current, event.target)) {
@@ -859,21 +809,6 @@ export function DiffContent(props: {
   // Clamp the selection menu against its measured size after it renders (no
   // hard-coded width/height): useLayoutEffect runs before paint, so an
   // out-of-bounds menu never flashes at the raw pointer position.
-  useLayoutEffect(() => {
-    if (!selectionContextMenu) return;
-    const menu = contextMenuRef.current;
-    if (!menu) return;
-    const rect = menu.getBoundingClientRect();
-    const next = clampDiffSelectionContextMenuPosition(
-      selectionContextMenu.x,
-      selectionContextMenu.y,
-      rect.width,
-      rect.height,
-    );
-    if (next.left !== selectionContextMenu.x || next.top !== selectionContextMenu.y) {
-      setSelectionContextMenu({ ...selectionContextMenu, x: next.left, y: next.top });
-    }
-  }, [selectionContextMenu]);
 
   const copySelectedTextLabel = locale === "en-US" ? "Copy selected text" : "复制选中文本";
 
@@ -977,44 +912,23 @@ export function DiffContent(props: {
           </div>
         </div>
       ) : null}
-      {selectionContextMenu
-        ? createPortal(
-            <div
-              ref={contextMenuRef}
-              role="menu"
-              className={cn(
-                "origin-top-left layer-popover fixed w-max min-w-38 max-w-viewport-inset-1p5rem select-none overflow-hidden",
-                "rounded-xl border border-border/60 bg-popover/80 p-1",
-                "text-popover-foreground shadow-2xl ring-1 ring-black/[0.03] backdrop-blur-xl dark:ring-white/[0.06]",
-              )}
-              style={{
-                left: selectionContextMenu.x,
-                top: selectionContextMenu.y,
-              }}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5",
-                  "text-left text-sm text-foreground/90 transition-colors hover:bg-accent hover:text-accent-foreground",
-                )}
-                onClick={() => {
-                  writeTextToClipboard(selectionContextMenu.selectedText);
-                  closeSelectionContextMenu();
-                }}
-              >
-                <Copy className="size-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{copySelectedTextLabel}</span>
-              </button>
-            </div>,
-            document.body,
-          )
-        : null}
+      {selectionContextMenu ? (
+        <ContextMenuPopup
+          point={selectionContextMenu}
+          onClose={closeSelectionContextMenu}
+          className="min-w-38"
+        >
+          <ContextMenuItem
+            onClick={() => {
+              writeTextToClipboard(selectionContextMenu.selectedText);
+              closeSelectionContextMenu();
+            }}
+          >
+            <Copy className="size-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{copySelectedTextLabel}</span>
+          </ContextMenuItem>
+        </ContextMenuPopup>
+      ) : null}
     </fieldset>
   );
 }
@@ -1139,25 +1053,4 @@ function resolveContainedSelectionText(root: HTMLElement | null) {
   }
 
   return selectedText;
-}
-
-function clampDiffSelectionContextMenuPosition(
-  x: number,
-  y: number,
-  menuWidth: number,
-  menuHeight: number,
-) {
-  const maxLeft = Math.max(
-    DIFF_SELECTION_CONTEXT_MENU_MARGIN,
-    window.innerWidth - menuWidth - DIFF_SELECTION_CONTEXT_MENU_MARGIN,
-  );
-  const maxTop = Math.max(
-    DIFF_SELECTION_CONTEXT_MENU_MARGIN,
-    window.innerHeight - menuHeight - DIFF_SELECTION_CONTEXT_MENU_MARGIN,
-  );
-
-  return {
-    left: Math.min(Math.max(DIFF_SELECTION_CONTEXT_MENU_MARGIN, x), maxLeft),
-    top: Math.min(Math.max(DIFF_SELECTION_CONTEXT_MENU_MARGIN, y), maxTop),
-  };
 }

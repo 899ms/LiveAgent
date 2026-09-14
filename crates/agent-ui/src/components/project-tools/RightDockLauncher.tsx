@@ -92,7 +92,7 @@ export function RightDockCreateMenu(props: RightDockCreateMenuProps) {
           <span className="min-w-0 flex-1">{t("projectTools.newTerminal")}</span>
           <ChevronRight className="size-3.5 text-muted-foreground" />
         </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent className="min-w-36">
+        <DropdownMenuSubContent variant="soft" className="min-w-36">
           {shellOptions.map((option) => (
             <DropdownMenuItem
               key={option.id}
@@ -133,7 +133,7 @@ export function RightDockCreateMenu(props: RightDockCreateMenuProps) {
       >
         <Plus className="size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={6} className="min-w-40">
+      <DropdownMenuContent variant="soft" align="end" sideOffset={6} className="min-w-40">
         {terminalItem}
         {onOpenNewTerminalInWorkbench ? (
           <DropdownMenuItem

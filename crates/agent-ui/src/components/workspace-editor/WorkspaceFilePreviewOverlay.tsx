@@ -26,6 +26,9 @@ import {
   RotateCwSquare,
   X,
 } from "@liveagent/ui/components/IconSet";
+import { RefreshButton } from "@liveagent/ui/components/ui/button";
+import { ContextMenuItem, ContextMenuPopup } from "@liveagent/ui/components/ui/context-menu";
+import { floatingSurfaceClassName } from "@liveagent/ui/components/ui/menu-surface";
 import { WorkspaceMarkdownPreview } from "@liveagent/ui/components/workspace-editor/WorkspaceMarkdownPreview";
 import {
   getWorkspacePreviewKind,
@@ -52,16 +55,7 @@ import { copyTextToClipboard as copySharedTextToClipboard } from "@liveagent/ui/
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import { invokeFs } from "@liveagent/ui/lib/tools/fsBackend";
 import { renderAsync } from "docx-preview";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { read, utils } from "xlsx";
 
 export type WorkspaceFilePreviewOpenRequest = {
@@ -583,7 +577,10 @@ export function WorkspaceFilePreviewOverlay(props: WorkspaceFilePreviewOverlayPr
               <ExternalLink className="size-4" />
             </button>
           ) : null}
-          <button
+          <RefreshButton
+            aria-busy={loading}
+            variant="ghost"
+            size="icon-sm"
             type="button"
             className={cn(
               "inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
@@ -594,8 +591,8 @@ export function WorkspaceFilePreviewOverlay(props: WorkspaceFilePreviewOverlayPr
             disabled={!activePreviewRequest || loading}
             onClick={() => activePreviewRequest && void loadPreview(activePreviewRequest, 0)}
           >
-            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          </button>
+            <RefreshCw data-refresh-icon className={cn("size-4", loading && "animate-spin")} />
+          </RefreshButton>
           <button
             type="button"
             className={cn(
@@ -974,7 +971,7 @@ function WorkspaceImagePreviewBody(props: {
   } = props;
   const { t } = useLocale();
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement | null>(null);
+
   const dragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -988,10 +985,7 @@ function WorkspaceImagePreviewBody(props: {
   const [isDragging, setIsDragging] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const [contextMenuPosition, setContextMenuPosition] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
+
   const [isEntering, setIsEntering] = useState(true);
 
   const activeImageIndex = imagePaths.indexOf(activePath);
@@ -1049,34 +1043,9 @@ function WorkspaceImagePreviewBody(props: {
     return () => observer.disconnect();
   }, []);
 
-  // A fixed menu needs its actual rendered size to avoid overflowing the
-  // browser viewport near the lower-right corner.
-  useLayoutEffect(() => {
-    if (!contextMenu || contextMenuPosition) return;
-    const menu = contextMenuRef.current;
-    if (!menu) return;
-    const rect = menu.getBoundingClientRect();
-    const inset = 8;
-    setContextMenuPosition({
-      x: Math.max(inset, Math.min(contextMenu.x, window.innerWidth - rect.width - inset)),
-      y: Math.max(inset, Math.min(contextMenu.y, window.innerHeight - rect.height - inset)),
-    });
-  }, [contextMenu, contextMenuPosition]);
-
   useEffect(() => {
     setViewerState((current) => clampImageViewerState(current, viewerOptions));
   }, [viewerOptions]);
-
-  useEffect(() => {
-    if (!contextMenu) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (contextMenuRef.current?.contains(event.target as Node)) return;
-      setContextMenu(null);
-      setContextMenuPosition(null);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [contextMenu]);
 
   const enterTranslateX = transitionDirection > 0 ? 18 : transitionDirection < 0 ? -18 : 0;
   const enterScale = transitionDirection === 0 ? 0.985 : 0.99;
@@ -1175,7 +1144,7 @@ function WorkspaceImagePreviewBody(props: {
       if (contextMenu) {
         event.preventDefault();
         setContextMenu(null);
-        setContextMenuPosition(null);
+
         return;
       }
       if (showInfo) {
@@ -1322,7 +1291,7 @@ function WorkspaceImagePreviewBody(props: {
           event.currentTarget.focus({ preventScroll: true });
           if (contextMenu) {
             setContextMenu(null);
-            setContextMenuPosition(null);
+
             return;
           }
           if (event.button !== 0 || !canPan) return;
@@ -1363,7 +1332,6 @@ function WorkspaceImagePreviewBody(props: {
         onContextMenu={(event) => {
           event.preventDefault();
           setContextMenu({ x: event.clientX, y: event.clientY });
-          setContextMenuPosition(null);
         }}
       >
         {isSwitchingImage ? (
@@ -1423,8 +1391,8 @@ function WorkspaceImagePreviewBody(props: {
             aria-label={t("workspaceFilePreview.imageInfo")}
             className={cn(
               "absolute right-3 top-3 z-10 w-64",
-              "border border-border bg-popover/95 p-3",
-              "text-xs text-popover-foreground shadow-xl backdrop-blur",
+              floatingSurfaceClassName,
+              "p-3 text-xs",
             )}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -1458,163 +1426,106 @@ function WorkspaceImagePreviewBody(props: {
             </dl>
           </aside>
         ) : null}
-        {contextMenu
-          ? createPortal(
-              <div
-                ref={contextMenuRef}
-                role="menu"
-                className={cn(
-                  "layer-popover fixed min-w-48",
-                  "rounded-lg border border-border bg-popover p-1",
-                  "text-xs text-popover-foreground shadow-2xl",
-                )}
-                style={{
-                  left: (contextMenuPosition ?? contextMenu).x,
-                  top: (contextMenuPosition ?? contextMenu).y,
-                  visibility: contextMenuPosition ? undefined : "hidden",
-                }}
-                onPointerDown={(event) => event.stopPropagation()}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
+        {contextMenu ? (
+          <ContextMenuPopup
+            point={contextMenu}
+            onClose={() => setContextMenu(null)}
+            className="text-xs"
+          >
+            <ContextMenuItem
+              onClick={() => {
+                setViewerState(resetImageViewerState());
+                setContextMenu(null);
+              }}
+            >
+              <RefreshCw className="size-3.5" />
+              {t("workspaceFilePreview.resetImage")}
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                rotateImage(-1);
+                setContextMenu(null);
+              }}
+            >
+              <RotateCwSquare className="size-3.5 -scale-x-100" />
+              {t("workspaceFilePreview.rotateLeft")}
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                rotateImage(1);
+                setContextMenu(null);
+              }}
+            >
+              <RotateCwSquare className="size-3.5" />
+              {t("workspaceFilePreview.rotateRight")}
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                void handleSaveImage();
+                setContextMenu(null);
+              }}
+            >
+              <Download className="size-3.5" />
+              {t("workspaceFilePreview.downloadImage")}
+            </ContextMenuItem>
+            {canOpenInSystemViewer ? (
+              <ContextMenuItem
+                onClick={() => {
+                  onOpenInSystemViewer();
+                  setContextMenu(null);
                 }}
               >
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    setViewerState(resetImageViewerState());
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <RefreshCw className="size-3.5" />
-                  {t("workspaceFilePreview.resetImage")}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    rotateImage(-1);
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <RotateCwSquare className="size-3.5 -scale-x-100" />
-                  {t("workspaceFilePreview.rotateLeft")}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    rotateImage(1);
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <RotateCwSquare className="size-3.5" />
-                  {t("workspaceFilePreview.rotateRight")}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    void handleSaveImage();
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <Download className="size-3.5" />
-                  {t("workspaceFilePreview.downloadImage")}
-                </button>
-                {canOpenInSystemViewer ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                    onClick={() => {
-                      onOpenInSystemViewer();
-                      setContextMenu(null);
-                      setContextMenuPosition(null);
-                    }}
-                  >
-                    <ExternalLink className="size-3.5" />
-                    {t("workspaceFilePreview.openInSystemImageViewer")}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    void handleCopyImage();
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <Copy className="size-3.5" />
-                  {t("workspaceFilePreview.copyImage")}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    void handleCopyAbsolutePath();
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <Copy className="size-3.5" />
-                  {t("workspaceFilePreview.copyImageAbsolutePath")}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    void handleCopyRelativePath();
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <Copy className="size-3.5" />
-                  {t("workspaceFilePreview.copyImageRelativePath")}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    setShowInfo(true);
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <Info className="size-3.5" />
-                  {t("workspaceFilePreview.imageInfo")}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    void handleFullscreen();
-                    setContextMenu(null);
-                    setContextMenuPosition(null);
-                  }}
-                >
-                  <Maximize2 className="size-3.5" />
-                  {t("workspaceFilePreview.fullscreen")}
-                </button>
-              </div>,
-              document.body,
-            )
-          : null}
+                <ExternalLink className="size-3.5" />
+                {t("workspaceFilePreview.openInSystemImageViewer")}
+              </ContextMenuItem>
+            ) : null}
+            <ContextMenuItem
+              onClick={() => {
+                void handleCopyImage();
+                setContextMenu(null);
+              }}
+            >
+              <Copy className="size-3.5" />
+              {t("workspaceFilePreview.copyImage")}
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                void handleCopyAbsolutePath();
+                setContextMenu(null);
+              }}
+            >
+              <Copy className="size-3.5" />
+              {t("workspaceFilePreview.copyImageAbsolutePath")}
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                void handleCopyRelativePath();
+                setContextMenu(null);
+              }}
+            >
+              <Copy className="size-3.5" />
+              {t("workspaceFilePreview.copyImageRelativePath")}
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                setShowInfo(true);
+                setContextMenu(null);
+              }}
+            >
+              <Info className="size-3.5" />
+              {t("workspaceFilePreview.imageInfo")}
+            </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                void handleFullscreen();
+                setContextMenu(null);
+              }}
+            >
+              <Maximize2 className="size-3.5" />
+              {t("workspaceFilePreview.fullscreen")}
+            </ContextMenuItem>
+          </ContextMenuPopup>
+        ) : null}
       </div>
     </div>
   );

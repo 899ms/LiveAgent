@@ -1,5 +1,5 @@
 import { RefreshCw } from "@liveagent/ui/components/IconSet";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { RefreshButton } from "@liveagent/ui/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@liveagent/ui/components/ui/tabs";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import {
@@ -46,7 +46,8 @@ export function McpRegistryToolbar(props: {
         </TabsList>
       </Tabs>
 
-      <Button
+      <RefreshButton
+        aria-busy={props.loading}
         size="sm"
         variant="outline"
         type="button"
@@ -56,9 +57,9 @@ export function McpRegistryToolbar(props: {
         title={t("mcpHub.storeRefresh")}
         aria-label={t("mcpHub.storeRefresh")}
       >
-        <RefreshCw className={cn("size-3.5", props.loading && "animate-spin")} />
+        <RefreshCw data-refresh-icon className={cn("size-3.5", props.loading && "animate-spin")} />
         <span className="hidden sm:inline">{t("mcpHub.storeRefresh")}</span>
-      </Button>
+      </RefreshButton>
     </div>
   );
 }

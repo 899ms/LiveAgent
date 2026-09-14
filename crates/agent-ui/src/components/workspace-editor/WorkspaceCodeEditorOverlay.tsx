@@ -32,7 +32,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@liveagent/ui/components/ui/alert-dialog";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
+import {
+  ContextMenuPopup,
+  ContextMenuItem as StandardContextMenuItem,
+} from "@liveagent/ui/components/ui/context-menu";
 import { EmptyState } from "@liveagent/ui/components/ui/empty-state";
 import { isWorkspacePreviewPath } from "@liveagent/ui/components/workspace-editor/workspaceImagePreview";
 import { useLocale } from "@liveagent/ui/i18n/index";
@@ -130,8 +134,6 @@ type EditorContextMenuState = {
 };
 
 const EDITOR_OVERLAY_ANIMATION_MS = 180;
-const EDITOR_CONTEXT_MENU_WIDTH = 220;
-const EDITOR_CONTEXT_MENU_HEIGHT = 340;
 
 type WorkspaceCodeEditorOverlayProps = {
   openRequest: WorkspaceCodeEditorOpenRequest | null;
@@ -661,11 +663,10 @@ export function WorkspaceCodeEditorOverlay(props: WorkspaceCodeEditorOverlayProp
 
       const rect = overlayRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const maxX = Math.max(8, rect.width - EDITOR_CONTEXT_MENU_WIDTH - 8);
-      const maxY = Math.max(8, rect.height - EDITOR_CONTEXT_MENU_HEIGHT - 8);
+
       setContextMenu({
-        x: Math.min(Math.max(event.clientX - rect.left, 8), maxX),
-        y: Math.min(Math.max(event.clientY - rect.top, 8), maxY),
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
       });
     },
     [activeTab, pendingDialog],
@@ -835,19 +836,6 @@ export function WorkspaceCodeEditorOverlay(props: WorkspaceCodeEditorOverlayProp
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, saveTab]);
 
-  useEffect(() => {
-    if (!contextMenu) return;
-    const closeContextMenu = () => setContextMenu(null);
-    window.addEventListener("click", closeContextMenu);
-    window.addEventListener("blur", closeContextMenu);
-    window.addEventListener("resize", closeContextMenu);
-    return () => {
-      window.removeEventListener("click", closeContextMenu);
-      window.removeEventListener("blur", closeContextMenu);
-      window.removeEventListener("resize", closeContextMenu);
-    };
-  }, [contextMenu]);
-
   const dialogTitle =
     pendingDialog?.kind === "closeOverlay"
       ? t("workspaceEditor.closeDirtyTitle")
@@ -917,13 +905,17 @@ export function WorkspaceCodeEditorOverlay(props: WorkspaceCodeEditorOverlayProp
           >
             <Replace className="size-4" />
           </IconButton>
-          <IconButton
-            label={t("workspaceEditor.reload")}
+          <RefreshButton
+            variant="ghost"
+            size="icon-sm"
+            aria-busy={isOpening}
+            className="rounded-md text-muted-foreground"
+            aria-label={t("workspaceEditor.reload")}
             disabled={!activeTab || isOpening}
             onClick={() => activeTab && requestReloadTab(activeTab.key)}
           >
-            <RefreshCw className={cn("size-4", isOpening && "animate-spin")} />
-          </IconButton>
+            <RefreshCw data-refresh-icon className={cn("size-4", isOpening && "animate-spin")} />
+          </RefreshButton>
           {canPreviewActiveTab && activeTab ? (
             <IconButton
               label={t("workspaceEditor.preview")}
@@ -1009,13 +1001,17 @@ export function WorkspaceCodeEditorOverlay(props: WorkspaceCodeEditorOverlayProp
           <AlertTriangle className="size-4 shrink-0" />
           <div className="min-w-0 flex-1 truncate">{activeTab?.error ?? globalError}</div>
           {activeTab?.status === "conflict" ? (
-            <button
+            <RefreshButton
+              variant="ghost"
+              size="sm"
+              aria-busy={isOpening}
               type="button"
               className="rounded border border-amber-500/30 px-2 py-1 text-xs font-medium hover:bg-amber-500/10"
               onClick={() => requestReloadTab(activeTab.key)}
             >
+              <RefreshCw data-refresh-icon className="size-3.5" />
               {t("workspaceEditor.reloadFromDisk")}
-            </button>
+            </RefreshButton>
           ) : null}
         </div>
       ) : null}
@@ -1046,18 +1042,15 @@ export function WorkspaceCodeEditorOverlay(props: WorkspaceCodeEditorOverlayProp
       </div>
 
       {contextMenu ? (
-        // biome-ignore lint/a11y/useKeyWithClickEvents: onClick 仅拦截冒泡防止 window "click" 关闭菜单；键盘经 Escape 与 menuitem 按钮操作。
-        <div
-          className={cn(
-            "origin-top-left absolute z-50 w-220px overflow-hidden",
-            "rounded-xl border border-border/60 bg-popover/80 p-1",
-            "text-sm text-popover-foreground shadow-2xl ring-1 ring-black/[0.03] backdrop-blur-xl dark:ring-white/[0.06]",
-          )}
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          role="menu"
-          onClick={(event) => event.stopPropagation()}
-          onContextMenu={(event) => event.preventDefault()}
-          onMouseDown={(event) => event.preventDefault()}
+        <ContextMenuPopup
+          point={contextMenu}
+          coordinateRoot={overlayRef}
+          onClose={() => setContextMenu(null)}
+          finalFocus={() => {
+            editorRef.current?.focus();
+            return false;
+          }}
+          className="w-220px"
         >
           <ContextMenuItem
             icon={Undo2}
@@ -1126,7 +1119,7 @@ export function WorkspaceCodeEditorOverlay(props: WorkspaceCodeEditorOverlayProp
               showReplace();
             }}
           />
-        </div>
+        </ContextMenuPopup>
       ) : null}
 
       <div
@@ -1190,16 +1183,7 @@ function ContextMenuItem(props: {
 }) {
   const Icon = props.icon;
   return (
-    <button
-      type="button"
-      role="menuitem"
-      className={cn(
-        "flex h-30px w-full items-center gap-2.5 rounded-lg px-2",
-        "text-left text-sm text-popover-foreground/90 transition-colors",
-        "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none",
-      )}
-      onClick={props.onClick}
-    >
+    <StandardContextMenuItem onClick={props.onClick}>
       {Icon ? (
         <Icon className="size-3.5 shrink-0 text-muted-foreground" />
       ) : (
@@ -1211,7 +1195,7 @@ function ContextMenuItem(props: {
           {props.shortcut}
         </kbd>
       ) : null}
-    </button>
+    </StandardContextMenuItem>
   );
 }
 

@@ -17,7 +17,7 @@ import {
   Trash2,
 } from "@liveagent/ui/components/IconSet";
 import { SettingsNotice } from "@liveagent/ui/components/settings/SettingsNotice";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import {
   Dialog,
   DialogBody,
@@ -282,7 +282,8 @@ export function MemoryPanel(props: {
                 );
               })}
 
-              <Button
+              <RefreshButton
+                aria-busy={loading || refreshState === "refreshing"}
                 variant="outline"
                 size="sm"
                 onClick={() => void handleRefresh()}
@@ -295,7 +296,7 @@ export function MemoryPanel(props: {
                   )}
                 />
                 {t("settings.memoryRefresh")}
-              </Button>
+              </RefreshButton>
               <Button
                 size="sm"
                 onClick={() => {
@@ -682,10 +683,7 @@ export function MemoryPanel(props: {
                       }))
                     }
                   >
-                    <SelectTrigger
-                      className="w-full border-0 bg-settings-tile-hover shadow-none"
-                      aria-label={t("settings.memoryType")}
-                    >
+                    <SelectTrigger variant="plain" aria-label={t("settings.memoryType")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -708,10 +706,7 @@ export function MemoryPanel(props: {
                       }))
                     }
                   >
-                    <SelectTrigger
-                      className="w-full border-0 bg-settings-tile-hover shadow-none"
-                      aria-label={t("settings.memoryScope")}
-                    >
+                    <SelectTrigger variant="plain" aria-label={t("settings.memoryScope")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

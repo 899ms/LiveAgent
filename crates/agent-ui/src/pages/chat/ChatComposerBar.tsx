@@ -56,6 +56,8 @@ import {
   DropdownMenuTrigger,
 } from "@liveagent/ui/components/ui/dropdown-menu";
 import { LabelTooltip as RuntimeControlTooltip } from "@liveagent/ui/components/ui/label-tooltip";
+import { SwitchIndicator } from "@liveagent/ui/components/ui/switch";
+import { toast } from "@liveagent/ui/components/ui/toast-manager";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { measureComposerOverlay } from "@liveagent/ui/lib/chat/composerOverlayMetrics";
 import {
@@ -347,7 +349,7 @@ export type ChatComposerBarProps = {
   onComposerBusyChange: (isBusy: boolean) => void;
   onSelectModel: (selection: SelectedModel) => void;
   onSelectExecutionMode: (mode: "text" | "tools") => void;
-  onOpenSettings: (section?: "providers", providerId?: string) => void;
+  onOpenSettings: (section?: "providers" | "stt", providerId?: string) => void;
   onChatRuntimeControlsChange: (patch: Partial<ChatRuntimeControls>) => void;
   onPickReadableFiles: () => void;
   /** Select a folder to mount as a read-only project root. */
@@ -491,6 +493,17 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
   const handleComposerInput = useCallback(() => {
     setComposerHasClarifiableText(draftHasClarifiableText(composerRef.current));
   }, [composerRef]);
+  const handleSttConfigurationRequired = useCallback(() => {
+    toast.warning(t("chat.stt.configurationIncompleteTitle"), {
+      id: "stt-provider-configuration-incomplete",
+      description: t("chat.stt.configurationIncompleteDescription"),
+      duration: 8_000,
+      action: {
+        label: t("chat.stt.configureAction"),
+        onClick: () => onOpenSettings("stt"),
+      },
+    });
+  }, [onOpenSettings, t]);
   const stt = useComposerStt({
     composerRef,
     provider: sttProvider,
@@ -500,6 +513,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
     sessionKey: sttSessionKey,
     hidden,
     onError: onSttError,
+    onConfigurationRequired: handleSttConfigurationRequired,
   });
   const [isComposerExpanded, setIsComposerExpanded] = useState(false);
   const [composerHasOverflow, setComposerHasOverflow] = useState(false);
@@ -1254,24 +1268,24 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
         hidden && "hidden",
       )}
     >
-      {/* 层底 16px 悬浮留白（desktop pb-4 / web --gateway-chat-composer-bottom）
-          的兜底实底条：读数裙边只盖到读数行底边，滚动中的正文会从这条缝里
-          露出来。两端共用，不做 surface 分支。 */}
+      {/* Start the opaque backing below the top corner radius so the card's
+          rounded corners reveal the transcript. Keep the lower gutters and footer
+          fully covered, with pointer events passing through to the transcript. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 bg-background"
-        style={{ height: "1rem" }}
+        data-composer-backing
+        className={cn(
+          "pointer-events-none absolute bottom-0 top-[calc(var(--radius)+var(--radius-16px))] bg-background",
+          // Leave the native scrollbar gutter exposed beside the floating card.
+          surface === "desktop" ? "inset-x-5" : "inset-x-0",
+        )}
       />
-      {/* Desktop aligns to the assistant message body: transcript px-5 + px-5
-          = 40px removed from the column, and the column itself already gives
-          back the retired 40px avatar rail. The card extends 2px past each
-          edge of the body so scrolling content cannot peek around its rounded
-          lower corners. */}
+      {/* The reading column is centered independently of the native scrollbar. */}
       <div
         ref={composerColumnRef}
         className={cn(
           surface === "desktop"
-            ? "pointer-events-auto relative w-inset-2p25rem max-w-transcript-gui"
+            ? "pointer-events-auto relative w-full max-w-transcript-gui"
             : cn(
                 "gateway-chat-column pointer-events-auto relative col-[2] flex w-full min-w-0 max-h-full",
                 "flex-col justify-end [&_[data-clarify-panel]]:min-h-0 [&_[data-clarify-panel]]:shrink",
@@ -1518,7 +1532,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
             // 常驻 flex-col：FLIP 动画把卡片钳在中间高度时，flex-1 的编辑器
             // 区吸收多余空间，工具栏才能始终贴住卡片底边。
             "composer-glass-card @container relative flex flex-col overflow-hidden",
-            "rounded-4xl border border-border/65 bg-muted shadow-ui-chatcomposerbar-39 transition-[border-color,box-shadow] focus-within:border-border focus-within:shadow-ui-chatcomposerbar-40",
+            "rounded-4xl border border-border/65 bg-muted transition-colors focus-within:border-border",
             surface === "desktop" && "z-10",
             isComposerExpanded && "min-h-0 flex-1",
           )}
@@ -1720,6 +1734,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                     ) : null}
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
+                    variant="soft"
                     className={cn("composer-add-dropdown flex w-60", "flex-col overflow-hidden")}
                     side="top"
                     align="start"
@@ -1768,24 +1783,10 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                         <span className="min-w-0 flex-1 truncate font-medium leading-5">
                           {t("chat.runtime.planModeTitle")}
                         </span>
-                        {/* 视觉开关(aria 由行上的 menuitemcheckbox 承担):与计划
-                          pill 同用 sky 色系,状态一眼可辨。 */}
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "ml-auto inline-flex h-18px w-8 shrink-0 items-center rounded-full transition-colors",
-                            chatRuntimeControls.planModeEnabled
-                              ? "bg-sky-500 dark:bg-sky-400"
-                              : "bg-muted-foreground/25",
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "block size-3.5 translate-x-2px rounded-full bg-white shadow-sm transition-transform dark:bg-slate-100",
-                              chatRuntimeControls.planModeEnabled && "translate-x-4",
-                            )}
-                          />
-                        </span>
+                        <SwitchIndicator
+                          className="ml-auto"
+                          checked={chatRuntimeControls.planModeEnabled}
+                        />
                       </DropdownMenuItem>
                     ) : null}
                   </DropdownMenuContent>

@@ -37,7 +37,7 @@ import {
   SettingsToggleGroup,
   SettingsToggleGroupItem,
 } from "@liveagent/ui/components/settings/SettingsToggleGroup";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import {
   Dialog,
   DialogActions,
@@ -84,7 +84,7 @@ import {
   setUsageQueryScript,
   USAGE_QUERY_CODING_PLAN_PROVIDERS,
 } from "@liveagent/ui/pages/settings/providerUtils";
-import { createPortal } from "react-dom";
+import { ProviderHeaderNameInput } from "./ProviderHeaderNameInput";
 import type { ProviderModalViewModel } from "./ProviderModal";
 import {
   customHeaderIssueMessage,
@@ -119,7 +119,6 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
     apiKey,
     apiKeyForRequest,
     apiKeyIsRedactedDisplay,
-    applyHeaderSuggestion,
     applyCliIdentityHeaders,
     baseUrl,
     canOverrideModelInputModalities,
@@ -146,10 +145,8 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
     headerImportSummaryMessage,
     headerImportText,
     headerIssueMessage,
+    headerKeyPresets,
     headerKeyRefs,
-    headerSuggest,
-    headerSuggestActiveIndex,
-    headerSuggestItems,
     headerValidationSubmitted,
     headerValueRefs,
     dialogOpen,
@@ -166,7 +163,6 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
     newModelName,
     newModelPhases,
     onClose,
-    openHeaderSuggest,
     openModelSettings,
     persistedUsageQueryProviderId,
     promptCacheHintMode,
@@ -188,8 +184,6 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
     setHeaderImportOpen,
     setHeaderImportSummary,
     setHeaderImportText,
-    setHeaderSuggest,
-    setHeaderSuggestActive,
     setIsFullUrl,
     setModelSearch,
     setModelsUrl,
@@ -289,10 +283,7 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
         </DialogHeader>
 
         <div className="flex min-h-0 flex-1 max-[720px]:flex-col">
-          <DialogBody
-            className="flex min-w-0 flex-col overflow-hidden [overflow-anchor:none] max-[640px]:overflow-y-auto"
-            onScroll={() => setHeaderSuggest(null)}
-          >
+          <DialogBody className="flex min-w-0 flex-col overflow-hidden [overflow-anchor:none] max-[640px]:overflow-y-auto">
             <section key="general" className="flex min-h-0 flex-1 flex-col max-[640px]:min-h-fit">
               <div className="shrink-0 space-y-3 pb-3">
                 <FormField>
@@ -446,6 +437,7 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                     <div className="relative min-w-0 flex-1 max-[720px]:basis-full">
                       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
+                        variant="plain"
                         value={modelSearch}
                         className="h-8 pl-9 pr-9 text-xs shadow-none"
                         placeholder={t("settings.searchModels")}
@@ -475,7 +467,8 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                         </button>
                       ) : null}
                     </div>
-                    <Button
+                    <RefreshButton
+                      aria-busy={fetchingModels}
                       type="button"
                       variant="outline"
                       size="sm"
@@ -483,9 +476,12 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                       onClick={handleRefresh}
                       disabled={fetchingModels || !baseUrl.trim()}
                     >
-                      <RefreshCw className={cn("size-3.5", fetchingModels && "animate-spin")} />
+                      <RefreshCw
+                        data-refresh-icon
+                        className={cn("size-3.5", fetchingModels && "animate-spin")}
+                      />
                       {fetchingModels ? t("settings.fetching") : t("settings.refreshModels")}
-                    </Button>
+                    </RefreshButton>
                     <Button
                       type="button"
                       variant="outline"
@@ -784,7 +780,7 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                                 )}
                                 <ChevronDown className="size-4 text-muted-foreground" />
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent>
+                              <DropdownMenuContent variant="soft">
                                 <DropdownMenuRadioGroup
                                   value={editingModelInputModalitiesMode}
                                   onValueChange={(value) => {
@@ -905,7 +901,6 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
           onOpenChange={(open) => {
             if (!open) {
               setActivePanel("general");
-              setHeaderSuggest(null);
             }
           }}
         >
@@ -921,7 +916,7 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                   : t("settings.providerAdvancedSettings")}
               </DialogTitle>
             </DialogHeader>
-            <DialogBody onScroll={() => setHeaderSuggest(null)}>
+            <DialogBody>
               {activePanel === "request" ? (
                 <section key="request">
                   {providerType !== "gemini" ? (
@@ -1118,7 +1113,7 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                           <Fingerprint className="size-3.5" />
                           {t("settings.cliIdentityHeaders")}
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-64">
+                        <DropdownMenuContent variant="soft" align="end" className="w-64">
                           <DropdownMenuLabel>
                             {t("settings.cliIdentityHeadersHint")}
                           </DropdownMenuLabel>
@@ -1162,7 +1157,6 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                           setHeaderImportOpen((open) => !open);
                           setHeaderImportError(null);
                           setHeaderImportSummary(null);
-                          setHeaderSuggest(null);
                         }}
                       >
                         <ClipboardPaste className="size-3.5" />
@@ -1270,17 +1264,12 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                     </button>
                   ) : (
                     <div className="mt-4 space-y-2">
-                      <div
-                        className="-m-0.5 max-h-196px space-y-2 overflow-y-auto p-0.5 max-[720px]:max-h-360px"
-                        onScroll={() => setHeaderSuggest(null)}
-                      >
+                      <div className="-m-0.5 max-h-196px space-y-2 overflow-y-auto p-0.5 max-[720px]:max-h-360px">
                         {customHeaders.map((header, index) => {
                           const issue = getCustomHeaderIssue(header, headerValidationSubmitted);
                           const issueTitle = issue ? customHeaderIssueMessage(issue, t) : undefined;
                           const valueIssue = issue === "invalid-value";
                           const keyIssue = issue !== null && !valueIssue;
-                          const suggestOpen =
-                            headerSuggest?.index === index && headerSuggestItems.length > 0;
 
                           return (
                             <div
@@ -1294,7 +1283,17 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                                   "border-destructive/60 focus-within:border-destructive focus-within:ring-destructive/10",
                               )}
                             >
-                              <Input
+                              <ProviderHeaderNameInput
+                                suggestions={headerKeyPresets.filter(
+                                  (preset) =>
+                                    !customHeaders.some(
+                                      (other, otherIndex) =>
+                                        otherIndex !== index &&
+                                        other.key.trim().toLowerCase() === preset.toLowerCase(),
+                                    ),
+                                )}
+                                onValueChange={(value) => updateCustomHeader(index, "key", value)}
+                                onComplete={() => focusCustomHeader(index, "value")}
                                 variant="plain"
                                 ref={(element) => {
                                   headerKeyRefs.current[index] = element;
@@ -1310,54 +1309,9 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                                 placeholder={t("settings.customHeaderKeyPlaceholder")}
                                 aria-label={t("settings.customHeaderName")}
                                 aria-invalid={keyIssue ? true : undefined}
-                                role="combobox"
-                                aria-expanded={suggestOpen}
-                                aria-controls={suggestOpen ? "provider-header-suggest" : undefined}
-                                aria-autocomplete="list"
                                 title={issueTitle}
                                 autoComplete="off"
                                 spellCheck={false}
-                                onChange={(event) => {
-                                  updateCustomHeader(index, "key", event.currentTarget.value);
-                                  openHeaderSuggest(index);
-                                }}
-                                onFocus={() => openHeaderSuggest(index)}
-                                onBlur={() => setHeaderSuggest(null)}
-                                onKeyDown={(event) => {
-                                  if (event.key === "ArrowDown") {
-                                    event.preventDefault();
-                                    if (suggestOpen) {
-                                      setHeaderSuggestActive(
-                                        (headerSuggestActiveIndex + 1) % headerSuggestItems.length,
-                                      );
-                                    } else {
-                                      openHeaderSuggest(index);
-                                    }
-                                    return;
-                                  }
-                                  if (event.key === "ArrowUp" && suggestOpen) {
-                                    event.preventDefault();
-                                    setHeaderSuggestActive(
-                                      (headerSuggestActiveIndex - 1 + headerSuggestItems.length) %
-                                        headerSuggestItems.length,
-                                    );
-                                    return;
-                                  }
-                                  if (event.key === "Escape" && headerSuggest) {
-                                    event.preventDefault();
-                                    setHeaderSuggest(null);
-                                    return;
-                                  }
-                                  if (event.key !== "Enter") return;
-                                  event.preventDefault();
-                                  if (suggestOpen) {
-                                    applyHeaderSuggestion(
-                                      headerSuggestItems[headerSuggestActiveIndex],
-                                    );
-                                    return;
-                                  }
-                                  focusCustomHeader(index, "value");
-                                }}
                               />
                               <div className="relative min-w-0 flex-1 max-[720px]:basis-full">
                                 <Input
@@ -1418,44 +1372,6 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                       {headerIssueMessage}
                     </p>
                   ) : null}
-                  {headerSuggest && headerSuggestItems.length > 0
-                    ? createPortal(
-                        <div
-                          id="provider-header-suggest"
-                          role="listbox"
-                          className={cn(
-                            "layer-popover fixed overflow-hidden",
-                            "rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg",
-                          )}
-                          style={{
-                            left: headerSuggest.rect.left,
-                            top: headerSuggest.rect.top,
-                            width: headerSuggest.rect.width,
-                          }}
-                        >
-                          {headerSuggestItems.map((preset, itemIndex) => (
-                            <button
-                              key={preset}
-                              type="button"
-                              role="option"
-                              aria-selected={itemIndex === headerSuggestActiveIndex}
-                              className={cn(
-                                "flex w-full items-center rounded-md px-2.5 py-2",
-                                "text-left font-mono text-xs text-muted-foreground transition-colors",
-                                itemIndex === headerSuggestActiveIndex &&
-                                  "bg-accent text-foreground",
-                              )}
-                              onMouseDown={(event) => event.preventDefault()}
-                              onMouseEnter={() => setHeaderSuggestActive(itemIndex)}
-                              onClick={() => applyHeaderSuggestion(preset)}
-                            >
-                              {preset}
-                            </button>
-                          ))}
-                        </div>,
-                        document.body,
-                      )
-                    : null}
                 </section>
               ) : activePanel === "usage" ? (
                 <section key="usage">
@@ -1966,7 +1882,8 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                           "rounded-xl border bg-card px-4 py-3",
                         )}
                       >
-                        <Button
+                        <RefreshButton
+                          aria-busy={usageQueryTest.status === "running"}
                           type="button"
                           variant="outline"
                           size="sm"
@@ -1985,7 +1902,7 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                             )}
                           />
                           {t("settings.providerUsageTest")}
-                        </Button>
+                        </RefreshButton>
                         <div className="min-w-0 flex-1 text-xs" role="status" aria-live="polite">
                           {usageQueryTest.status === "running" ? (
                             <span className="text-muted-foreground">
@@ -2085,7 +2002,6 @@ export function ProviderModalView({ viewModel }: { viewModel: ProviderModalViewM
                 variant="outline"
                 onClick={() => {
                   setActivePanel("general");
-                  setHeaderSuggest(null);
                 }}
               >
                 {t("settings.close")}

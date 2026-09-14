@@ -9,6 +9,11 @@ import {
   stepPromptHistory,
 } from "@liveagent/ui/components/chat/promptHistory";
 import { ClipboardPaste, Copy, ScanText, Scissors } from "@liveagent/ui/components/IconSet";
+import {
+  ContextMenuItem,
+  ContextMenuPopup,
+  ContextMenuSeparator,
+} from "@liveagent/ui/components/ui/context-menu";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import {
   appMentionRecencyKey,
@@ -46,14 +51,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { readSendShortcut, shouldSendOnEnter } from "../../lib/chat/sendShortcut";
 import {
   COMMIT_MENTION_SHA_ATTR,
   CONVERSATION_MENTION_ID_ATTR,
   CommitMentionTooltip,
   type ComposerContextMenuState,
-  clampComposerContextMenuPosition,
   collectAppMentionKeys,
   commitMentionFromElement,
   countLargePasteLines,
@@ -196,7 +199,7 @@ export const MentionComposer = memo(
     const { locale, t } = useLocale();
     const editorRef = useRef<HTMLDivElement>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
-    const composerContextMenuRef = useRef<HTMLDivElement>(null);
+
     const composerContextMenuRangeRef = useRef<Range | null>(null);
     const commitTooltipCloseTimerRef = useRef<number | null>(null);
     const commitTooltipChipRef = useRef<HTMLElement | null>(null);
@@ -223,7 +226,7 @@ export const MentionComposer = memo(
     );
     const [commitTooltip, setCommitTooltip] = useState<{
       commit: MentionComposerCommitMention;
-      rect: DOMRect;
+      anchor: HTMLElement;
     } | null>(null);
 
     const closeCommitTooltip = useCallback(() => {
@@ -468,46 +471,6 @@ export const MentionComposer = memo(
       closeMentionSession();
       setBusy(false);
     }, [disabled, closeMentionSession, setBusy]);
-
-    useEffect(() => {
-      if (!composerContextMenu) return;
-
-      const handlePointerDown = (event: PointerEvent) => {
-        const target = event.target;
-        if (!(target instanceof Node)) {
-          closeComposerContextMenu();
-          return;
-        }
-        if (composerContextMenuRef.current?.contains(target)) {
-          return;
-        }
-        closeComposerContextMenu();
-      };
-
-      const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-        if (event.key === "Escape") {
-          closeComposerContextMenu();
-        }
-      };
-
-      const handleClose = () => {
-        closeComposerContextMenu();
-      };
-
-      window.addEventListener("pointerdown", handlePointerDown, true);
-      window.addEventListener("keydown", handleKeyDown, true);
-      window.addEventListener("scroll", handleClose, true);
-      window.addEventListener("resize", handleClose);
-      window.addEventListener("blur", handleClose);
-
-      return () => {
-        window.removeEventListener("pointerdown", handlePointerDown, true);
-        window.removeEventListener("keydown", handleKeyDown, true);
-        window.removeEventListener("scroll", handleClose, true);
-        window.removeEventListener("resize", handleClose);
-        window.removeEventListener("blur", handleClose);
-      };
-    }, [closeComposerContextMenu, composerContextMenu]);
 
     const selectedConversationIdKey = [
       ...(editorRef.current?.querySelectorAll<HTMLElement>(`[${CONVERSATION_MENTION_ID_ATTR}]`) ??
@@ -1238,26 +1201,25 @@ export const MentionComposer = memo(
       ],
     );
 
-    const restoreComposerContextSelection = useCallback(() => {
-      const el = editorRef.current;
-      const range = composerContextMenuRangeRef.current;
-      if (!el || !range || !editorRangeIsInsideRoot(el, range)) return false;
+    const restoreComposerContextSelection = useCallback(
+      (range = composerContextMenuRangeRef.current) => {
+        const el = editorRef.current;
+        if (!el || !range || !editorRangeIsInsideRoot(el, range)) return false;
 
-      const selection = window.getSelection();
-      if (!selection) return false;
+        const selection = window.getSelection();
+        if (!selection) return false;
 
-      try {
-        selection.removeAllRanges();
-        selection.addRange(range);
-        return true;
-      } catch {
-        return false;
-      }
-    }, []);
+        try {
+          selection.removeAllRanges();
+          selection.addRange(range);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      [],
+    );
 
-    const contextMenuPosition = composerContextMenu
-      ? clampComposerContextMenuPosition(composerContextMenu.x, composerContextMenu.y)
-      : null;
     const contextMenuLabels =
       locale === "en-US"
         ? {
@@ -1311,6 +1273,7 @@ export const MentionComposer = memo(
     const handleComposerContextPaste = useCallback(async () => {
       const el = editorRef.current;
       if (!el || disabled) return;
+      const range = composerContextMenuRangeRef.current?.cloneRange();
 
       resetPromptHistoryRecall();
       el.focus({ preventScroll: true });
@@ -1319,7 +1282,7 @@ export const MentionComposer = memo(
       // confirmation for externally-copied content (see readClipboardText).
       const text = await readComposerClipboardText();
 
-      restoreComposerContextSelection();
+      restoreComposerContextSelection(range);
 
       if (text === null) {
         document.execCommand("paste");
@@ -1540,7 +1503,7 @@ export const MentionComposer = memo(
           return;
         }
         commitTooltipChipRef.current = chip;
-        setCommitTooltip({ commit, rect: chip.getBoundingClientRect() });
+        setCommitTooltip({ commit, anchor: chip });
       },
       [closeCommitTooltip],
     );
@@ -1992,29 +1955,37 @@ export const MentionComposer = memo(
       scheduleBusyRelease();
     }, [refreshEmptyState, refreshMention, scheduleBusyRelease]);
 
-    const handleBlur = useCallback(() => {
-      rememberEditorSelection();
-      isComposingRef.current = false;
-      compositionEnterKeyRef.current = false;
-      lastCompositionEndAtRef.current = 0;
-      imeEnterSuppressUntilRef.current = 0;
-      if (busyReleaseTimerRef.current !== null) {
-        window.clearTimeout(busyReleaseTimerRef.current);
-        busyReleaseTimerRef.current = null;
-      }
-      setBusy(false);
-      closeComposerContextMenu();
-      closeMentionSession();
-      cancelCommitTooltipClose();
-      closeCommitTooltip();
-    }, [
-      cancelCommitTooltipClose,
-      closeCommitTooltip,
-      closeComposerContextMenu,
-      closeMentionSession,
-      rememberEditorSelection,
-      setBusy,
-    ]);
+    const composerContextMenuRef = useRef<HTMLDivElement>(null);
+    const handleBlur = useCallback(
+      (event: FocusEvent<HTMLDivElement>) => {
+        rememberEditorSelection();
+        isComposingRef.current = false;
+        compositionEnterKeyRef.current = false;
+        lastCompositionEndAtRef.current = 0;
+        imeEnterSuppressUntilRef.current = 0;
+        if (busyReleaseTimerRef.current !== null) {
+          window.clearTimeout(busyReleaseTimerRef.current);
+          busyReleaseTimerRef.current = null;
+        }
+        setBusy(false);
+        // Base UI moves focus into the menu for keyboard navigation.
+        // That focus transfer must not dismiss the menu that just opened.
+        if (!composerContextMenuRef.current?.contains(event.relatedTarget)) {
+          closeComposerContextMenu();
+        }
+        closeMentionSession();
+        cancelCommitTooltipClose();
+        closeCommitTooltip();
+      },
+      [
+        cancelCommitTooltipClose,
+        closeCommitTooltip,
+        closeComposerContextMenu,
+        closeMentionSession,
+        rememberEditorSelection,
+        setBusy,
+      ],
+    );
 
     return (
       <div ref={wrapperRef} className="relative w-full min-w-0 max-w-full flex-1">
@@ -2032,6 +2003,7 @@ export const MentionComposer = memo(
               showEmpty={showEmpty}
               emptyLabel={popupEmptyLabel}
               onBack={returnToMentionRoot}
+              onClose={closeMentionSession}
               onSelect={selectSuggestion}
             />
           ) : null}
@@ -2039,95 +2011,53 @@ export const MentionComposer = memo(
         {commitTooltip ? (
           <CommitMentionTooltip
             commit={commitTooltip.commit}
-            rect={commitTooltip.rect}
+            anchor={commitTooltip.anchor}
+            onClose={closeCommitTooltip}
             onMouseEnter={cancelCommitTooltipClose}
             onMouseLeave={scheduleCommitTooltipClose}
           />
         ) : null}
-        {composerContextMenu && contextMenuPosition
-          ? createPortal(
-              <div
-                ref={composerContextMenuRef}
-                role="menu"
-                className={cn(
-                  "layer-popover fixed w-max min-w-38 max-w-viewport-inset-1p5rem overflow-hidden",
-                  "rounded-lg border border-border/70 bg-popover p-1.5 text-popover-foreground shadow-editor-context-menu",
-                )}
-                style={{
-                  left: contextMenuPosition.left,
-                  top: contextMenuPosition.top,
-                }}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                }}
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={!contextMenuCanMutate || !contextMenuHasSelection}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5",
-                    "text-left text-sm text-foreground/90 transition-colors hover:bg-accent hover:text-accent-foreground",
-                    "disabled:pointer-events-none disabled:opacity-45",
-                  )}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={handleComposerContextCut}
-                >
-                  <Scissors className="size-3.5 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">{contextMenuLabels.cut}</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={!contextMenuHasSelection}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5",
-                    "text-left text-sm text-foreground/90 transition-colors hover:bg-accent hover:text-accent-foreground",
-                    "disabled:pointer-events-none disabled:opacity-45",
-                  )}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={handleComposerContextCopy}
-                >
-                  <Copy className="size-3.5 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">{contextMenuLabels.copy}</span>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={!contextMenuCanMutate}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5",
-                    "text-left text-sm text-foreground/90 transition-colors hover:bg-accent hover:text-accent-foreground",
-                    "disabled:pointer-events-none disabled:opacity-45",
-                  )}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    void handleComposerContextPaste();
-                  }}
-                >
-                  <ClipboardPaste className="size-3.5 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">{contextMenuLabels.paste}</span>
-                </button>
-                <div className="my-1 h-px bg-border/70" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={!composerContextMenu.hasContent}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5",
-                    "text-left text-sm text-foreground/90 transition-colors hover:bg-accent hover:text-accent-foreground",
-                    "disabled:pointer-events-none disabled:opacity-45",
-                  )}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={handleComposerContextSelectAll}
-                >
-                  <ScanText className="size-3.5 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">{contextMenuLabels.selectAll}</span>
-                </button>
-              </div>,
-              document.body,
-            )
-          : null}
+        {composerContextMenu ? (
+          <ContextMenuPopup
+            ref={composerContextMenuRef}
+            point={composerContextMenu}
+            onClose={closeComposerContextMenu}
+            finalFocus={editorRef}
+            className="min-w-38"
+          >
+            <ContextMenuItem
+              disabled={!contextMenuCanMutate || !contextMenuHasSelection}
+              onClick={handleComposerContextCut}
+            >
+              <Scissors className="size-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{contextMenuLabels.cut}</span>
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!contextMenuHasSelection}
+              onClick={handleComposerContextCopy}
+            >
+              <Copy className="size-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{contextMenuLabels.copy}</span>
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!contextMenuCanMutate}
+              onClick={() => {
+                void handleComposerContextPaste();
+              }}
+            >
+              <ClipboardPaste className="size-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{contextMenuLabels.paste}</span>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              disabled={!composerContextMenu.hasContent}
+              onClick={handleComposerContextSelectAll}
+            >
+              <ScanText className="size-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{contextMenuLabels.selectAll}</span>
+            </ContextMenuItem>
+          </ContextMenuPopup>
+        ) : null}
         {/* biome-ignore lint/a11y/useSemanticElements: The composer is contenteditable so it can host inline mention chips. */}
         <div
           ref={editorRef}

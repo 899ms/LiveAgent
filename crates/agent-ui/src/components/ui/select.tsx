@@ -2,6 +2,7 @@ import { Select as SelectPrimitive } from "@base-ui/react";
 import { Check, ChevronDown, ChevronUp } from "@liveagent/ui/components/IconSet";
 import * as React from "react";
 import { cn } from "../../lib/shared/utils";
+import { floatingSurfaceClassName } from "./menu-surface";
 import { useZoneFontScaleStyle } from "./zone-font-scale";
 
 type SelectProps = Omit<
@@ -147,7 +148,7 @@ export const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps
             ref={ref}
             className={cn(
               "max-h-96 min-w-32 overflow-hidden",
-              "rounded-md border bg-popover text-popover-foreground shadow-md",
+              floatingSurfaceClassName,
               "data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
               "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
               className,

@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from "@liveagent/ui/components/IconSet";
 import { SettingsNotice } from "@liveagent/ui/components/settings/SettingsNotice";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { RefreshButton } from "@liveagent/ui/components/ui/button";
 import { Skeleton } from "@liveagent/ui/components/ui/skeleton";
 import { SwitchRoot, SwitchThumb } from "@liveagent/ui/components/ui/switch";
 import { useLocale } from "@liveagent/ui/i18n/index";
@@ -151,7 +151,8 @@ export function SkillsSettingsForm(props: SettingsSectionProps) {
             />
           </SwitchRoot>
 
-          <Button
+          <RefreshButton
+            aria-busy={loading}
             variant="outline"
             size="sm"
             className={cn(
@@ -172,7 +173,7 @@ export function SkillsSettingsForm(props: SettingsSectionProps) {
                 <span className="skills-scan-dot size-1 rounded-full bg-primary" />
               </span>
             )}
-          </Button>
+          </RefreshButton>
         </div>
       </div>
 
@@ -229,15 +230,16 @@ export function SkillsSettingsForm(props: SettingsSectionProps) {
                   {t("settings.skillsNotFoundHint")}
                 </p>
               </div>
-              <Button
+              <RefreshButton
+                aria-busy={loading}
                 variant="outline"
                 size="sm"
                 className="mt-1 gap-1.5"
                 onClick={() => void refresh()}
               >
-                <RefreshCw className="size-3.5" />
+                <RefreshCw data-refresh-icon className="size-3.5" />
                 {t("settings.skillsRescan")}
-              </Button>
+              </RefreshButton>
             </div>
           ) : null}
 

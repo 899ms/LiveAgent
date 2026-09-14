@@ -10,7 +10,13 @@ import {
   Trash2,
   Upload,
 } from "@liveagent/ui/components/IconSet";
+import { RefreshButton } from "@liveagent/ui/components/ui/button";
 import { useConfirmDialog } from "@liveagent/ui/components/ui/confirm-dialog";
+import {
+  ContextMenuItem,
+  ContextMenuPopup,
+  ContextMenuSeparator,
+} from "@liveagent/ui/components/ui/context-menu";
 import { EmptyState } from "@liveagent/ui/components/ui/empty-state";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import type { SftpClient, SftpEntry, SftpSide, SftpTransfer } from "@liveagent/ui/lib/sftp/types";
@@ -357,19 +363,6 @@ export function WorkspaceSftpPanel(props: WorkspaceSftpPanelProps) {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
-    window.addEventListener("click", close);
-    window.addEventListener("blur", close);
-    window.addEventListener("resize", close);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("blur", close);
-      window.removeEventListener("resize", close);
-    };
-  }, [contextMenu]);
 
   useEffect(() => {
     return client.subscribeTransfers((event) => {
@@ -902,13 +895,9 @@ export function WorkspaceSftpPanel(props: WorkspaceSftpPanelProps) {
         selectEntry(side, path, false);
       }
       const rect = panelRef.current?.getBoundingClientRect();
-      const menuWidth = 220;
-      const menuHeight = 250;
-      const maxX = Math.max(8, (rect?.width ?? window.innerWidth) - menuWidth - 8);
-      const maxY = Math.max(8, (rect?.height ?? window.innerHeight) - menuHeight - 8);
       setContextMenu({
-        x: Math.min(Math.max(8, event.clientX - (rect?.left ?? 0)), maxX),
-        y: Math.min(Math.max(8, event.clientY - (rect?.top ?? 0)), maxY),
+        x: event.clientX - (rect?.left ?? 0),
+        y: event.clientY - (rect?.top ?? 0),
         side,
         path,
         kind,
@@ -1041,14 +1030,20 @@ export function WorkspaceSftpPanel(props: WorkspaceSftpPanelProps) {
                         </span>
                       </button>
                     ) : null}
-                    <button
+                    <RefreshButton
+                      aria-busy={pane.loading}
+                      variant="ghost"
+                      size="icon-sm"
                       type="button"
                       className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-background hover:text-foreground"
                       title={t("workspaceSftp.refresh")}
                       onClick={() => refreshPane(side)}
                     >
-                      <RefreshCw className={cn("size-4", pane.loading && "animate-spin")} />
-                    </button>
+                      <RefreshCw
+                        data-refresh-icon
+                        className={cn("size-4", pane.loading && "animate-spin")}
+                      />
+                    </RefreshButton>
                   </div>
 
                   <SftpPathNavigator
@@ -1327,15 +1322,11 @@ export function WorkspaceSftpPanel(props: WorkspaceSftpPanelProps) {
       </div>
 
       {contextMenu ? (
-        <div
-          className={cn(
-            "origin-top-left layer-popover absolute w-220px select-none overflow-hidden",
-            "rounded-xl border border-border/60 bg-popover/90 p-1",
-            "text-xs text-popover-foreground shadow-2xl ring-1 ring-black/[0.03] backdrop-blur-xl dark:ring-white/[0.06]",
-          )}
-          role="menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onContextMenu={(event) => event.preventDefault()}
+        <ContextMenuPopup
+          point={contextMenu}
+          coordinateRoot={panelRef}
+          onClose={() => setContextMenu(null)}
+          className="w-220px text-xs"
         >
           {contextMenu.items.length > 1 ? (
             <div
@@ -1350,9 +1341,7 @@ export function WorkspaceSftpPanel(props: WorkspaceSftpPanelProps) {
                   String(contextMenu.items.length),
                 )}
               </span>
-              <button
-                type="button"
-                className="rounded px-1 text-emerald-700/80 hover:bg-emerald-500/10 hover:text-emerald-800 dark:text-emerald-300/80 dark:hover:text-emerald-200"
+              <ContextMenuItem
                 onClick={(event) => {
                   event.stopPropagation();
                   clearSelection(contextMenu.side);
@@ -1360,7 +1349,7 @@ export function WorkspaceSftpPanel(props: WorkspaceSftpPanelProps) {
                 }}
               >
                 {t("workspaceSftp.clearSelection")}
-              </button>
+              </ContextMenuItem>
             </div>
           ) : null}
           <MenuItem
@@ -1426,7 +1415,7 @@ export function WorkspaceSftpPanel(props: WorkspaceSftpPanelProps) {
               void deleteEntries(contextMenu.side, contextMenu.items);
             }}
           />
-          <div className="my-1 h-px bg-border/70" />
+          <ContextMenuSeparator />
           {contextMenu.side === "local" ? (
             <MenuItem
               icon={<Upload className="size-3.5" />}
@@ -1479,7 +1468,7 @@ export function WorkspaceSftpPanel(props: WorkspaceSftpPanelProps) {
               );
             }}
           />
-        </div>
+        </ContextMenuPopup>
       ) : null}
       {dragPreview ? (
         <DragPreview

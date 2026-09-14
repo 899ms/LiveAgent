@@ -8,6 +8,7 @@ import {
   Square,
   Trash2,
 } from "@liveagent/ui/components/IconSet";
+import { ContextMenuItem, ContextMenuPopup } from "@liveagent/ui/components/ui/context-menu";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { copyTextToClipboard } from "@liveagent/ui/lib/shared/clipboard";
 import { isDocumentHidden } from "@liveagent/ui/lib/shared/documentVisibility";
@@ -30,10 +31,11 @@ import {
 } from "../../lib/managed-process/store";
 import type { ManagedProcessLog, ManagedProcessRecord } from "../../lib/managed-process/types";
 import { cn } from "../../lib/shared/utils";
-import { Button } from "../ui/button";
+import { Button, RefreshButton } from "../ui/button";
 import {
   Dialog,
   DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -50,14 +52,6 @@ type BackgroundTasksPanelProps = {
 const ROW_ACTION_CLASS =
   "h-6 gap-1 rounded-md px-1.5 text-xs text-muted-foreground hover:text-foreground";
 
-const LOG_MENU_ITEM_CLASS =
-  "flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-xs text-popover-foreground hover:bg-muted focus-visible:bg-muted focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
-
-// Estimated menu box for viewport clamping; measuring after mount would
-// flash the menu at the wrong spot for one frame.
-const LOG_MENU_WIDTH = 150;
-const LOG_MENU_HEIGHT = 110;
-
 // Visible-panel reconcile cadence: one snapshot request against the desktop
 // registry, cheap on both transports.
 const RECONCILE_INTERVAL_MS = 30_000;
@@ -66,6 +60,7 @@ type LogContextMenuState = {
   x: number;
   y: number;
   hasSelection: boolean;
+  selectedText: string;
 };
 
 function formatUptime(startedAt: number, now: number) {
@@ -136,9 +131,10 @@ function BackgroundTaskLogDialog(props: {
       selection && !selection.isCollapsed && selection.toString().length > 0,
     );
     setContextMenu({
-      x: Math.max(8, Math.min(event.clientX, window.innerWidth - LOG_MENU_WIDTH)),
-      y: Math.max(8, Math.min(event.clientY, window.innerHeight - LOG_MENU_HEIGHT)),
+      x: event.clientX,
+      y: event.clientY,
       hasSelection,
+      selectedText: selection?.toString() ?? "",
     });
   }, []);
 
@@ -149,10 +145,10 @@ function BackgroundTaskLogDialog(props: {
   }, []);
 
   const handleCopySelection = useCallback(() => {
-    const text = window.getSelection()?.toString() ?? "";
+    const text = contextMenu?.selectedText ?? "";
     setContextMenu(null);
     if (text) copyToClipboard(text);
-  }, [copyToClipboard]);
+  }, [copyToClipboard, contextMenu]);
 
   const handleSelectAll = useCallback(() => {
     setContextMenu(null);
@@ -184,8 +180,6 @@ function BackgroundTaskLogDialog(props: {
         // 显式声明宽度：这是唯一依赖 primitive 默认值的调用点，默认值从
         // max-w-lg 收到 max-w-md 后它会被动变窄 64px，而它承载等宽终端日志。
         className="flex h-85dvh max-w-lg flex-col p-0 sm:h-dialog-36rem-dvh"
-        closeLabel={t("projectTools.close")}
-        showCloseButton
       >
         <DialogHeader className="flex-row items-center gap-2 py-3">
           <div className="min-w-0 flex-1">
@@ -198,7 +192,8 @@ function BackgroundTaskLogDialog(props: {
               {log?.truncated ? ` ${t("projectTools.bgTaskLogTruncated")}` : ""}
             </DialogDescription>
           </div>
-          <Button
+          <RefreshButton
+            aria-busy={loading}
             type="button"
             variant="ghost"
             size="sm"
@@ -209,10 +204,11 @@ function BackgroundTaskLogDialog(props: {
             {loading ? (
               <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <RefreshCw className="size-3.5" />
+              <RefreshCw data-refresh-icon className="size-3.5" />
             )}
             {t("projectTools.bgTaskRefreshLog")}
-          </Button>
+          </RefreshButton>
+          <DialogCloseButton label={t("projectTools.close")} className="static shrink-0" />
         </DialogHeader>
 
         {error ? (
@@ -252,70 +248,22 @@ function BackgroundTaskLogDialog(props: {
           )}
         </DialogBody>
         {contextMenu ? (
-          <div className="layer-popover fixed inset-0">
-            <button
-              type="button"
-              tabIndex={-1}
-              aria-hidden="true"
-              className="absolute inset-0 cursor-default"
-              onClick={() => setContextMenu(null)}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                setContextMenu(null);
-              }}
-            />
-            <div
-              role="menu"
-              aria-label={t("projectTools.bgTaskViewLog")}
-              className={cn(
-                "absolute z-10 min-w-36",
-                "rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg",
-              )}
-              style={{ left: contextMenu.x, top: contextMenu.y }}
-              onContextMenu={(event) => {
-                event.preventDefault();
-              }}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                disabled={!contextMenu.hasSelection}
-                className={LOG_MENU_ITEM_CLASS}
-                // preventDefault keeps mousedown from collapsing the text
-                // selection before the click handler reads it.
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                }}
-                onClick={handleCopySelection}
-              >
-                {t("projectTools.bgTaskLogCopy")}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={lines.length === 0}
-                className={LOG_MENU_ITEM_CLASS}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                }}
-                onClick={handleSelectAll}
-              >
-                {t("projectTools.bgTaskLogSelectAll")}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={lines.length === 0}
-                className={LOG_MENU_ITEM_CLASS}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                }}
-                onClick={handleCopyAll}
-              >
-                {t("projectTools.bgTaskLogCopyAll")}
-              </button>
-            </div>
-          </div>
+          <ContextMenuPopup
+            point={contextMenu}
+            onClose={() => setContextMenu(null)}
+            aria-label={t("projectTools.bgTaskViewLog")}
+            className="min-w-36 text-xs"
+          >
+            <ContextMenuItem disabled={!contextMenu.hasSelection} onClick={handleCopySelection}>
+              {t("projectTools.bgTaskLogCopy")}
+            </ContextMenuItem>
+            <ContextMenuItem disabled={lines.length === 0} onClick={handleSelectAll}>
+              {t("projectTools.bgTaskLogSelectAll")}
+            </ContextMenuItem>
+            <ContextMenuItem disabled={lines.length === 0} onClick={handleCopyAll}>
+              {t("projectTools.bgTaskLogCopyAll")}
+            </ContextMenuItem>
+          </ContextMenuPopup>
         ) : null}
       </DialogContent>
     </Dialog>

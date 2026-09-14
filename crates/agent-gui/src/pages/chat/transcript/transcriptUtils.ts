@@ -6,10 +6,6 @@ export type TranscriptContextMenuState = {
   selectedText: string;
 };
 
-const TRANSCRIPT_CONTEXT_MENU_WIDTH = 184;
-const TRANSCRIPT_CONTEXT_MENU_HEIGHT = 52;
-const TRANSCRIPT_CONTEXT_MENU_MARGIN = 12;
-
 export function writeTextToClipboard(text: string) {
   if (!text) return;
   void copyTextToClipboard(text);
@@ -32,20 +28,4 @@ export function resolveTranscriptSelectionText(root: HTMLElement | null) {
   }
 
   return selectedText;
-}
-
-export function clampTranscriptContextMenuPosition(x: number, y: number) {
-  const maxLeft = Math.max(
-    TRANSCRIPT_CONTEXT_MENU_MARGIN,
-    window.innerWidth - TRANSCRIPT_CONTEXT_MENU_WIDTH - TRANSCRIPT_CONTEXT_MENU_MARGIN,
-  );
-  const maxTop = Math.max(
-    TRANSCRIPT_CONTEXT_MENU_MARGIN,
-    window.innerHeight - TRANSCRIPT_CONTEXT_MENU_HEIGHT - TRANSCRIPT_CONTEXT_MENU_MARGIN,
-  );
-
-  return {
-    left: Math.min(Math.max(TRANSCRIPT_CONTEXT_MENU_MARGIN, x), maxLeft),
-    top: Math.min(Math.max(TRANSCRIPT_CONTEXT_MENU_MARGIN, y), maxTop),
-  };
 }

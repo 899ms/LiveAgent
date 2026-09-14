@@ -1,3 +1,9 @@
+import {
+  ContextMenuCheckboxItem,
+  ContextMenuItem,
+  ContextMenuPopup,
+  ContextMenuSeparator,
+} from "@liveagent/ui/components/ui/context-menu";
 import { copyTextToClipboard } from "@liveagent/ui/lib/shared/clipboard";
 import { COPY_FEEDBACK_DURATION, useCopyFeedback } from "@liveagent/ui/lib/shared/useCopyFeedback";
 // Context menu for the right-dock file tree panel.
@@ -20,26 +26,12 @@ import {
   Trash2,
 } from "@liveagent/ui/components/IconSet";
 import { useLocale } from "@liveagent/ui/i18n/index";
-import { cn } from "@liveagent/ui/lib/shared/utils";
-import {
-  type MouseEvent as ReactMouseEvent,
-  type RefObject,
-  useCallback,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent as ReactMouseEvent, type RefObject, useCallback } from "react";
 import {
   isWorkspaceEditablePreviewPath,
   isWorkspacePreviewPath,
 } from "../../workspace-editor/workspaceImagePreview";
 import { FILE_TREE_HAS_OS_INTEGRATION, type FileTreeKind } from "./model";
-
-const MENU_ITEM_CLASS =
-  "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-45";
-
-const MENU_ITEM_DESTRUCTIVE_CLASS =
-  "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-45";
 
 export type FileTreeContextMenuProps = {
   // Anchor relative to the panel (containerRef) coordinate space.
@@ -87,36 +79,14 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
     onActionError,
   } = props;
   const { t } = useLocale();
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+
   const { copied, showCopied } = useCopyFeedback(false, COPY_FEEDBACK_DURATION.short);
 
   const hasPathAction = Boolean(path);
 
-  // Measured clamp: the menu is positioned from its rendered size instead of
-  // the old hardcoded per-kind height tables, which drifted between the two
-  // frontends whenever entries were added or removed. The panel remounts this
-  // component per open (keyed on the anchor), so measuring once is enough.
-  useLayoutEffect(() => {
-    if (position) return;
-    const menu = menuRef.current;
-    if (!menu) return;
-    const menuRect = menu.getBoundingClientRect();
-    const bounds = containerRef.current?.getBoundingClientRect();
-    const width = bounds?.width ?? window.innerWidth;
-    const height = bounds?.height ?? window.innerHeight;
-    const maxX = Math.max(8, width - menuRect.width - 8);
-    const maxY = Math.max(8, height - menuRect.height - 8);
-    setPosition({
-      x: Math.max(8, Math.min(anchor.x, maxX)),
-      y: Math.max(8, Math.min(anchor.y, maxY)),
-    });
-  }, [anchor.x, anchor.y, containerRef, position]);
-
   const handleCopy = useCallback(
     async (event: ReactMouseEvent) => {
-      // Keep the menu open so the "copied" feedback is actually visible (the
-      // global click listener would close it otherwise).
+      // Keep the copied feedback visible until the user dismisses the menu.
       event.stopPropagation();
       const pathToCopy = displayPath ?? path;
       if (!pathToCopy) return;
@@ -132,30 +102,15 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
   );
 
   return (
-    <div
-      ref={menuRef}
-      role="menu"
-      className={cn(
-        "origin-top-left layer-popover absolute min-w-52 select-none overflow-hidden",
-        "rounded-xl border border-border/60 bg-popover/80 p-1",
-        "text-xs text-popover-foreground shadow-2xl ring-1 ring-black/[0.03] backdrop-blur-xl dark:ring-white/[0.06]",
-      )}
-      style={{
-        left: (position ?? anchor).x,
-        top: (position ?? anchor).y,
-        visibility: position ? undefined : "hidden",
-      }}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      }}
+    <ContextMenuPopup
+      point={anchor}
+      coordinateRoot={containerRef}
+      onClose={onClose}
+      className="min-w-52 text-xs"
     >
       {kind === "file" ? (
         <>
-          <button
-            type="button"
-            role="menuitem"
-            className={MENU_ITEM_CLASS}
+          <ContextMenuItem
             disabled={!canOpenFile}
             onClick={() => {
               onOpenFile(path);
@@ -172,12 +127,9 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
                 ? "projectTools.fileTree.previewFile"
                 : "projectTools.fileTree.openFile",
             )}
-          </button>
+          </ContextMenuItem>
           {FILE_TREE_HAS_OS_INTEGRATION && !isWorkspaceEditablePreviewPath(path) ? (
-            <button
-              type="button"
-              role="menuitem"
-              className={MENU_ITEM_CLASS}
+            <ContextMenuItem
               disabled={!hasPathAction}
               onClick={() => {
                 onOpenExternal(path);
@@ -186,15 +138,12 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
             >
               <ExternalLink className="size-3.5" />
               {t("projectTools.fileTree.openExternal")}
-            </button>
+            </ContextMenuItem>
           ) : null}
-          <div className="mx-1 my-1 h-px bg-border/60" />
+          <ContextMenuSeparator />
         </>
       ) : null}
-      <button
-        type="button"
-        role="menuitem"
-        className={MENU_ITEM_CLASS}
+      <ContextMenuItem
         disabled={!canMutate}
         onClick={() => {
           onStartAction("file", path);
@@ -203,11 +152,8 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
       >
         <Plus className="size-3.5" />
         {t("projectTools.fileTree.newFile")}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className={MENU_ITEM_CLASS}
+      </ContextMenuItem>
+      <ContextMenuItem
         disabled={!canMutate}
         onClick={() => {
           onStartAction("folder", path);
@@ -216,11 +162,8 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
       >
         <Folder className="size-3.5" />
         {t("projectTools.fileTree.newFolder")}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className={MENU_ITEM_CLASS}
+      </ContextMenuItem>
+      <ContextMenuItem
         disabled={!canMutate || !hasPathAction}
         onClick={() => {
           onStartAction("rename", path);
@@ -229,11 +172,9 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
       >
         <SquarePen className="size-3.5" />
         {t("projectTools.fileTree.rename")}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className={MENU_ITEM_DESTRUCTIVE_CLASS}
+      </ContextMenuItem>
+      <ContextMenuItem
+        className="text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
         disabled={!canMutate || !hasPathAction}
         onClick={() => {
           onDelete(path);
@@ -242,40 +183,26 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
       >
         <Trash2 className="size-3.5" />
         {t("projectTools.fileTree.delete")}
-      </button>
-      <div className="mx-1 my-1 h-px bg-border/60" />
-      <button
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={showHidden}
-        className={MENU_ITEM_CLASS}
-        onClick={() => {
-          onToggleHidden();
-          onClose();
-        }}
-      >
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuCheckboxItem checked={showHidden} onCheckedChange={onToggleHidden}>
         {showHidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
         {t(
           showHidden
             ? "projectTools.fileTree.hideHiddenFiles"
             : "projectTools.fileTree.showHiddenFiles",
         )}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className={MENU_ITEM_CLASS}
+      </ContextMenuCheckboxItem>
+      <ContextMenuItem
+        closeOnClick={false}
         disabled={!hasPathAction}
         onClick={(event) => void handleCopy(event)}
       >
         <Copy className="size-3.5" />
         {copied ? t("projectTools.fileTree.copiedPath") : t("projectTools.fileTree.copyPath")}
-      </button>
+      </ContextMenuItem>
       {FILE_TREE_HAS_OS_INTEGRATION ? (
-        <button
-          type="button"
-          role="menuitem"
-          className={MENU_ITEM_CLASS}
+        <ContextMenuItem
           disabled={!hasPathAction}
           onClick={() => {
             onOpenContainingDirectory(path);
@@ -284,12 +211,9 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
         >
           <FolderOpen className="size-3.5" />
           {t("projectTools.fileTree.openContainingDirectory")}
-        </button>
+        </ContextMenuItem>
       ) : null}
-      <button
-        type="button"
-        role="menuitem"
-        className={MENU_ITEM_CLASS}
+      <ContextMenuItem
         disabled={!hasPathAction || !canInsertMention}
         onClick={() => {
           onInsertMention(path);
@@ -298,12 +222,9 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
       >
         <span className="flex size-3.5 items-center justify-center text-xs font-semibold">@</span>
         {t("projectTools.fileTree.insertReference")}
-      </button>
-      <div className="mx-1 my-1 h-px bg-border/60" />
-      <button
-        type="button"
-        role="menuitem"
-        className={MENU_ITEM_CLASS}
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem
         onClick={() => {
           onRefresh(path, kind);
           onClose();
@@ -311,7 +232,7 @@ export function FileTreeContextMenu(props: FileTreeContextMenuProps) {
       >
         <RefreshCw className="size-3.5" />
         {t("projectTools.fileTree.refresh")}
-      </button>
-    </div>
+      </ContextMenuItem>
+    </ContextMenuPopup>
   );
 }

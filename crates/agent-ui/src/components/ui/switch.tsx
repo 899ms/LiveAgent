@@ -25,13 +25,40 @@ const SWITCH_SIZES = {
   },
 } as const;
 
+const switchTrackClassName =
+  "shrink-0 rounded-full bg-muted-foreground/20 transition-colors data-[checked]:bg-sky-500";
+const switchThumbClassName =
+  "pointer-events-none block translate-x-0.5 rounded-full bg-white shadow-sm transition-transform";
+
+/** Decorative state for a menu row that owns the checkbox interaction. */
+export function SwitchIndicator({ checked, className }: { checked: boolean; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-checked={checked ? "" : undefined}
+      className={cn(
+        switchTrackClassName,
+        "inline-flex items-center",
+        SWITCH_SIZES.default.track,
+        className,
+      )}
+    >
+      <span
+        data-checked={checked ? "" : undefined}
+        className={cn(switchThumbClassName, SWITCH_SIZES.default.thumb)}
+      />
+    </span>
+  );
+}
+
 export const Switch = React.forwardRef<HTMLElement, SwitchProps>(
   ({ className, tone = "default", size = "default", ...props }, ref) => (
     <SwitchRoot
       ref={ref}
       data-slot="switch"
       className={cn(
-        "peer shrink-0 rounded-full bg-muted-foreground/20 transition-colors",
+        switchTrackClassName,
+        "peer",
         size !== "lg" && "inline-flex cursor-pointer items-center",
         "focus-visible:outline-none focus-visible:ring-2 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60 data-[unchecked]:hover:bg-muted-foreground/30",
         SWITCH_SIZES[size].track,
@@ -43,10 +70,7 @@ export const Switch = React.forwardRef<HTMLElement, SwitchProps>(
     >
       <SwitchThumb
         data-slot="switch-thumb"
-        className={cn(
-          "pointer-events-none block translate-x-0.5 rounded-full bg-white shadow-sm transition-transform",
-          SWITCH_SIZES[size].thumb,
-        )}
+        className={cn(switchThumbClassName, SWITCH_SIZES[size].thumb)}
       />
     </SwitchRoot>
   ),

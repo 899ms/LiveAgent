@@ -39,7 +39,7 @@ import type { UiSurface } from "@liveagent/ui/contracts/registry";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "../../components/ui/button";
+import { Button, RefreshButton } from "../../components/ui/button";
 import { Switch } from "../../components/ui/switch";
 import {
   applyCuaPolicy,
@@ -409,9 +409,15 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
               {checking ? t("settings.cuaDriver.heroChecking") : error}
             </p>
             {!checking ? (
-              <Button size="sm" variant="outline" onClick={() => void refresh({ force: true })}>
+              <RefreshButton
+                aria-busy={checking}
+                size="sm"
+                variant="outline"
+                onClick={() => void refresh({ force: true })}
+              >
+                <RefreshCw data-refresh-icon className="size-4" />
                 {t("settings.cuaDriver.recheck")}
-              </Button>
+              </RefreshButton>
             ) : null}
           </div>
         ) : (
@@ -537,15 +543,20 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
                     {t("settings.cuaDriver.enable")}
                   </Button>
                 ) : null}
-                <Button
+                <RefreshButton
+                  aria-busy={checking}
                   size="sm"
                   variant="outline"
                   disabled={checking || installing}
                   onClick={() => void refresh({ force: true })}
                 >
-                  <RefreshCw className={checking ? "size-4 animate-spin" : "size-4"} />
+                  <RefreshCw
+                    data-refresh-icon
+                    className={checking ? "size-4 animate-spin" : "size-4"}
+                  />
+                  <RefreshCw data-refresh-icon className="size-4" />
                   {t("settings.cuaDriver.recheck")}
-                </Button>
+                </RefreshButton>
               </div>
               {!installed && !canProvision ? (
                 <p className="text-xs text-muted-foreground">
@@ -688,14 +699,16 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
               </Button>
             ) : !permissionsReady ? (
               <>
-                <Button
+                <RefreshButton
+                  aria-busy={checking}
                   size="sm"
                   variant="outline"
                   disabled={checking || granting}
                   onClick={() => void refresh({ force: true })}
                 >
+                  <RefreshCw data-refresh-icon className="size-4" />
                   {t("settings.cuaDriver.recheck")}
-                </Button>
+                </RefreshButton>
                 {canProvision ? (
                   <Button
                     size="sm"

@@ -63,9 +63,6 @@ import {
   COMPOSER_CLIPBOARD_HTML_ATTR,
   COMPOSER_CLIPBOARD_MIME,
   COMPOSER_CLIPBOARD_VERSION,
-  COMPOSER_CONTEXT_MENU_HEIGHT,
-  COMPOSER_CONTEXT_MENU_MARGIN,
-  COMPOSER_CONTEXT_MENU_WIDTH,
   CONVERSATION_MENTION_CWD_ATTR,
   CONVERSATION_MENTION_ID_ATTR,
   CONVERSATION_MENTION_TITLE_ATTR,
@@ -488,22 +485,6 @@ export function selectComposerContents(root: HTMLElement) {
   const selection = window.getSelection();
   selection?.removeAllRanges();
   selection?.addRange(range);
-}
-
-export function clampComposerContextMenuPosition(x: number, y: number) {
-  const maxLeft = Math.max(
-    COMPOSER_CONTEXT_MENU_MARGIN,
-    window.innerWidth - COMPOSER_CONTEXT_MENU_WIDTH - COMPOSER_CONTEXT_MENU_MARGIN,
-  );
-  const maxTop = Math.max(
-    COMPOSER_CONTEXT_MENU_MARGIN,
-    window.innerHeight - COMPOSER_CONTEXT_MENU_HEIGHT - COMPOSER_CONTEXT_MENU_MARGIN,
-  );
-
-  return {
-    left: Math.min(Math.max(COMPOSER_CONTEXT_MENU_MARGIN, x), maxLeft),
-    top: Math.min(Math.max(COMPOSER_CONTEXT_MENU_MARGIN, y), maxTop),
-  };
 }
 
 export function normalizeMentionQuery(query: string) {

@@ -28,6 +28,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@liveagent/ui/components/ui/dropdown-menu";
+import { menuSurfaceClassName } from "@liveagent/ui/components/ui/menu-surface";
 import { Popover, PopoverContent, PopoverTrigger } from "@liveagent/ui/components/ui/popover";
 import { Switch } from "@liveagent/ui/components/ui/switch";
 import { useLocale } from "@liveagent/ui/i18n/index";
@@ -285,7 +286,8 @@ export const ComposerModelControls = memo(function ComposerModelControls(
         aria-label={t("chat.selectModel")}
         className={cn(
           "flex max-h-[min(360px,75dvh)] w-[300px] max-w-[calc(100vw-16px)] flex-col overflow-hidden",
-          "rounded-2xl border border-border/40 bg-popover p-1.5 text-xs leading-5 shadow-lg",
+          menuSurfaceClassName,
+          "p-1.5 text-xs leading-5",
           "web:font-app web:text-xs web:leading-5",
         )}
       >
@@ -445,7 +447,7 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                       </span>
                       <ChevronDown className="size-3 shrink-0" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="max-h-64 w-64 overflow-y-auto">
+                    <DropdownMenuContent variant="soft" className="max-h-64 w-64 overflow-y-auto">
                       <DropdownMenuRadioGroup
                         value={providerFilter}
                         onValueChange={setProviderFilter}

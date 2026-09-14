@@ -25,7 +25,7 @@ import {
   Wrench,
   Zap,
 } from "@liveagent/ui/components/IconSet";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import { useAutomation } from "@liveagent/ui/lib/automation/index";
 import type { GatewaySettingsSyncPayload } from "@liveagent/ui/lib/settings/sync";
 import { cachedDateTimeFormat, cachedNumberFormat } from "@liveagent/ui/lib/shared/intlFormatters";
@@ -1146,7 +1146,8 @@ export function StatusDashboardPage() {
               online={status?.online === true}
               label={status?.online ? "Agent online" : "Agent offline"}
             />
-            <Button
+            <RefreshButton
+              aria-busy={snapshot.loading}
               type="button"
               variant="ghost"
               className={statusActionClass}
@@ -1156,10 +1157,10 @@ export function StatusDashboardPage() {
               {snapshot.loading ? (
                 <Loader2 size={15} className="animate-spin" />
               ) : (
-                <RefreshCw size={15} />
+                <RefreshCw data-refresh-icon size={15} />
               )}
               Sync
-            </Button>
+            </RefreshButton>
             <a className={statusActionClass} href="./" title="回到 Gateway 控制台">
               Console
               <ExternalLink size={14} />

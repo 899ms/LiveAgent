@@ -21,7 +21,7 @@ import {
 } from "@liveagent/ui/lib/skills/index";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GlassPanel } from "../../components/hub/HubChrome";
-import { Button } from "../../components/ui/button";
+import { Button, RefreshButton } from "../../components/ui/button";
 import { cn } from "../../lib/shared/utils";
 import { LOCAL_FILE_TOOL, McpImportSourcePicker } from "./McpImportSourcePicker";
 
@@ -322,7 +322,7 @@ export function McpImportView(props: {
                   )}
                   {t("mcpHub.importFromFile")}
                 </Button>
-                <Button
+                <RefreshButton
                   variant="outline"
                   size="sm"
                   className="min-w-27 justify-center gap-1.5 rounded-full"
@@ -335,7 +335,7 @@ export function McpImportView(props: {
                   ) : rescanComplete ? (
                     <Check className="size-3.5 text-[hsl(var(--chat-success))]" />
                   ) : (
-                    <RefreshCw className="size-3.5" />
+                    <RefreshCw data-refresh-icon className="size-3.5" />
                   )}
                   <span aria-live="polite">
                     {loading
@@ -344,7 +344,7 @@ export function McpImportView(props: {
                         ? t("settings.skillsScanComplete")
                         : t("mcpHub.importRescan")}
                   </span>
-                </Button>
+                </RefreshButton>
                 <Button
                   size="sm"
                   className="gap-1.5 rounded-full"

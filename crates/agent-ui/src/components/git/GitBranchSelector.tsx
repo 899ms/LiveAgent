@@ -15,7 +15,7 @@ import {
   Search,
   Upload,
 } from "@liveagent/ui/components/IconSet";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import { useConfirmDialog } from "@liveagent/ui/components/ui/confirm-dialog";
 import {
   DropdownMenu,
@@ -1049,6 +1049,7 @@ export function GitBranchSelector(props: {
           <ChevronDown className={cn(COMPOSER_CONTROL_CHEVRON_CLASS, menuOpen && "rotate-180")} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
+          variant="soft"
           className={cn(
             "composer-branch-dropdown flex w-72 max-h-[min(400px,75dvh)]",
             "flex-col overflow-hidden p-0",
@@ -1151,7 +1152,10 @@ export function GitBranchSelector(props: {
             )}
             <Tooltip>
               <TooltipTrigger render={<span className="inline-flex" />}>
-                <button
+                <RefreshButton
+                  aria-busy={loading}
+                  variant="ghost"
+                  size="icon-sm"
                   type="button"
                   className={HEADER_ICON_BUTTON_CLASS}
                   onClick={() => {
@@ -1162,8 +1166,11 @@ export function GitBranchSelector(props: {
                   }}
                   aria-label={t("git.branchSelector.refresh")}
                 >
-                  <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-                </button>
+                  <RefreshCw
+                    data-refresh-icon
+                    className={cn("size-3.5", loading && "animate-spin")}
+                  />
+                </RefreshButton>
               </TooltipTrigger>
               <TooltipContent>{t("git.branchSelector.refresh")}</TooltipContent>
             </Tooltip>
@@ -1195,7 +1202,7 @@ export function GitBranchSelector(props: {
                   </span>
                   <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="min-w-52">
+                <DropdownMenuSubContent variant="soft" className="min-w-52">
                   {repositories.map((repo) => {
                     const value = repo.isWorkspaceRoot ? "" : repo.root;
                     const isCurrent = value === selectedRepoRoot;
@@ -1420,7 +1427,7 @@ export function GitBranchSelector(props: {
                       >
                         <MoreHorizontal className="size-3.5" />
                       </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="min-w-44">
+                      <DropdownMenuSubContent variant="soft" className="min-w-44">
                         <DropdownMenuItem
                           disabled={!canWrite || mutating || dirtyTotal === 0}
                           onSelect={() => {

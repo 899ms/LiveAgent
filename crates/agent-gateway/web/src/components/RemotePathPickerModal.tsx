@@ -553,7 +553,7 @@ export function RemotePathPickerModal(props: RemotePathPickerModalProps) {
             <div className="w-24 shrink-0 text-xs font-medium text-muted-foreground">
               {mode === "file" ? t("settings.pathPickerPathLabel") : t("settings.workdir")}
             </div>
-            <Input value={headerPath} readOnly className="font-mono text-sm" />
+            <Input variant="plain" value={headerPath} readOnly className="font-mono text-sm" />
           </div>
         </DialogSubheader>
 
@@ -574,6 +574,7 @@ export function RemotePathPickerModal(props: RemotePathPickerModalProps) {
             <div className="rounded-xl border border-border/60 bg-background/70 p-2">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                 <Input
+                  variant="plain"
                   value={newFolderName}
                   onChange={(event) => {
                     setNewFolderName(event.currentTarget.value);

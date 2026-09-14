@@ -645,6 +645,7 @@ export function SystemSettingsForm(props: SettingsSectionProps) {
                   />
                   {showCustomInput ? (
                     <Input
+                      variant="plain"
                       id={`${key}-custom-input`}
                       className="w-full min-w-0 rounded-xl sm:w-240px"
                       value={customDraft}

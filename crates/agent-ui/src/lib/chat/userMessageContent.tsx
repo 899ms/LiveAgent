@@ -2,6 +2,7 @@ import { openUrl } from "@liveagent/app/shims/tauriOpener";
 import { getFileTypeIcon } from "@liveagent/ui/components/chat/fileTypeIcons";
 import { mentionChipClassName } from "@liveagent/ui/components/chat/mentionChipStyles";
 import { AppWindow, MessageSquareText, SkillIcon } from "@liveagent/ui/components/IconSet";
+import { floatingSurfaceClassName } from "@liveagent/ui/components/ui/menu-surface";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { useAppMentionIcon } from "@liveagent/ui/lib/chat/appMentionIcons";
 import { normalizeLogicalLineEndings } from "@liveagent/ui/lib/chat/composerText";
@@ -691,8 +692,8 @@ function CommitReferenceTooltip({
       ref={tooltipRef}
       className={cn(
         "layer-popover fixed overflow-y-auto",
-        "rounded-xl border border-border bg-popover px-3 py-2.5",
-        "text-xs text-popover-foreground shadow-xl",
+        floatingSurfaceClassName,
+        "px-3 py-2.5 text-xs",
       )}
       style={{
         left,

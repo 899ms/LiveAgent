@@ -154,6 +154,7 @@ export function ImagePreviewContextMenu(props: {
       <ContextMenuTrigger render={trigger} />
       {slide && capabilities ? (
         <ContextMenuContent
+          variant="soft"
           portalContainer={portalContainer}
           className="pointer-events-auto [&_[role=menuitem]]:gap-2"
           collisionPadding={8}

@@ -5,7 +5,12 @@ import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { cn } from "../../lib/shared/utils";
 import type { TerminalSession } from "../../lib/terminal/types";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "../ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "../ui/context-menu";
 import {
   formatTerminalSessionTitle,
   type RightDockLeasedToolKind,
@@ -135,10 +140,10 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
     kind: RightDockLeasedToolKind,
   ): Pick<DockTabDescriptor, "menuItems" | "dragProps"> => ({
     menuItems: onOpenToolInWorkbench ? (
-      <DropdownMenuItem onSelect={() => onOpenToolInWorkbench(kind)} className="gap-2">
+      <ContextMenuItem onSelect={() => onOpenToolInWorkbench(kind)} className="gap-2">
         <Columns2 className="size-3.5" />
         {t("workbench.openInSplit")}
-      </DropdownMenuItem>
+      </ContextMenuItem>
     ) : undefined,
     dragProps: onToolTabDragStart
       ? {
@@ -183,28 +188,6 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
             if (consumeSuppressedTabClick(tab.id)) return;
             tab.onActivate();
           }}
-          onContextMenu={
-            tab.menuItems
-              ? (event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setMenuTabId(tab.id);
-                }
-              : undefined
-          }
-          onKeyDown={
-            tab.menuItems
-              ? (event) => {
-                  // Keyboard equivalent of right-click: the workbench actions
-                  // must not be drag-only.
-                  if (event.key !== "ContextMenu" && !(event.key === "F10" && event.shiftKey)) {
-                    return;
-                  }
-                  event.preventDefault();
-                  setMenuTabId(tab.id);
-                }
-              : undefined
-          }
         />
         {tab.dragProps ? (
           <button
@@ -281,20 +264,19 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
 
     if (!tab.menuItems) return tabBody;
     return (
-      <DropdownMenu
+      <ContextMenu
         key={tab.id}
         open={menuTabId === tab.id}
         onOpenChange={(open) => setMenuTabId(open ? tab.id : "")}
-        modal={false}
       >
         {/* biome-ignore lint/complexity/noUselessFragments: DropdownMenu keeps trigger and popup siblings under one provider child */}
         <>
-          {tabBody}
-          <DropdownMenuContent align="start" sideOffset={4} className="min-w-44">
+          <ContextMenuTrigger render={tabBody} />
+          <ContextMenuContent variant="soft" align="start" sideOffset={4} className="min-w-44">
             {tab.menuItems}
-          </DropdownMenuContent>
+          </ContextMenuContent>
         </>
-      </DropdownMenu>
+      </ContextMenu>
     );
   };
 
@@ -345,10 +327,10 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
         // 拖入画板(租约)的会话不在 dock 列表里,这里的 tab 都可自由进入
         // 工作台;菜单是拖拽之外的键盘/指针等价入口。
         const menuItems = onOpenTerminalInWorkbench ? (
-          <DropdownMenuItem onSelect={() => onOpenTerminalInWorkbench(session)} className="gap-2">
+          <ContextMenuItem onSelect={() => onOpenTerminalInWorkbench(session)} className="gap-2">
             <Columns2 className="size-3.5" />
             {t("workbench.openInSplit")}
-          </DropdownMenuItem>
+          </ContextMenuItem>
         ) : null;
         return renderDockTab({
           id: session.id,

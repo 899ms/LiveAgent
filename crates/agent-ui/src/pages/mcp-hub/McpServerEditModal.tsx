@@ -317,10 +317,7 @@ export function McpServerEditModal(props: {
                         updateDraft({ transport });
                       }}
                     >
-                      <SelectTrigger
-                        className="w-full border-0 bg-settings-tile-hover shadow-none"
-                        id="mcp-edit-transport"
-                      >
+                      <SelectTrigger variant="plain" id="mcp-edit-transport">
                         <SelectValue placeholder={t("mcpHub.selectTransport")} />
                       </SelectTrigger>
                       <SelectContent>
@@ -486,10 +483,7 @@ export function McpServerEditModal(props: {
                             updateDraft({ authType: value === "oauth" ? "oauth" : "none" })
                           }
                         >
-                          <SelectTrigger
-                            className="w-full border-0 bg-settings-tile-hover shadow-none"
-                            id="mcp-edit-auth-type"
-                          >
+                          <SelectTrigger variant="plain" id="mcp-edit-auth-type">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

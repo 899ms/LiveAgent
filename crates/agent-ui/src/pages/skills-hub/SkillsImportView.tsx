@@ -8,7 +8,7 @@ import {
   RefreshCw,
 } from "@liveagent/ui/components/IconSet";
 import { Badge } from "@liveagent/ui/components/ui/badge";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import { Checkbox } from "@liveagent/ui/components/ui/checkbox";
 import { SearchHighlight } from "@liveagent/ui/components/ui/search-highlight";
 import { Skeleton } from "@liveagent/ui/components/ui/skeleton";
@@ -179,7 +179,7 @@ export function SkillsImportView(props: {
             />
 
             <div className="flex shrink-0 items-center gap-2">
-              <Button
+              <RefreshButton
                 variant="outline"
                 size="sm"
                 className="min-w-27 justify-center gap-1.5"
@@ -192,7 +192,7 @@ export function SkillsImportView(props: {
                 ) : rescanComplete ? (
                   <Check className="size-3.5 text-[hsl(var(--chat-success))]" />
                 ) : (
-                  <RefreshCw className="size-3.5" />
+                  <RefreshCw data-refresh-icon className="size-3.5" />
                 )}
                 <span aria-live="polite">
                   {loading
@@ -201,7 +201,7 @@ export function SkillsImportView(props: {
                       ? t("settings.skillsScanComplete")
                       : t("settings.skillsImportRescan")}
                 </span>
-              </Button>
+              </RefreshButton>
               {!bulkMode ? (
                 <Button
                   size="sm"

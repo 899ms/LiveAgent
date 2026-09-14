@@ -225,11 +225,7 @@ function useProviderModalController({
   const [showApiKey, setShowApiKey] = useState(false);
   const [activePanel, setActivePanel] = useState<ProviderDialogPanel>("general");
   const [headerValidationSubmitted, setHeaderValidationSubmitted] = useState(false);
-  const [headerSuggest, setHeaderSuggest] = useState<{
-    index: number;
-    rect: { left: number; top: number; width: number };
-  } | null>(null);
-  const [headerSuggestActive, setHeaderSuggestActive] = useState(0);
+
   const [dialogOpen, setDialogOpen] = useState(true);
   const requestClose = useCallback(() => setDialogOpen(false), []);
 
@@ -618,24 +614,6 @@ function useProviderModalController({
     setHeaderValidationSubmitted(false);
   }
 
-  function openHeaderSuggest(index: number) {
-    const input = headerKeyRefs.current[index];
-    if (!input) return;
-    const rect = input.getBoundingClientRect();
-    setHeaderSuggest({
-      index,
-      rect: { left: rect.left, top: rect.bottom + 4, width: rect.width },
-    });
-    setHeaderSuggestActive(0);
-  }
-
-  function applyHeaderSuggestion(preset: string) {
-    if (!headerSuggest) return;
-    updateCustomHeader(headerSuggest.index, "key", preset);
-    setHeaderSuggest(null);
-    focusCustomHeader(headerSuggest.index, "value");
-  }
-
   function cancelCustomHeaderImport() {
     setHeaderImportOpen(false);
     setHeaderImportText("");
@@ -648,7 +626,7 @@ function useProviderModalController({
   function applyCliIdentityHeaders(identity: CliIdentityProviderId) {
     const result = applyCliIdentity(customHeaders, identity);
     setCustomHeaders(result.headers);
-    setHeaderSuggest(null);
+
     setHeaderValidationSubmitted(false);
     setHeaderImportOpen(false);
     setHeaderImportError(null);
@@ -676,7 +654,7 @@ function useProviderModalController({
       }
       const merged = mergeImportedCustomHeaders(customHeaders, parsed.headers);
       setCustomHeaders(merged.headers);
-      setHeaderSuggest(null);
+
       setHeaderValidationSubmitted(false);
       setHeaderImportSummary({
         importedCount: merged.importedCount,
@@ -836,30 +814,7 @@ function useProviderModalController({
   const handleModelDraggingChange = useCallback((itemId: string | null) => {
     draggingModelIdRef.current = itemId;
   }, []);
-  const headerSuggestQuery = headerSuggest
-    ? (customHeaders[headerSuggest.index]?.key ?? "").trim().toLowerCase()
-    : "";
-  const headerSuggestUsed = new Set(
-    headerSuggest
-      ? customHeaders
-          .filter((_, index) => index !== headerSuggest.index)
-          .map((header) => header.key.trim().toLowerCase())
-          .filter(Boolean)
-      : [],
-  );
-  const headerSuggestItems = headerSuggest
-    ? headerSuggestQuery
-      ? getCustomHeaderKeyPresets(providerType).filter((preset) => {
-          const lower = preset.toLowerCase();
-          if (headerSuggestUsed.has(lower)) return false;
-          return lower.includes(headerSuggestQuery) && lower !== headerSuggestQuery;
-        })
-      : []
-    : [];
-  const headerSuggestActiveIndex = Math.min(
-    headerSuggestActive,
-    Math.max(0, headerSuggestItems.length - 1),
-  );
+
   const headerImportErrorMessage = headerImportError
     ? t(`settings.customHeaderImportError.${headerImportError}`)
     : null;
@@ -907,7 +862,6 @@ function useProviderModalController({
     apiKey,
     apiKeyForRequest,
     apiKeyIsRedactedDisplay,
-    applyHeaderSuggestion,
     applyCliIdentityHeaders,
     baseUrl,
     canSaveEditingModel,
@@ -934,10 +888,8 @@ function useProviderModalController({
     headerImportSummaryMessage,
     headerImportText,
     headerIssueMessage,
+    headerKeyPresets: getCustomHeaderKeyPresets(providerType),
     headerKeyRefs,
-    headerSuggest,
-    headerSuggestActiveIndex,
-    headerSuggestItems,
     headerValidationSubmitted,
     headerValueRefs,
     dialogOpen,
@@ -954,7 +906,6 @@ function useProviderModalController({
     newModelName,
     newModelPhases,
     onClose,
-    openHeaderSuggest,
     openModelSettings,
     persistedUsageQueryProviderId,
     promptCacheHintMode,
@@ -976,8 +927,6 @@ function useProviderModalController({
     setHeaderImportOpen,
     setHeaderImportSummary,
     setHeaderImportText,
-    setHeaderSuggest,
-    setHeaderSuggestActive,
     setIsFullUrl,
     setModelSearch,
     setModelsUrl,

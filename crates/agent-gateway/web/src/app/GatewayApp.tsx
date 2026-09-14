@@ -175,7 +175,11 @@ function useGatewayAppController() {
     },
     [],
   );
-  const addNotify = useCallback((type: ToastTone, message: string) => toast[type](message), []);
+  const addNotify = useCallback(
+    (type: ToastTone, message: string) =>
+      toast[type](message, { id: `app-notify:${type}:${message}` }),
+    [],
+  );
   // Sidebar errors raised outside the sidebar store (project removal flow).
   const [sidebarActionError, setSidebarActionError] = useState<string | null>(null);
   const [queuedChatTurns, setQueuedChatTurns] = useState<ChatQueueItemSummary[]>([]);

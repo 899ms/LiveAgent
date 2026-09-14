@@ -1,5 +1,5 @@
 import { CheckCircle2, Download, Key, Loader2, RefreshCw } from "@liveagent/ui/components/IconSet";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import { CopyButton } from "@liveagent/ui/components/ui/copy-button";
 import {
   Dialog,
@@ -647,10 +647,15 @@ export function ProviderSettingsExtension(props: {
             )}
           </DialogBody>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => void scan()} disabled={scanning}>
-              <RefreshCw className={cn("size-4", scanning && "animate-spin")} />
+            <RefreshButton
+              aria-busy={scanning}
+              variant="ghost"
+              onClick={() => void scan()}
+              disabled={scanning}
+            >
+              <RefreshCw data-refresh-icon className={cn("size-4", scanning && "animate-spin")} />
               {scanning ? "正在扫描…" : "重新扫描本地配置"}
-            </Button>
+            </RefreshButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

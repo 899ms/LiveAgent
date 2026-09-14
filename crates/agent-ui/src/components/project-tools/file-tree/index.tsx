@@ -37,7 +37,7 @@ import {
 import { cn } from "../../../lib/shared/utils";
 import type { WorkspaceActivityClient } from "../../../lib/workspace-activity/types";
 import { getFileTypeIcon } from "../../chat/fileTypeIcons";
-import { Button } from "../../ui/button";
+import { Button, RefreshButton } from "../../ui/button";
 import { useConfirmDialog } from "../../ui/confirm-dialog";
 import { Input } from "../../ui/input";
 import { isWorkspaceImagePath } from "../../workspace-editor/workspaceImagePreview";
@@ -271,22 +271,6 @@ export function FileTreeSurface(props: FileTreeSurfaceProps) {
     setActionError(null);
     setRevealTarget(null);
   }, [projectPathKey]);
-
-  useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    window.addEventListener("click", close);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [contextMenu]);
 
   // Reveal: expand + load the ancestor chain, then scroll the row into view.
   // The expansion merge reads `expandedRef` *after* the awaits so manual
@@ -608,7 +592,8 @@ export function FileTreeSurface(props: FileTreeSurfaceProps) {
             className="h-8 pl-7 text-xs placeholder:text-xs"
           />
         </div>
-        <Button
+        <RefreshButton
+          aria-busy={Object.values(nodes).some((node) => node.loading)}
           variant="ghost"
           size="icon-sm"
           className="rounded-lg"
@@ -618,8 +603,8 @@ export function FileTreeSurface(props: FileTreeSurfaceProps) {
             refreshVisible();
           }}
         >
-          <RefreshCw className="size-4" />
-        </Button>
+          <RefreshCw data-refresh-icon className="size-4" />
+        </RefreshButton>
       </div>
 
       {pendingAction ? (

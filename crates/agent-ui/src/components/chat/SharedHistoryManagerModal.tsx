@@ -11,7 +11,7 @@ import {
   Search,
   Share2,
 } from "@liveagent/ui/components/IconSet";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { RefreshButton } from "@liveagent/ui/components/ui/button";
 import {
   Dialog,
   DialogBody,
@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@liveagent/ui/components/ui/dialog";
+import { Input } from "@liveagent/ui/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@liveagent/ui/components/ui/radio-group";
 import { Switch } from "@liveagent/ui/components/ui/switch";
 import { useLocale } from "@liveagent/ui/i18n/index";
@@ -352,18 +353,16 @@ export function SharedHistoryManagerModal<Conversation extends SharedHistorySumm
           <div className="mt-4 flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
+              <Input
+                variant="plain"
                 value={query}
                 onChange={(event) => setQuery(event.currentTarget.value)}
                 placeholder={t("sharedHistory.searchPlaceholder")}
-                className={cn(
-                  "h-9 w-full rounded-xl border border-border/70 bg-background px-9",
-                  "text-xs outline-none transition-colors",
-                  "placeholder:text-muted-foreground/70 focus:border-sky-500/45 focus:ring-2 focus:ring-sky-500/15",
-                )}
+                className="px-9 text-xs"
               />
             </div>
-            <Button
+            <RefreshButton
+              aria-busy={hasLoading}
               type="button"
               variant="outline"
               onClick={onRefresh}
@@ -372,8 +371,8 @@ export function SharedHistoryManagerModal<Conversation extends SharedHistorySumm
               title={t("sharedHistory.refresh")}
               aria-label={t("sharedHistory.refresh")}
             >
-              <RefreshCw className="size-4" />
-            </Button>
+              <RefreshCw data-refresh-icon className="size-4" />
+            </RefreshButton>
           </div>
         </DialogHeader>
 

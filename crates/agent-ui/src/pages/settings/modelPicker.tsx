@@ -189,9 +189,10 @@ export function ModelPicker({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
+          variant="soft"
           align="start"
           collisionPadding={8}
-          className="w-(--anchor-width) min-w-64 max-w-[calc(100vw-32px)] overflow-hidden rounded-xl p-1 shadow-lg"
+          className="w-(--anchor-width) min-w-64 max-w-[calc(100vw-32px)] overflow-hidden"
         >
           <div className="px-2 py-1.5">
             <div

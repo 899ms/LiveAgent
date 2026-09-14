@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { cn } from "../../../agent-ui/src/lib/shared/utils.ts";
@@ -85,4 +86,26 @@ test("loading gradients and shadows coexist with colors and accept caller overri
   assert.equal(cn("bg-hub-frost-hero", "bg-none"), "bg-none");
   assert.equal(cn("shadow-red-500", "shadow-hub-frost-hero"), "shadow-red-500 shadow-hub-frost-hero");
   assert.equal(cn("shadow-hub-frost-hero", "shadow-none"), "shadow-none");
+});
+
+test("lightweight floating components share one border, radius, and shadow", () => {
+  const uiRoot = new URL("../../../agent-ui/src/components/", import.meta.url);
+  const surface = readFileSync(new URL("ui/menu-surface.ts", uiRoot), "utf8");
+  assert.match(
+    surface,
+    /rounded-xl border border-border\/70 bg-popover text-popover-foreground shadow-xs/,
+  );
+
+  for (const path of [
+    "ui/dropdown-menu.tsx",
+    "ui/popover.tsx",
+    "ui/select.tsx",
+    "settings/SettingsCombobox.tsx",
+  ]) {
+    assert.match(
+      readFileSync(new URL(path, uiRoot), "utf8"),
+      /floatingSurfaceClassName/,
+      `${path} should use the shared floating surface`,
+    );
+  }
 });

@@ -6,6 +6,7 @@ import {
   RefreshCw,
   X,
 } from "@liveagent/ui/components/IconSet";
+import { RefreshButton } from "@liveagent/ui/components/ui/button";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import { invokeFs } from "@liveagent/ui/lib/tools/fsBackend";
@@ -151,7 +152,10 @@ export function WorkspaceImagePreviewOverlay(props: WorkspaceImagePreviewOverlay
           <div className="truncate text-xs text-muted-foreground">{activePath}</div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
+          <RefreshButton
+            aria-busy={loading}
+            variant="ghost"
+            size="icon-sm"
             type="button"
             className={cn(
               "inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
@@ -162,8 +166,8 @@ export function WorkspaceImagePreviewOverlay(props: WorkspaceImagePreviewOverlay
             disabled={!openRequest || loading}
             onClick={() => openRequest && void loadImage(openRequest)}
           >
-            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          </button>
+            <RefreshCw data-refresh-icon className={cn("size-4", loading && "animate-spin")} />
+          </RefreshButton>
           <button
             type="button"
             className={cn(

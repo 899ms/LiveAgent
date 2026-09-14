@@ -221,6 +221,10 @@ test("STT connection test saves the current form and identifies the active runti
   assert.match(gatewayView, /onSttError=\{handleSttError\}/);
   assert.match(gatewayView, /sttProviderConfigured=/);
   assert.match(composerBar, /onError: onSttError/);
+  assert.match(composerBar, /onConfigurationRequired: handleSttConfigurationRequired/);
+  assert.match(composerBar, /id: "stt-provider-configuration-incomplete"/);
+  assert.match(composerBar, /duration: 8_000/);
+  assert.match(composerBar, /onOpenSettings\("stt"\)/);
   assert.match(composerBar, /providerConfigured: sttProviderConfigured/);
   assert.match(composerBar, /sessionKey: sttSessionKey/);
   assert.match(composerBar, /hidden,/);

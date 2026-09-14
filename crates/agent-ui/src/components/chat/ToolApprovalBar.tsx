@@ -289,7 +289,7 @@ export function ToolApprovalBar({
               <ChevronDown className="size-3" />
             </DropdownMenuTrigger>
           </div>
-          <DropdownMenuContent side="top" align="end" className="min-w-32">
+          <DropdownMenuContent variant="soft" side="top" align="end" className="min-w-32">
             <DropdownMenuItem
               disabled={submitting}
               onSelect={() =>

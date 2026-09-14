@@ -12,6 +12,7 @@ import {
   ScrollText,
   Terminal,
   Timer,
+  X,
   XCircle,
 } from "@liveagent/ui/components/IconSet";
 import { useLocale } from "@liveagent/ui/i18n/index";
@@ -31,7 +32,8 @@ import {
 } from "@liveagent/ui/lib/automation/index";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import { useEffect, useRef, useState } from "react";
-import { Dialog, DialogBody, DialogContent, DialogTitle } from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "../../components/ui/dialog";
 import { ConfirmActionPopover } from "./shared";
 
 type CronTaskViewModalProps = {
@@ -503,10 +505,7 @@ function RightPanel({ task, t }: { task: CronTask; t: (key: string) => string })
     <>
       {/* ── Fixed header ── */}
       <div
-        className={cn(
-          "flex shrink-0 items-center gap-2 border-b border-border/30",
-          "px-5 py-3.5 pr-14 max-sm:flex-wrap",
-        )}
+        className={cn("flex shrink-0 items-center gap-2 border-b border-border/30", "px-5 py-3.5")}
       >
         <ScrollText className="size-4 text-muted-foreground/50" />
         <span className="text-sm font-semibold text-foreground">{t("settings.cronViewLogs")}</span>
@@ -578,6 +577,15 @@ function RightPanel({ task, t }: { task: CronTask; t: (key: string) => string })
               {runningCount}
             </span>
           ) : null}
+          <DialogClose
+            aria-label={t("settings.cronViewClose")}
+            title={t("settings.cronViewClose")}
+            render={
+              <Button variant="ghost" size="icon-sm" className="size-7 shrink-0 rounded-lg" />
+            }
+          >
+            <X className="size-3.5" />
+          </DialogClose>
         </div>
       </div>
 
@@ -841,14 +849,10 @@ export function CronTaskViewModal({ taskId, onClose }: CronTaskViewModalProps) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
-        className="flex h-80dvh max-w-4xl p-0 max-[820px]:h-full max-[820px]:flex-col"
-        closeLabel={t("settings.cronViewClose")}
-        showCloseButton
-      >
+      <DialogContent className="flex h-80dvh max-w-4xl overflow-hidden p-0 max-[820px]:h-full max-[820px]:flex-col">
         <DialogTitle className="sr-only">{task.name}</DialogTitle>
         {/* ── Left: task detail ── */}
-        <DialogBody className="flex overflow-hidden p-0 max-[820px]:flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 max-[820px]:flex-col">
           <div
             className={cn(
               "flex w-380px shrink-0 flex-col",
@@ -872,7 +876,7 @@ export function CronTaskViewModal({ taskId, onClose }: CronTaskViewModalProps) {
           <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/5">
             <RightPanel task={task} t={t} />
           </div>
-        </DialogBody>
+        </div>
       </DialogContent>
     </Dialog>
   );

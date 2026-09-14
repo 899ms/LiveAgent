@@ -34,7 +34,7 @@ import {
   type TunnelUpdateInput,
   validateLocalHttpTarget,
 } from "../../lib/tunnels/constants";
-import { Button } from "../ui/button";
+import { Button, RefreshButton } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
@@ -572,7 +572,8 @@ const TunnelRow = memo(function TunnelRow(props: TunnelRowProps) {
               ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
-              <Button
+              <RefreshButton
+                aria-busy={pendingAction === "check"}
                 type="button"
                 variant="ghost"
                 size="icon-xs"
@@ -585,9 +586,9 @@ const TunnelRow = memo(function TunnelRow(props: TunnelRowProps) {
                 {pendingAction === "check" ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <RefreshCw className="size-3.5" />
+                  <RefreshCw data-refresh-icon className="size-3.5" />
                 )}
-              </Button>
+              </RefreshButton>
               <Button
                 type="button"
                 variant="ghost"
@@ -978,7 +979,8 @@ export function LocalTunnelPanel({
             title={`${t("projectTools.tunnelRelayLabel")} · ${healthTitle(snapshot?.relay ?? null)}`}
           />
           <span className="min-w-0 flex-1" />
-          <Button
+          <RefreshButton
+            aria-busy={checkingAll}
             type="button"
             variant="ghost"
             size="sm"
@@ -990,10 +992,10 @@ export function LocalTunnelPanel({
             {checkingAll ? (
               <Loader2 className="size-3 animate-spin" />
             ) : (
-              <RefreshCw className="size-3" />
+              <RefreshCw data-refresh-icon className="size-3" />
             )}
             {t("projectTools.tunnelCheckAction")}
-          </Button>
+          </RefreshButton>
         </div>
         <fieldset
           aria-label={t("projectTools.tunnelScopeGroup")}

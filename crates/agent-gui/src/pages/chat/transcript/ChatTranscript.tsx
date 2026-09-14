@@ -1,6 +1,6 @@
 import { ChatEmptyState } from "@liveagent/ui/components/chat/ChatEmptyState";
 import { ChevronDown, Copy } from "@liveagent/ui/components/IconSet";
-import { MotionPopover } from "@liveagent/ui/components/MotionPopover";
+import { ContextMenuItem, ContextMenuPopup } from "@liveagent/ui/components/ui/context-menu";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { buildFloorEntries } from "@liveagent/ui/lib/chat-floor-nav/floorModel";
 import { BOTTOM_REATTACH_ZONE_PX } from "@liveagent/ui/lib/chat-scroll/scrollFollowCore";
@@ -9,7 +9,6 @@ import { cn } from "@liveagent/ui/lib/shared/utils";
 import { FloorNavRail } from "@liveagent/ui/pages/chat/transcript/FloorNavRail";
 import { TranscriptWidthControls } from "@liveagent/ui/pages/chat/transcript/TranscriptWidthControls";
 import {
-  type CSSProperties,
   memo,
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -19,13 +18,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { RowInteractionProvider, useRowInteractionStore } from "./rowInteraction";
 import { TranscriptList, type TranscriptNavHandle } from "./TranscriptList";
 import { HistorySwitchLoadingOverlay } from "./TranscriptLoadingStates";
 import type { ChatTranscriptProps } from "./transcriptTypes";
 import {
-  clampTranscriptContextMenuPosition,
   resolveTranscriptSelectionText,
   type TranscriptContextMenuState,
   writeTextToClipboard,
@@ -81,7 +78,7 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
   // computed-style and inherited CSS-variable work from WebKit's hot path.
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(null);
   const transcriptRootRef = useRef<HTMLDivElement | null>(null);
-  const transcriptContextMenuRef = useRef<HTMLDivElement | null>(null);
+
   const [transcriptContextMenu, setTranscriptContextMenu] =
     useState<TranscriptContextMenuState | null>(null);
 
@@ -167,54 +164,6 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
     closeTranscriptContextMenu();
   }, [closeTranscriptContextMenu, conversationId]);
 
-  useEffect(() => {
-    if (!transcriptContextMenu) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        closeTranscriptContextMenu();
-        return;
-      }
-      if (transcriptContextMenuRef.current?.contains(target)) {
-        return;
-      }
-      closeTranscriptContextMenu();
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        closeTranscriptContextMenu();
-      }
-    };
-
-    const handleSelectionChange = () => {
-      if (!resolveTranscriptSelectionText(transcriptRootRef.current)) {
-        closeTranscriptContextMenu();
-      }
-    };
-
-    const handleScroll = () => {
-      closeTranscriptContextMenu();
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown, true);
-    window.addEventListener("keydown", handleKeyDown, true);
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleScroll);
-    window.addEventListener("blur", handleScroll);
-    document.addEventListener("selectionchange", handleSelectionChange);
-
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown, true);
-      window.removeEventListener("keydown", handleKeyDown, true);
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", handleScroll);
-      window.removeEventListener("blur", handleScroll);
-      document.removeEventListener("selectionchange", handleSelectionChange);
-    };
-  }, [closeTranscriptContextMenu, transcriptContextMenu]);
-
   const handleTranscriptContextMenu = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
       event.preventDefault();
@@ -232,9 +181,6 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
     [closeTranscriptContextMenu],
   );
 
-  const transcriptContextMenuPosition = transcriptContextMenu
-    ? clampTranscriptContextMenuPosition(transcriptContextMenu.x, transcriptContextMenu.y)
-    : null;
   const copySelectedTextLabel = locale === "en-US" ? "Copy selected text" : "复制选中文本";
   const jumpToBottomLabel = locale === "en-US" ? "Scroll to bottom" : "回到底部";
   const resizeTranscriptLabel =
@@ -255,12 +201,7 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
       <div
         ref={setScrollViewport}
         data-scroll-viewport
-        className="chat-transcript-scrollbar mx-1.5 h-full overflow-y-auto [overflow-anchor:none] [scrollbar-gutter:stable]"
-        style={
-          {
-            "--chat-scrollbar-bottom-inset": `${Math.ceil(bottomReservePx) + 8}px`,
-          } as CSSProperties
-        }
+        className="chat-transcript-scrollbar mx-1.5 h-full overflow-y-auto [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]"
       >
         <div
           className={cn(
@@ -372,49 +313,25 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
           <ChevronDown className="size-4" />
         </button>
       ) : null}
-      {typeof document !== "undefined"
-        ? createPortal(
-            <MotionPopover
-              open={transcriptContextMenu !== null && transcriptContextMenuPosition !== null}
-              ref={transcriptContextMenuRef}
-              role="menu"
-              className={cn(
-                "origin-top-left layer-popover fixed w-max min-w-38 max-w-viewport-inset-1p5rem select-none overflow-hidden",
-                "rounded-lg border border-border/70 bg-popover p-1.5 text-popover-foreground shadow-editor-context-menu",
-              )}
-              style={
-                transcriptContextMenuPosition
-                  ? {
-                      left: transcriptContextMenuPosition.left,
-                      top: transcriptContextMenuPosition.top,
-                    }
-                  : undefined
-              }
-              onContextMenu={(event) => {
-                event.preventDefault();
+      {typeof document !== "undefined" && transcriptContextMenu ? (
+        <ContextMenuPopup
+          point={transcriptContextMenu}
+          onClose={closeTranscriptContextMenu}
+          className="min-w-38"
+        >
+          {transcriptContextMenu ? (
+            <ContextMenuItem
+              onClick={() => {
+                writeTextToClipboard(transcriptContextMenu.selectedText);
+                closeTranscriptContextMenu();
               }}
             >
-              {transcriptContextMenu ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5",
-                    "text-left text-sm text-foreground/90 transition-colors hover:bg-accent hover:text-accent-foreground",
-                  )}
-                  onClick={() => {
-                    writeTextToClipboard(transcriptContextMenu.selectedText);
-                    closeTranscriptContextMenu();
-                  }}
-                >
-                  <Copy className="size-3.5 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">{copySelectedTextLabel}</span>
-                </button>
-              ) : null}
-            </MotionPopover>,
-            document.body,
-          )
-        : null}
+              <Copy className="size-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{copySelectedTextLabel}</span>
+            </ContextMenuItem>
+          ) : null}
+        </ContextMenuPopup>
+      ) : null}
       {isTranscriptBusy ? <HistorySwitchLoadingOverlay /> : null}
     </div>
   );

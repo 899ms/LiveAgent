@@ -528,6 +528,7 @@ export const ImagePreview = memo(function ImagePreview(props: ImagePreviewProps)
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
+              variant="soft"
               portalContainer={dialogRef.current}
               align="end"
               className="pointer-events-auto [&_[role=menuitem]]:gap-2"

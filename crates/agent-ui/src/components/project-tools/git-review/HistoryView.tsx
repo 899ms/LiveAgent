@@ -1,3 +1,8 @@
+import {
+  ContextMenuItem,
+  ContextMenuPopup,
+  ContextMenuSeparator,
+} from "@liveagent/ui/components/ui/context-menu";
 // GitReview history view: commit graph list (virtualized), commit detail pane
 // and the history context menus.
 //
@@ -28,7 +33,6 @@ import {
   type RefObject,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,11 +49,7 @@ import { useRightDockToolContext } from "../RightDockContext";
 import { DiffContent } from "./DiffView";
 import {
   basename,
-  CHANGE_CONTEXT_MENU_ITEM_CLASS,
-  CONTEXT_MENU_CONTAINER_CLASS,
-  CONTEXT_MENU_SEPARATOR_CLASS,
   type CommitRefKind,
-  clampMenuRectWithinRect,
   commitFileStatusLabel,
   commitFileStatusTone,
   commitHistoryTitle,
@@ -586,30 +586,8 @@ export function GitReviewHistoryView(props: {
   const historyListRef = useRef<HTMLDivElement | null>(null);
   const listPaneRef = useRef<HTMLElement | null>(null);
   const detailPaneRef = useRef<HTMLElement | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement | null>(null);
-  const listPaneVisible = useSplitReviewLayout || stackedPane === "list";
 
-  // Clamp the menu against its measured size after it renders (no hard-coded
-  // menu dimensions); useLayoutEffect corrects the position before paint, so
-  // an out-of-bounds menu never flashes at the raw pointer spot.
-  useLayoutEffect(() => {
-    if (!historyContextMenu) return;
-    const menu = contextMenuRef.current;
-    const panel = panelRef.current;
-    if (!menu || !panel) return;
-    const { dx, dy } = clampMenuRectWithinRect(
-      menu.getBoundingClientRect(),
-      panel.getBoundingClientRect(),
-      8,
-    );
-    if (dx !== 0 || dy !== 0) {
-      setHistoryContextMenu({
-        ...historyContextMenu,
-        x: historyContextMenu.x + dx,
-        y: historyContextMenu.y + dy,
-      });
-    }
-  }, [historyContextMenu, panelRef]);
+  const listPaneVisible = useSplitReviewLayout || stackedPane === "list";
 
   const selectedCommit = useMemo(
     () => historyCommits.find((commit) => commit.sha === selectedCommitSha) ?? null,
@@ -731,24 +709,6 @@ export function GitReviewHistoryView(props: {
     [listPaneVisible, maybeLoadMoreHistory],
   );
 
-  useEffect(() => {
-    if (!historyContextMenu) return;
-    const closeMenu = () => setHistoryContextMenu(null);
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeMenu();
-    };
-    window.addEventListener("click", closeMenu);
-    window.addEventListener("resize", closeMenu);
-    window.addEventListener("scroll", closeMenu, true);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("click", closeMenu);
-      window.removeEventListener("resize", closeMenu);
-      window.removeEventListener("scroll", closeMenu, true);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [historyContextMenu]);
-
   const goDetailPane = useCallback(() => {
     if (!useSplitReviewLayout) {
       onStackedPaneChange("detail", "forward");
@@ -773,7 +733,7 @@ export function GitReviewHistoryView(props: {
       event.preventDefault();
       event.stopPropagation();
       const panelRect = panelRef.current?.getBoundingClientRect();
-      // Raw pointer position; the measured-clamp layout effect corrects it.
+      // Base UI positions the popup at this pointer anchor.
       const x = panelRect ? event.clientX - panelRect.left : event.clientX;
       const y = panelRect ? event.clientY - panelRect.top : event.clientY;
       if (target.kind === "file") {
@@ -1280,24 +1240,15 @@ export function GitReviewHistoryView(props: {
       {historyContextMenu &&
       historyContextCommit &&
       (historyContextMenu.kind === "commit" || historyContextFile) ? (
-        // biome-ignore lint/a11y/useKeyWithClickEvents: onClick 仅拦截冒泡防止 window "click" 关闭菜单；键盘经 Escape 与 menuitem 按钮操作。
-        <div
-          ref={contextMenuRef}
-          role="menu"
-          className={cn("layer-popover absolute min-w-56", CONTEXT_MENU_CONTAINER_CLASS)}
-          style={{ left: historyContextMenu.x, top: historyContextMenu.y }}
-          onClick={(event) => event.stopPropagation()}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
+        <ContextMenuPopup
+          point={historyContextMenu}
+          coordinateRoot={panelRef}
+          onClose={() => setHistoryContextMenu(null)}
+          className="min-w-56"
         >
           {historyContextMenu.kind === "file" ? (
             <>
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+              <ContextMenuItem
                 onClick={() => {
                   if (historyContextFile) {
                     openHistoryCommitDiff(historyContextCommit, historyContextFile);
@@ -1306,11 +1257,8 @@ export function GitReviewHistoryView(props: {
               >
                 <Eye className="size-3.5" />
                 <span>{t("projectTools.gitReview.openChange")}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+              </ContextMenuItem>
+              <ContextMenuItem
                 disabled={!onInsertGitFileMention}
                 onClick={() => {
                   if (historyContextFile) {
@@ -1320,84 +1268,59 @@ export function GitReviewHistoryView(props: {
               >
                 <MessageSquareText className="size-3.5" />
                 <span>{t("projectTools.gitReview.addToContext")}</span>
-              </button>
+              </ContextMenuItem>
             </>
           ) : (
             <>
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+              <ContextMenuItem
                 onClick={() => openHistoryCommitDiff(historyContextCommit, historyContextFile)}
               >
                 <Eye className="size-3.5" />
                 <span>{t("projectTools.gitReview.openChange")}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+              </ContextMenuItem>
+              <ContextMenuItem
                 disabled={!historyContextCommitGithubUrl}
                 onClick={() => openHistoryCommitOnGithub(historyContextCommit)}
               >
                 <ExternalLink className="size-3.5" />
                 <span>{t("projectTools.gitReview.openOnGithub")}</span>
-              </button>
-              <div className={CONTEXT_MENU_SEPARATOR_CLASS} />
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
                 disabled={writeDisabled || operationBusy || state.status !== "ready"}
                 onClick={() => openCreateBranchFromCommit(historyContextCommit)}
               >
                 <GitBranch className="size-3.5" />
                 <span>{t("projectTools.gitReview.createBranch")}</span>
-              </button>
-              <div className={CONTEXT_MENU_SEPARATOR_CLASS} />
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
                 disabled={!gitClient}
                 onClick={() => compareHistoryCommitWithRemote(historyContextCommit)}
               >
                 <RefreshCw className="size-3.5" />
                 <span>{t("projectTools.gitReview.compareWithRemote")}</span>
-              </button>
-              <div className={CONTEXT_MENU_SEPARATOR_CLASS} />
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
-                onClick={() => copyHistoryCommitHash(historyContextCommit)}
-              >
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => copyHistoryCommitHash(historyContextCommit)}>
                 <Copy className="size-3.5" />
                 <span>{t("projectTools.gitReview.copyCommitHash")}</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
-                onClick={() => copyHistoryCommitMessage(historyContextCommit)}
-              >
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => copyHistoryCommitMessage(historyContextCommit)}>
                 <Copy className="size-3.5" />
                 <span>{t("projectTools.gitReview.copyCommitMessage")}</span>
-              </button>
-              <div className={CONTEXT_MENU_SEPARATOR_CLASS} />
-              <button
-                type="button"
-                role="menuitem"
-                className={CHANGE_CONTEXT_MENU_ITEM_CLASS}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
                 disabled={!onInsertCommitMention}
                 onClick={() => addHistoryCommitToContext(historyContextCommit)}
               >
                 <MessageSquareText className="size-3.5" />
                 <span>{t("projectTools.gitReview.addToContext")}</span>
-              </button>
+              </ContextMenuItem>
             </>
           )}
-        </div>
+        </ContextMenuPopup>
       ) : null}
     </>
   );

@@ -468,7 +468,7 @@ export function CronTaskModal({
                         }}
                       >
                         <SelectTrigger
-                          className="w-full border-0 bg-settings-tile-hover shadow-none"
+                          variant="plain"
                           aria-label={t("settings.cronSchedulePreset")}
                         >
                           <SelectValue />
@@ -529,10 +529,7 @@ export function CronTaskModal({
                       setFormError(null);
                     }}
                   >
-                    <SelectTrigger
-                      className="w-full border-0 bg-settings-tile-hover shadow-none"
-                      aria-label={t("settings.cronStepType")}
-                    >
+                    <SelectTrigger variant="plain" aria-label={t("settings.cronStepType")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -606,7 +603,7 @@ export function CronTaskModal({
                         }
                       }}
                     >
-                      <SelectTrigger className="h-9 w-full border-0 bg-settings-tile-hover shadow-none">
+                      <SelectTrigger variant="plain">
                         <span className="flex min-w-0 flex-1 items-center gap-2 text-left">
                           <span
                             className={cn(
@@ -796,7 +793,7 @@ export function CronTaskModal({
                             }
                           }}
                         >
-                          <SelectTrigger className="h-9 w-full border-0 bg-settings-tile-hover shadow-none">
+                          <SelectTrigger variant="plain">
                             <SelectValue>{t(REASONING_LEVEL_I18N_KEYS[reasoning])}</SelectValue>
                           </SelectTrigger>
                           <SelectContent className="max-h-60">

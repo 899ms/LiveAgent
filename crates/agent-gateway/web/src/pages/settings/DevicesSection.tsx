@@ -14,7 +14,7 @@ import {
   WifiOff,
   X,
 } from "@liveagent/ui/components/IconSet";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import {
   Dialog,
   DialogActions,
@@ -280,6 +280,7 @@ export function DevicesSection({
               </p>
               <div className="mt-4 flex gap-2">
                 <Input
+                  variant="plain"
                   type="password"
                   className="font-mono text-xs"
                   placeholder={t("settings.devicesGatewayToken")}
@@ -335,16 +336,20 @@ export function DevicesSection({
                 </button>
               ))}
             </div>
-            <Button
+            <RefreshButton
+              aria-busy={loading}
               variant="outline"
               size="sm"
               className="gap-1.5"
               disabled={loading}
               onClick={() => void load(page)}
             >
-              <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
+              <RefreshCw
+                data-refresh-icon
+                className={loading ? "size-3.5 animate-spin" : "size-3.5"}
+              />
               {t("settings.devicesRefresh")}
-            </Button>
+            </RefreshButton>
           </div>
 
           <DeviceDirectory
@@ -863,6 +868,7 @@ function DeviceRow(props: {
               {t("settings.devicesName")}
             </Label>
             <Input
+              variant="plain"
               id={`agent-name-${agent.agent_id}`}
               value={nameDraft}
               maxLength={MAX_AGENT_NAME_LENGTH}

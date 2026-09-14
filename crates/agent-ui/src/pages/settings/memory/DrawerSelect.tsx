@@ -51,7 +51,7 @@ export function DrawerSelect(props: {
         align="start"
         sideOffset={6}
         collisionPadding={12}
-        className="drawer-select-content min-w-(--anchor-width) rounded-xl border-border bg-background text-sm text-foreground/90 shadow-xl"
+        className="drawer-select-content min-w-(--anchor-width) text-sm"
       >
         {options.map((option) => (
           <SelectItem

@@ -1,6 +1,7 @@
-import { Combobox } from "@base-ui/react";
 import { cn } from "../../lib/shared/utils";
 import { Check, ChevronDown, Search } from "../IconSet";
+import { Combobox } from "../ui/combobox";
+import { floatingSurfaceClassName } from "../ui/menu-surface";
 import { useZoneFontScaleStyle } from "../ui/zone-font-scale";
 import { SETTINGS_PICKER_TRIGGER_CLASS } from "./SettingsSelect";
 
@@ -72,8 +73,8 @@ export function SettingsCombobox({
             initialFocus={false}
             className={cn(
               "w-80 min-w-(--anchor-width) max-w-(--available-width) overflow-hidden",
-              "origin-(--transform-origin) rounded-2xl bg-popover p-1 shadow-lg",
-              "text-sm text-popover-foreground outline-none",
+              floatingSurfaceClassName,
+              "origin-(--transform-origin) p-1 text-sm outline-none",
               "transition-[transform,scale,opacity] duration-150",
               "data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
               "data-[starting-style]:scale-95 data-[starting-style]:opacity-0 motion-reduce:transition-none",

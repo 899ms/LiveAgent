@@ -77,7 +77,7 @@ export function UserMenu(props: UserMenuProps) {
         </span>
         <ChevronDown className="size-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={8}>
+      <DropdownMenuContent variant="soft" align="end" sideOffset={8}>
         {agentSelector}
         <DropdownMenuSeparator />
         <DropdownMenuItem

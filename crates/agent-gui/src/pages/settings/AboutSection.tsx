@@ -5,7 +5,7 @@ import {
   SettingsRow,
   SettingsSection,
 } from "@liveagent/ui/components/settings/SettingsLayout";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import {
   Dialog,
   DialogBody,
@@ -21,7 +21,7 @@ import { useLocale } from "@liveagent/ui/i18n/index";
 import { AgentActivationSwitch } from "@liveagent/ui/pages/settings/shared";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useId } from "react";
-import { type AppUpdateCheckResult, type AppUpdateController } from "../../lib/appUpdates";
+import type { AppUpdateCheckResult, AppUpdateController } from "../../lib/appUpdates";
 import { updateUpdateSettings } from "../../lib/settings";
 import { formatReleaseDate } from "./aboutDate";
 import type { SettingsSectionProps } from "./types";
@@ -271,7 +271,8 @@ export function AboutSection(props: AboutSectionProps) {
                   </Button>
                 )}
                 {!showInstallAction ? (
-                  <Button
+                  <RefreshButton
+                    aria-busy={checking}
                     type="button"
                     className="w-full"
                     size="sm"
@@ -281,10 +282,10 @@ export function AboutSection(props: AboutSectionProps) {
                     {checking ? (
                       <Loader2 className="size-3.5 animate-spin" />
                     ) : (
-                      <RefreshCw className="size-3.5" />
+                      <RefreshCw data-refresh-icon className="size-3.5" />
                     )}
                     {t("settings.aboutCheckUpdate")}
-                  </Button>
+                  </RefreshButton>
                 ) : null}
                 {showInstallAction ? (
                   <Button

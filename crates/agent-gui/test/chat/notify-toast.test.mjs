@@ -1,6 +1,21 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createToastTestEnv } from "../helpers/toast-test-env.mjs";
+
+test("desktop and web notification bridges deduplicate identical messages", () => {
+  const desktop = readFileSync(
+    new URL("../../src/pages/chat/hooks/useNotifyToasts.ts", import.meta.url),
+    "utf8",
+  );
+  const web = readFileSync(
+    new URL("../../../agent-gateway/web/src/app/GatewayApp.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(desktop, /id: `app-notify:\$\{type\}:\$\{message\}`/);
+  assert.match(web, /id: `app-notify:\$\{type\}:\$\{message\}`/);
+});
 
 test("root toast functions buffer startup calls, preserve order and upsert, and survive page changes", async () => {
   const env = await createToastTestEnv();

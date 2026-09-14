@@ -1051,6 +1051,7 @@ export function SshTunnelPanel(props: SshTunnelPanelProps) {
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
+                    variant="soft"
                     side="bottom"
                     align="start"
                     sideOffset={6}
@@ -1743,6 +1744,7 @@ export function SshTunnelPanel(props: SshTunnelPanelProps) {
                 </div>
                 {!hostKeyPrompt ? (
                   <Input
+                    variant="plain"
                     value={promptAnswer}
                     onChange={(event) => setPromptAnswer(event.currentTarget.value)}
                     className="mt-3 h-10 text-xs placeholder:text-xs"

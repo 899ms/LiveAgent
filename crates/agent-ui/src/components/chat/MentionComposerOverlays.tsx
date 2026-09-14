@@ -9,13 +9,10 @@ import {
   Paperclip,
 } from "@liveagent/ui/components/IconSet";
 import { useLocale } from "@liveagent/ui/i18n/index";
-import { resolveMentionPopupHorizontalLayout } from "@liveagent/ui/lib/chat/mentionPopupLayout";
-import { UI_MOTION_TRANSITION } from "@liveagent/ui/lib/shared/motion";
 import { cn } from "@liveagent/ui/lib/shared/utils";
-import { domAnimation, LazyMotion, useReducedMotion } from "motion/react";
-import * as m from "motion/react-m";
-import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { type RefObject, useEffect, useRef } from "react";
+import { Popover, PopoverContent } from "../ui/popover";
+import { PreviewCard, PreviewCardContent } from "../ui/preview-card";
 import {
   formatLargePasteCount,
   type MentionComposerCommitMention,
@@ -23,23 +20,6 @@ import {
   type MentionMenuMode,
   type MentionSuggestion,
 } from "./MentionComposerModel";
-
-export const MENTION_POPUP_MAX_LIST_HEIGHT = 240;
-export const MENTION_POPUP_MIN_LIST_HEIGHT = 76;
-
-const MENTION_POPUP_VIEWPORT_MARGIN = 8;
-const MENTION_POPUP_GAP = 8;
-const MENTION_POPUP_HEADER_HEIGHT = 38;
-
-export function resolveMentionPopupListMaxHeight(anchorTop: number) {
-  const availableAbove = Math.floor(
-    anchorTop - MENTION_POPUP_VIEWPORT_MARGIN - MENTION_POPUP_GAP - MENTION_POPUP_HEADER_HEIGHT,
-  );
-  return Math.max(
-    MENTION_POPUP_MIN_LIST_HEIGHT,
-    Math.min(MENTION_POPUP_MAX_LIST_HEIGHT, availableAbove),
-  );
-}
 
 function conversationUpdatedAtLabel(value: number | undefined, locale: string) {
   if (!value) return "";
@@ -69,6 +49,7 @@ export function Popup({
   showEmpty,
   emptyLabel,
   onBack,
+  onClose,
   onSelect,
 }: {
   anchorRef: RefObject<HTMLElement | null>;
@@ -81,76 +62,37 @@ export function Popup({
   showEmpty: boolean;
   emptyLabel: string;
   onBack: () => void;
+  onClose: () => void;
   onSelect: (suggestion: MentionSuggestion) => void;
 }) {
   const { locale, t } = useLocale();
-  const popupRef = useRef<HTMLDivElement>(null);
+
   const listRef = useRef<HTMLDivElement>(null);
   const hlRef = useRef<HTMLButtonElement>(null);
-  const prefersReducedMotion = useReducedMotion();
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: highlightIndex is the trigger — hlRef points at a different row after each keyboard move, and the scroll must follow it.
   useEffect(() => {
     hlRef.current?.scrollIntoView({ block: "nearest" });
   }, [highlightIndex]);
 
-  useLayoutEffect(() => {
-    const anchor = anchorRef.current;
-    const popup = popupRef.current;
-    if (!anchor || !popup) return;
-    const inputSurface = anchor.closest<HTMLElement>(".composer-glass-card") ?? anchor;
-
-    const update = () => {
-      const rect = inputSurface.getBoundingClientRect();
-      const horizontal = resolveMentionPopupHorizontalLayout(rect, window.innerWidth);
-      popup.style.left = `${horizontal.left}px`;
-      popup.style.bottom = `${Math.max(
-        MENTION_POPUP_VIEWPORT_MARGIN,
-        window.innerHeight - rect.top + MENTION_POPUP_GAP,
-      )}px`;
-      popup.style.width = `${horizontal.width}px`;
-      const list = listRef.current;
-      if (list) {
-        list.style.maxHeight = `${resolveMentionPopupListMaxHeight(rect.top)}px`;
-      }
-    };
-
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(inputSurface);
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
-    };
-  }, [anchorRef]);
-
-  return createPortal(
-    <LazyMotion features={domAnimation} strict>
-      <m.div
-        ref={popupRef}
-        initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 6, scale: 0.98 }}
-        animate={{
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          transition: prefersReducedMotion
-            ? UI_MOTION_TRANSITION.instant
-            : UI_MOTION_TRANSITION.popover,
-        }}
-        exit={{
-          opacity: 0,
-          y: prefersReducedMotion ? 0 : 4,
-          scale: prefersReducedMotion ? 1 : 0.98,
-          transition: prefersReducedMotion
-            ? UI_MOTION_TRANSITION.instant
-            : UI_MOTION_TRANSITION.popoverExit,
-        }}
-        className={cn(
-          "origin-bottom min-w-0 layer-popover fixed overflow-hidden rounded-2xl",
-          "border border-black/[0.075] bg-popover text-popover-foreground shadow-sm ring-0 dark:border-white/[0.15]",
-        )}
+  return (
+    <Popover
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <PopoverContent
+        anchor={() =>
+          anchorRef.current?.closest<HTMLElement>(".composer-glass-card") ?? anchorRef.current
+        }
+        positionMethod="fixed"
+        side="top"
+        align="start"
+        sideOffset={8}
+        initialFocus={false}
+        finalFocus={false}
+        className="flex max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-0 flex-col overflow-hidden p-0"
         onMouseDown={(event) => {
           // Any mousedown inside the popup must not blur the editor (blur closes
           // the mention session), except on the native scrollbar strip where
@@ -169,7 +111,7 @@ export function Popup({
       >
         <div
           className={cn(
-            "flex min-h-10 items-center px-3.5 pb-1 pt-2",
+            "flex min-h-10 shrink-0 items-center px-3.5 pb-1 pt-2",
             "text-xs font-medium text-muted-foreground",
           )}
         >
@@ -212,7 +154,7 @@ export function Popup({
                     ? t("chat.composer.filesAndFolders")
                     : t("chat.composer.conversations")
           }
-          className="relative flex flex-col overflow-y-auto px-2 pb-2 web:[scrollbar-color:var(--gateway-scrollbar-thumb)_transparent] web:[&::-webkit-scrollbar]:size-8px"
+          className="relative flex min-h-0 max-h-60 flex-col overflow-y-auto px-2 pb-2 web:[scrollbar-color:var(--gateway-scrollbar-thumb)_transparent] web:[&::-webkit-scrollbar]:size-8px"
         >
           {isLoading && (
             <div className="p-2 text-xs text-muted-foreground">
@@ -352,9 +294,8 @@ export function Popup({
             <div className="p-2 text-xs text-muted-foreground">{emptyLabel}</div>
           )}
         </div>
-      </m.div>
-    </LazyMotion>,
-    document.body,
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -411,28 +352,19 @@ export function commitStatLabel(template: string, count: string) {
 
 export function CommitMentionTooltip({
   commit,
-  rect,
+  anchor,
+  onClose,
   onMouseEnter,
   onMouseLeave,
 }: {
   commit: MentionComposerCommitMention;
-  rect: DOMRect;
+  anchor: HTMLElement;
+  onClose: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }) {
   const { locale, t } = useLocale();
-  const maxWidth = Math.min(440, window.innerWidth - 16);
-  const minWidth = Math.min(200, maxWidth);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const [tooltipWidth, setTooltipWidth] = useState(minWidth);
-  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - tooltipWidth - 8));
-  const availableAbove = rect.top - 16;
-  const availableBelow = window.innerHeight - rect.bottom - 16;
-  const placeAbove = availableAbove > 260 || availableAbove > availableBelow;
-  const maxHeight = Math.max(120, Math.min(520, placeAbove ? availableAbove : availableBelow));
-  const top = placeAbove
-    ? Math.max(8, rect.top - 8)
-    : Math.min(window.innerHeight - 8, rect.bottom + 8);
+
   const shortSha = commit.shortSha || commit.sha.slice(0, 7);
   const author = commit.authorName || t("chat.composer.commitTooltipUnknownAuthor");
   const date = formatCommitTooltipDate(commit.authorDate, locale);
@@ -453,83 +385,70 @@ export function CommitMentionTooltip({
   const subject = commit.subject.trim() || shortSha;
   const authorLabel = commit.authorEmail ? `${author} <${commit.authorEmail}>` : author;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: commit is the trigger — the tooltip is mounted un-keyed, so hovering another chip re-renders this instance with new content that must be re-measured.
-  useLayoutEffect(() => {
-    const node = tooltipRef.current;
-    if (!node) return;
-    const measuredWidth = Math.ceil(node.getBoundingClientRect().width);
-    setTooltipWidth(Math.min(maxWidth, Math.max(minWidth, measuredWidth)));
-  }, [commit, maxWidth, minWidth]);
-
-  return createPortal(
-    // biome-ignore lint/a11y/noStaticElementInteractions: Hover and pointer handlers keep this non-interactive tooltip open while the pointer crosses into it.
-    <div
-      ref={tooltipRef}
-      className={cn(
-        "layer-popover fixed overflow-y-auto",
-        "rounded-xl border border-border bg-popover px-3 py-2.5",
-        "text-xs text-popover-foreground shadow-xl",
-      )}
-      style={{
-        left,
-        top,
-        width: "fit-content",
-        minWidth,
-        maxWidth,
-        maxHeight,
-        transform: placeAbove ? "translateY(-100%)" : "none",
+  return (
+    <PreviewCard
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
-      onMouseDown={(event) => event.preventDefault()}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
     >
-      <div className="flex items-start gap-2">
-        <GitHubMarkIcon className="mt-0.5 size-4 shrink-0 text-foreground" />
-        <div className="min-w-0">
-          <div className="break-words font-medium leading-tight">{authorLabel}</div>
-          {date ? (
-            <div className="mt-0.5 text-xs leading-tight text-muted-foreground">
-              {date.relative} ({date.absolute})
-            </div>
+      <PreviewCardContent
+        anchor={anchor}
+        align="start"
+        className="w-fit min-w-50 max-w-[min(440px,var(--available-width))] px-3 py-2.5 text-xs"
+        onMouseDown={(event) => event.preventDefault()}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <div className="flex items-start gap-2">
+          <GitHubMarkIcon className="mt-0.5 size-4 shrink-0 text-foreground" />
+          <div className="min-w-0">
+            <div className="break-words font-medium leading-tight">{authorLabel}</div>
+            {date ? (
+              <div className="mt-0.5 text-xs leading-tight text-muted-foreground">
+                {date.relative} ({date.absolute})
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-2 whitespace-pre-wrap break-words font-medium leading-snug">
+          {subject}
+        </div>
+        {messageBody ? (
+          <div className="mt-1.5 whitespace-pre-wrap break-words leading-snug text-muted-foreground">
+            {messageBody}
+          </div>
+        ) : null}
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-tight">
+          <span className="text-muted-foreground">{filesChangedLabel}</span>
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+            {insertionsLabel}
+          </span>
+          <span className="font-medium text-rose-600 dark:text-rose-400">{deletionsLabel}</span>
+        </div>
+        <div
+          className={cn(
+            "mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/70",
+            "pt-1.5 text-xs leading-tight text-muted-foreground",
+          )}
+        >
+          <span className="font-mono text-foreground">{shortSha}</span>
+          {commit.remoteName ? <span>{commit.remoteName}</span> : null}
+          {commit.githubUrl ? (
+            <>
+              <span className="text-border">|</span>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-primary hover:bg-primary/10"
+                onClick={() => commit.githubUrl && void openUrl(commit.githubUrl)}
+              >
+                <GitHubMarkIcon className="size-3" />
+                {t("chat.composer.commitTooltipOpenGithub")}
+              </button>
+            </>
           ) : null}
         </div>
-      </div>
-      <div className="mt-2 whitespace-pre-wrap break-words font-medium leading-snug">{subject}</div>
-      {messageBody ? (
-        <div className="mt-1.5 whitespace-pre-wrap break-words leading-snug text-muted-foreground">
-          {messageBody}
-        </div>
-      ) : null}
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-tight">
-        <span className="text-muted-foreground">{filesChangedLabel}</span>
-        <span className="font-medium text-emerald-600 dark:text-emerald-400">
-          {insertionsLabel}
-        </span>
-        <span className="font-medium text-rose-600 dark:text-rose-400">{deletionsLabel}</span>
-      </div>
-      <div
-        className={cn(
-          "mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/70",
-          "pt-1.5 text-xs leading-tight text-muted-foreground",
-        )}
-      >
-        <span className="font-mono text-foreground">{shortSha}</span>
-        {commit.remoteName ? <span>{commit.remoteName}</span> : null}
-        {commit.githubUrl ? (
-          <>
-            <span className="text-border">|</span>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-primary hover:bg-primary/10"
-              onClick={() => commit.githubUrl && void openUrl(commit.githubUrl)}
-            >
-              <GitHubMarkIcon className="size-3" />
-              {t("chat.composer.commitTooltipOpenGithub")}
-            </button>
-          </>
-        ) : null}
-      </div>
-    </div>,
-    document.body,
+      </PreviewCardContent>
+    </PreviewCard>
   );
 }

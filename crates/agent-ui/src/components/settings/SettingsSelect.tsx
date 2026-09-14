@@ -25,7 +25,6 @@ export function SettingsSelectContent({
   return (
     <SelectContent
       className={cn(
-        "rounded-xl border-border/70 bg-popover shadow-lg",
         "[&_[role=option]]:min-h-8 [&_[role=option]]:rounded-lg",
         "[&_[role=option]]:px-2.5 [&_[role=option]]:text-sm",
         "[&_[role=option][data-highlighted]]:bg-settings-tile-hover",

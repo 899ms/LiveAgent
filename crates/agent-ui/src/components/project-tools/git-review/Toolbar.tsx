@@ -42,7 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
-import { Button } from "../../ui/button";
+import { Button, RefreshButton } from "../../ui/button";
 import {
   Dialog,
   DialogActions,
@@ -151,6 +151,7 @@ export function GitRemoteSetupModal(props: {
                 {t("projectTools.gitReview.remoteUrl")}
               </label>
               <Input
+                variant="plain"
                 id={remoteUrlId}
                 value={remoteUrl}
                 onChange={(event) => onRemoteUrlChange(event.target.value)}
@@ -310,6 +311,7 @@ export function GitBranchFromCommitModal(props: {
                 {t("projectTools.gitReview.branchName")}
               </label>
               <Input
+                variant="plain"
                 id={branchNameId}
                 value={branchName}
                 onChange={(event) => onBranchNameChange(event.target.value)}
@@ -553,7 +555,7 @@ function GitReviewBranchMenu(props: { data: GitReviewData; writeDisabled: boolea
         <span className="min-w-0 flex-1 truncate text-left">{title}</span>
         <ChevronDown className="size-3 shrink-0 text-muted-foreground opacity-70" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-56 max-w-72">
+      <DropdownMenuContent variant="soft" align="start" className="min-w-56 max-w-72">
         <DropdownMenuLabel>{t("projectTools.gitReview.switchBranch")}</DropdownMenuLabel>
         {branchesLoading ? (
           <div className="flex items-center justify-center px-2 py-3">
@@ -750,7 +752,7 @@ export function GitReviewToolbar(props: {
                 </span>
                 <ChevronDown className="size-3 shrink-0 text-muted-foreground opacity-70" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-56 max-w-72">
+              <DropdownMenuContent variant="soft" align="start" className="min-w-56 max-w-72">
                 <DropdownMenuLabel>
                   {t("projectTools.gitReview.repositoryPicker")}
                 </DropdownMenuLabel>
@@ -801,7 +803,8 @@ export function GitReviewToolbar(props: {
         >
           <Sparkles className="size-3.5 text-primary" />
         </Button>
-        <Button
+        <RefreshButton
+          aria-busy={loading || historyLoading}
           size="sm"
           variant="ghost"
           disabled={loading || historyLoading || operationBusy}
@@ -820,8 +823,11 @@ export function GitReviewToolbar(props: {
             }
           }}
         >
-          <RefreshCw className={cn("size-3.5", (loading || historyLoading) && "animate-spin")} />
-        </Button>
+          <RefreshCw
+            data-refresh-icon
+            className={cn("size-3.5", (loading || historyLoading) && "animate-spin")}
+          />
+        </RefreshButton>
         <Button
           size="sm"
           variant="ghost"

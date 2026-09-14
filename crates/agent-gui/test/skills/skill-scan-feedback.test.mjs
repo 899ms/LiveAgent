@@ -71,3 +71,14 @@ test("manual Skill scan button holds a completed state before returning to idle"
   assert.match(source, /scanButtonComplete\s*\? t\("settings\.skillsScanComplete"\)/);
   assert.match(source, /text-\[hsl\(var\(--chat-success\)\)\]/);
 });
+
+test("Skill import result notices auto-dismiss instead of remaining indefinitely", () => {
+  const source = readFileSync(
+    new URL("../../../agent-ui/src/pages/skills-hub/SkillsHubPage.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /showImportToast[\s\S]*duration: 6_000/);
+  assert.match(source, /settings\.skillsImportFailed[\s\S]*duration: 10_000/);
+  assert.match(source, /settings\.skillsImportDone[\s\S]*duration: 5_000/);
+});

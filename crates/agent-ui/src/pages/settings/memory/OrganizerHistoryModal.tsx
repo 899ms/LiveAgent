@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@liveagent/ui/components/ui/alert-dialog";
-import { Button } from "@liveagent/ui/components/ui/button";
+import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import { Checkbox } from "@liveagent/ui/components/ui/checkbox";
 import {
   Dialog,
@@ -254,7 +254,7 @@ export function OrganizerHistoryModal(props: {
           </DialogDescription>
         </DialogHeader>
 
-        <DialogBody className="grid grid-cols-memory-navigation overflow-hidden p-0">
+        <DialogBody className="grid grid-cols-memory-navigation overflow-hidden p-0 max-[820px]:p-0">
           <aside className="flex min-h-0 flex-col border-r border-border/50">
             <div className="space-y-2 border-b border-border/40 p-3">
               <div className="flex items-center gap-2">
@@ -302,7 +302,8 @@ export function OrganizerHistoryModal(props: {
                   <BrushCleaning className="size-3.5" />
                 </Button>
               </div>
-              <Button
+              <RefreshButton
+                aria-busy={loading}
                 type="button"
                 variant="outline"
                 size="sm"
@@ -310,9 +311,12 @@ export function OrganizerHistoryModal(props: {
                 onClick={() => reload()}
                 disabled={loading}
               >
-                <RefreshCw className={cn("size-3.5", loading ? "animate-spin" : "")} />
+                <RefreshCw
+                  data-refresh-icon
+                  className={cn("size-3.5", loading ? "animate-spin" : "")}
+                />
                 {t("settings.memoryRefresh")}
-              </Button>
+              </RefreshButton>
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-2">
               {runs.length === 0 ? (
