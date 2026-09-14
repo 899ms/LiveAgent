@@ -64,7 +64,6 @@ function applyPanelWidthStyle(panel: HTMLElement | null, width: number) {
 export function useRightDockPanelWidth(options: UseRightDockPanelWidthOptions) {
   const { isOpen, collapseImmediately, width, onWidthChange } = options;
   const [shouldRenderContent, setShouldRenderContent] = useState(isOpen);
-  const [widthCollapsed, setWidthCollapsed] = useState(!isOpen);
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
   const [maxPanelWidth, setMaxPanelWidth] = useState(getFallbackMaxPanelWidth);
@@ -79,7 +78,7 @@ export function useRightDockPanelWidth(options: UseRightDockPanelWidthOptions) {
   const panelStyle = {
     "--project-tools-panel-width": panelWidthStyleValue(panelStyleWidth),
   } as CSSProperties;
-  const effectiveWidthCollapsed = !isOpen && collapseImmediately ? true : widthCollapsed;
+  const effectiveWidthCollapsed = !isOpen;
   const effectiveShouldRenderContent = !isOpen && collapseImmediately ? false : shouldRenderContent;
 
   useEffect(() => {
@@ -135,16 +134,13 @@ export function useRightDockPanelWidth(options: UseRightDockPanelWidthOptions) {
 
   useEffect(() => {
     if (isOpen) {
-      setWidthCollapsed(false);
       setShouldRenderContent(true);
       return;
     }
     if (collapseImmediately) {
       setShouldRenderContent(false);
-      setWidthCollapsed(true);
       return;
     }
-    setWidthCollapsed(true);
     const timer = window.setTimeout(() => {
       setShouldRenderContent(false);
     }, 220);

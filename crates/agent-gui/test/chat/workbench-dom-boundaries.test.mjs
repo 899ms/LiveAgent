@@ -168,14 +168,14 @@ test("closing a conversation pane resets its trajectory projection", () => {
   );
 });
 
-test("right dock width moves the center-column chrome with the panel", () => {
+test("right dock commits width once and only animates its own appearance", () => {
   assert.match(
     rightDockPanelSource,
-    /transition-\[width,opacity,transform\] duration-200 ease-out/,
+    /transition-\[opacity,transform\] duration-200 ease-out/,
   );
   assert.match(
     rightDockWidthSource,
-    /setWidthCollapsed\(true\);\s*const timer = window\.setTimeout\(\(\) => \{\s*setShouldRenderContent\(false\);/,
+    /const effectiveWidthCollapsed = !isOpen;/,
   );
   assert.match(
     rightDockPanelSource,

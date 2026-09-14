@@ -997,6 +997,7 @@ test("transcript virtualizer keeps scroll updates off the full React measurement
   assert.match(transcriptListSource, /rangeExtractor:\s*extractVirtualRange/);
   assert.match(transcriptListSource, /anchorTo:\s*viewportFollowing \? "start" : "end"/);
   assert.match(transcriptListSource, /data-row-key=\{row\.key\}/);
+  assert.match(transcriptListSource, /useFlushSync:\s*false/);
   assert.match(transcriptListSource, /directDomUpdates:\s*true/);
   assert.match(transcriptListSource, /directDomUpdatesMode:\s*"transform"/);
   assert.match(transcriptListSource, /ref=\{virtualizer\.containerRef\}/);

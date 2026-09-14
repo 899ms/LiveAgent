@@ -861,7 +861,8 @@ export const RightDockPanel = memo(function RightDockPanel(props: RightDockPanel
         className={cn(
           "project-tools-panel zone-font-scale fixed inset-x-0 bottom-0 z-40 flex h-dialog-34rem-vh",
           "min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background shadow-2xl",
-          "transition-[width,opacity,transform] duration-200 ease-out",
+          // Commit desktop width once so long transcripts do not reflow on every animation frame.
+          "transition-[opacity,transform] duration-200 ease-out",
           "motion-reduce:transition-none md:relative md:inset-auto md:z-10 md:h-full md:overflow-visible md:shadow-none web:max-820:inset-0!",
           "web:max-820:z-(--layer-panel)! web:max-820:h-100dvh! web:max-820:max-h-none! web:max-820:w-full! web:max-820:rounded-none! web:max-820:border-0! web:max-820:bg-background! web:max-820:shadow-none!",
           "web:max-820:translate-none! web:max-820:[transform:none]! web:max-820:[contain:layout_style] web:max-820:[backface-visibility:hidden] web:max-820:[will-change:opacity] web:max-820:invisible web:max-820:opacity-0! web:max-820:transition-[opacity,visibility]",

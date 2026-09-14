@@ -263,6 +263,9 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     initialMeasurementsCache,
     // Defer measurement-driven DOM writes out of WebKit's resize delivery.
     useAnimationFrameWithResizeObserver: true,
+    // Pixel overscan covers the next paint; avoid synchronously rendering
+    // Markdown inside every native scroll event.
+    useFlushSync: false,
     directDomUpdates: true,
     directDomUpdatesMode: "transform",
     // End anchoring is enabled only for a detached reader so keyed prepends
@@ -296,69 +299,90 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     isFollowing: () => isViewportFollowing?.() ?? false,
   });
 
-  // Prefetch about two viewports before the loaded boundary. Read the
-  // virtualizer's settled offset: DOM scrollTop excludes pending origin debt.
+  // Prefetch near the loaded boundary once per approach. A prepend and its
+  // measurement corrections are not another reading gesture.
   const loadingEarlierRef = useRef(false);
+  const earlierArmedRef = useRef(true);
   const hardTopLatchedRef = useRef(false);
-  const earlierRequestedRef = useRef(false);
   const firstHistoryKey = historyItems[0]?.key;
   const lastRequestedBoundaryRef = useRef<string | null>(null);
-  const checkEarlierRef = useRef(() => {});
   useEffect(() => {
-    if (!scrollViewport || !hasMoreHistory || isHistorySwitching) {
-      checkEarlierRef.current = () => {};
-      return;
-    }
+    if (!scrollViewport || !hasMoreHistory || isHistorySwitching) return;
     let frame = 0;
     const loadAtTop = () => {
       const atHardTop = scrollViewport.scrollTop <= 1;
       if (!atHardTop) hardTopLatchedRef.current = false;
-      if (loadingEarlierRef.current) return;
-      const nearSettledTop =
+      const nearTop =
+        (atHardTop && !hardTopLatchedRef.current) ||
         virtualizer.getSettledScrollOffset() <=
-        Math.max(LOAD_EARLIER_THRESHOLD_PX, scrollViewport.clientHeight * 2);
-      if (!nearSettledTop && (!atHardTop || hardTopLatchedRef.current)) return;
-      // Do not request the same boundary twice while React commits a page.
+          Math.max(LOAD_EARLIER_THRESHOLD_PX, scrollViewport.clientHeight * 2);
+      if (loadingEarlierRef.current) return;
+      if (!nearTop) {
+        earlierArmedRef.current = true;
+        return;
+      }
+      if (!earlierArmedRef.current) return;
       if (!firstHistoryKey || lastRequestedBoundaryRef.current === firstHistoryKey) return;
+      earlierArmedRef.current = false;
       if (atHardTop) hardTopLatchedRef.current = true;
-      earlierRequestedRef.current = true;
       lastRequestedBoundaryRef.current = firstHistoryKey;
       loadingEarlierRef.current = true;
-      let failed = false;
       void onLoadEarlierHistory()
         .catch(() => {
-          failed = true;
           lastRequestedBoundaryRef.current = null;
           hardTopLatchedRef.current = false;
         })
         .finally(() => {
-          requestAnimationFrame(() => {
-            loadingEarlierRef.current = false;
-            // A successful prepend can leave a fast reader inside the lead
-            // distance. Recheck after layout, without requiring another wheel.
-            if (!failed) checkEarlierRef.current();
-          });
+          loadingEarlierRef.current = false;
         });
     };
     const schedule = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(loadAtTop);
     };
-    const onWheel = (event: WheelEvent) => {
-      // A wheel gesture at the hard top need not produce a scroll event.
-      if (event.deltaY < 0) schedule();
+    const requestFromGesture = () => {
+      if (loadingEarlierRef.current) return;
+      earlierArmedRef.current = true;
+      schedule();
     };
-    checkEarlierRef.current = schedule;
+    const onWheel = (event: WheelEvent) => {
+      if (event.deltaY < 0) requestFromGesture();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || target.closest("input, textarea, [role=textbox]"))
+      )
+        return;
+      if (
+        ["ArrowUp", "PageUp", "Home"].includes(event.key) ||
+        (event.key === " " && event.shiftKey)
+      ) {
+        requestFromGesture();
+      }
+    };
+    let touchY: number | null = null;
+    const onTouchStart = (event: TouchEvent) => {
+      touchY = event.touches[0]?.clientY ?? null;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      const nextY = event.touches[0]?.clientY ?? null;
+      if (touchY !== null && nextY !== null && nextY > touchY) requestFromGesture();
+      touchY = nextY;
+    };
     scrollViewport.addEventListener("scroll", schedule, { passive: true });
-    scrollViewport.addEventListener("scrollend", schedule, { passive: true });
     scrollViewport.addEventListener("wheel", onWheel, { passive: true });
-    if (earlierRequestedRef.current) schedule();
+    scrollViewport.addEventListener("keydown", onKeyDown);
+    scrollViewport.addEventListener("touchstart", onTouchStart, { passive: true });
+    scrollViewport.addEventListener("touchmove", onTouchMove, { passive: true });
     return () => {
       cancelAnimationFrame(frame);
-      checkEarlierRef.current = () => {};
       scrollViewport.removeEventListener("scroll", schedule);
-      scrollViewport.removeEventListener("scrollend", schedule);
       scrollViewport.removeEventListener("wheel", onWheel);
+      scrollViewport.removeEventListener("keydown", onKeyDown);
+      scrollViewport.removeEventListener("touchstart", onTouchStart);
+      scrollViewport.removeEventListener("touchmove", onTouchMove);
     };
   }, [
     firstHistoryKey,
