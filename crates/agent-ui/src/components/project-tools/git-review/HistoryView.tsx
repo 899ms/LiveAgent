@@ -1,3 +1,4 @@
+import "./HistoryView.css";
 import {
   ContextMenuItem,
   ContextMenuPopup,

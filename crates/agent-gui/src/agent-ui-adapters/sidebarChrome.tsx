@@ -1,10 +1,10 @@
 import iconSimpleUrl from "../../src-tauri/icons/icon-simple.png";
 import { AppUpdateButton } from "../components/AppUpdateButton";
-import { isMacOsTauri, MacOsTitleBarSpacer } from "../components/MacOsTitleBarSpacer";
+import { isMacOsTauri } from "../components/MacOsTitleBarSpacer";
 import type { AppUpdateController } from "../lib/appUpdates";
 
 export function DesktopSidebarTitleBar() {
-  return <MacOsTitleBarSpacer className="bg-[hsl(var(--sidebar-bg))]" />;
+  return null;
 }
 
 export function DesktopSidebarBrand() {

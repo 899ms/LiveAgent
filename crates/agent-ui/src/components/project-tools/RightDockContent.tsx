@@ -12,6 +12,7 @@ import { RIGHT_DOCK_TOOL_DEFINITIONS, type RightDockSingletonTabKind } from "./r
 import { XTermViewport } from "./XTermViewport";
 
 type RightDockContentProps = {
+  isOpen: boolean;
   currentActiveTab: RightDockTabKind;
   initializedTools: Readonly<Record<RightDockSingletonTabKind, boolean>>;
   localSessions: TerminalSession[];
@@ -28,6 +29,7 @@ type RightDockContentProps = {
 
 export function RightDockContent(props: RightDockContentProps) {
   const {
+    isOpen,
     currentActiveTab,
     initializedTools,
     localSessions,
@@ -57,7 +59,7 @@ export function RightDockContent(props: RightDockContentProps) {
         // hidden duplicate. Closing the Pane releases the lease and this
         // persisted tool becomes visible here again.
         if (leasedTools.has(definition.kind)) return null;
-        const active = currentActiveTab === definition.kind;
+        const active = isOpen && currentActiveTab === definition.kind;
         return (
           <div
             key={definition.kind}
@@ -72,7 +74,7 @@ export function RightDockContent(props: RightDockContentProps) {
       })}
       {currentActiveTab === "backgroundTasks" && !leasedTools.has("backgroundTasks") ? (
         <div className="min-h-0 flex-1 overflow-hidden">
-          <BackgroundTasksPanel active />
+          <BackgroundTasksPanel active={isOpen} />
         </div>
       ) : null}
       {localSessions.length > 0 ? (
@@ -95,7 +97,7 @@ export function RightDockContent(props: RightDockContentProps) {
                 保证切 tab 走完整卸载/重挂而不是复用实例。 */}
             {localSessions.map((session) => {
               const isActiveTerminal =
-                currentActiveTab === "terminal" && activeSession?.id === session.id;
+                isOpen && currentActiveTab === "terminal" && activeSession?.id === session.id;
               if (!isActiveTerminal) return null;
               // 拖入画板(持有租约)的会话已从 localSessions 隐藏,这里挂载的
               // 视口必然是该会话的唯一消费者。

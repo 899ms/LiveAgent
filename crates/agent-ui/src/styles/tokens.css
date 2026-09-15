@@ -534,11 +534,6 @@
     --checkpoint-border: 0 0% 0% / 0.06;
     --checkpoint-icon-bg: 220 10% 95%;
     --checkpoint-icon-fg: 220 9% 46%;
-
-    /* VS Code SCM graph reference colors */
-    --git-review-graph-ref-local: #0063d3;
-    --git-review-graph-ref-remote: #652d90;
-    --git-review-graph-ref-base: #ea5c00;
   }
 
   .dark {
@@ -616,11 +611,6 @@
     --checkpoint-border: 0 0% 100% / 0.14;
     --checkpoint-icon-bg: 220 12% 22%;
     --checkpoint-icon-fg: 220 14% 76%;
-
-    /* VS Code SCM graph reference colors (dark) */
-    --git-review-graph-ref-local: #59a4f9;
-    --git-review-graph-ref-remote: #b180d7;
-    --git-review-graph-ref-base: #ea5c00;
   }
 }
 
@@ -1134,11 +1124,6 @@
 
 /* Fixed presentation values consumed by CSS and drawing-library adapters. */
 :root {
-  --ui-color-ffb000: #ffb000;
-  --ui-color-dc267f: #dc267f;
-  --ui-color-994f00: #994f00;
-  --ui-color-40b0a6: #40b0a6;
-  --ui-color-b66dff: #b66dff;
   --ui-color-rgba-100-116-139-0-35: rgba(100, 116, 139, 0.35);
   --ui-color-0b0f14: #0b0f14;
   --terminal-dark-background: var(--ui-color-0b0f14);

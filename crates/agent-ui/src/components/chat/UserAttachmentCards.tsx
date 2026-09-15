@@ -1,3 +1,4 @@
+import { Skeleton } from "@liveagent/ui/components/ui/skeleton";
 import { useMemo, useState } from "react";
 import { useLocale } from "../../i18n";
 import { formatUploadedFileSize, type PendingUploadedFile } from "../../lib/chat/uploadedFiles";
@@ -170,15 +171,13 @@ function UserImageAttachmentCard(props: {
             compact ? "h-28" : "h-36",
           )}
         >
-          <div
-            className={
-              isLoading
-                ? "size-16 animate-pulse rounded-xl bg-black/5 dark:bg-white/10"
-                : "flex size-10 items-center justify-center rounded-xl bg-black/[0.03] dark:bg-white/10"
-            }
-          >
-            {isLoading ? null : <FallbackIcon className="size-5" />}
-          </div>
+          {isLoading ? (
+            <Skeleton className="size-16 rounded-xl bg-black/5 dark:bg-white/10" />
+          ) : (
+            <div className="flex size-10 items-center justify-center rounded-xl bg-black/[0.03] dark:bg-white/10">
+              <FallbackIcon className="size-5" />
+            </div>
+          )}
         </div>
       )}
       <div className="flex items-center gap-1.5 px-2.5 py-1.5">

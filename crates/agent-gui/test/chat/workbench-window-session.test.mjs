@@ -234,7 +234,8 @@ test("startup paints theme and shell before progressively hydrating pane content
   assert.match(transcriptLoadingSource, /<PaneLoadingSkeleton/);
   assert.doesNotMatch(transcriptLoadingSource, /LoaderCircle/);
   assert.match(paneLoadingSource, /data-pane-loading-motion="static"/);
-  assert.doesNotMatch(paneLoadingSource, /animate-|shimmer|pulse|workbench-pane-restoring/);
+  assert.doesNotMatch(paneLoadingSource.replaceAll("animate-none", ""), /animate-|shimmer|pulse|workbench-pane-restoring/);
+  assert.match(paneLoadingSource, /max-w-transcript-web/);
   assert.doesNotMatch(appStyles, /workbench(?:PaneLoadingIn|RestoreThread)/);
   assert.match(transcriptSource, /DEFER_REVEAL_HISTORY_ITEM_THRESHOLD = 120/);
   assert.match(

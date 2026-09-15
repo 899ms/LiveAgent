@@ -24,6 +24,7 @@ export type ChatHeaderProps = {
   onOpenSettings: (section?: "providers", providerId?: string) => void;
   onToggleTheme: () => void;
   onOpenSidebar: () => void;
+  navigationActions?: ReactNode;
   leadingActions?: ReactNode;
   preThemeActions?: ReactNode;
   trailingActions?: ReactNode;
@@ -37,6 +38,7 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
     onOpenSettings,
     onToggleTheme,
     onOpenSidebar,
+    navigationActions,
     leadingActions,
     preThemeActions,
     trailingActions,
@@ -53,32 +55,28 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
   const desktopTitleBarInset = isDesktopChatHeaderInset();
 
   return (
-    <header
-      data-tauri-drag-region
-      className={cn(
-        "flex items-center justify-between gap-2 py-2.5 pr-4",
-        !sidebarOpen && desktopTitleBarInset ? "pl-232px" : "pl-4",
-        className,
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-1.5">
-        {!sidebarOpen && !desktopTitleBarInset ? (
+    <header data-tauri-drag-region className={cn("flex items-center gap-3 px-4", className)}>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {navigationActions}
+        {!desktopTitleBarInset ? (
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={onOpenSidebar}
-            title={t("tooltip.openSidebar")}
+            title={t(sidebarOpen ? "sidebar.closeSidebar" : "tooltip.openSidebar")}
+            aria-expanded={sidebarOpen}
+            aria-label={t(sidebarOpen ? "sidebar.closeSidebar" : "tooltip.openSidebar")}
             className="rounded-lg text-muted-foreground hover:text-foreground"
           >
             <PanelLeft className="size-4.5" />
           </Button>
         ) : null}
-        {leadingActions}
       </div>
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">{leadingActions}</div>
 
       <div
         data-app-workbench-actions=""
-        className="flex shrink-0 -translate-y-px items-center gap-1"
+        className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]"
       >
         {preThemeActions}
         <Button

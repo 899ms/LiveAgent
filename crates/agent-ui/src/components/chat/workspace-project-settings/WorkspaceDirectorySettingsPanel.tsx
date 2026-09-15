@@ -1,4 +1,5 @@
 import type { WorkspaceProject } from "@liveagent/app/lib/settings";
+import { Skeleton } from "@liveagent/ui/components/ui/skeleton";
 import type {
   WorkspaceProjectRootAccess,
   WorkspaceProjectRootClient,
@@ -110,11 +111,11 @@ export function WorkspaceDirectorySettingsPanel(props: {
               {t("chat.workspaceSettingsDirectoriesLoading")}
             </span>
             {[0, 1].map((row) => (
-              <div key={row} className="flex animate-pulse items-center gap-3 py-1">
-                <div className="size-8 shrink-0 rounded-lg bg-muted/70" />
+              <div key={row} className="flex items-center gap-3 py-1" aria-hidden="true">
+                <Skeleton className="size-8 shrink-0 rounded-lg bg-muted/70" />
                 <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="h-3 w-24 rounded bg-muted/70" />
-                  <div className="h-2.5 w-48 max-w-full rounded bg-muted/50" />
+                  <Skeleton className="h-3 w-24 rounded bg-muted/70" />
+                  <Skeleton className="h-2.5 w-48 max-w-full rounded bg-muted/50" />
                 </div>
               </div>
             ))}

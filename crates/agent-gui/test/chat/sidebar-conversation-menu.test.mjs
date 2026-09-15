@@ -15,6 +15,8 @@ const env = await createDomTestEnv({
   },
 });
 const { React, act, createRoot } = env;
+window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+const { SidebarProvider } = env.loadModule("@liveagent/ui/components/ui/sidebar.tsx");
 const { HistoryRow } = env.loadModule("@liveagent/ui/components/chat/ChatHistorySidebarRows.tsx");
 
 function mountRow(overrides = {}) {
@@ -51,7 +53,7 @@ function mountRow(overrides = {}) {
       ...overrides,
     });
   }
-  act(() => root.render(React.createElement(Harness)));
+  act(() => root.render(React.createElement(SidebarProvider, null, React.createElement(Harness))));
   return {
     container, calls,
     async cleanup() {

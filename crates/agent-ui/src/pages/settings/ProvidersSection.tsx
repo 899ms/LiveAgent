@@ -55,6 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@liveagent/ui/components/ui/select";
+import { Skeleton } from "@liveagent/ui/components/ui/skeleton";
 import { Switch } from "@liveagent/ui/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@liveagent/ui/components/ui/tabs";
 import { VerticalReorderList } from "@liveagent/ui/components/ui/VerticalReorderList";
@@ -758,9 +759,10 @@ function ProviderCardRow(props: {
                   <UsagePlanLine plan={firstUsagePlan} />
                 </span>
               ) : usageDisplay.loading ? (
-                <span
+                <Skeleton
+                  render={<span />}
                   aria-hidden="true"
-                  className="h-2 w-32 max-w-full animate-pulse rounded-full bg-foreground/[0.08] motion-reduce:animate-none"
+                  className="h-2 w-32 max-w-full rounded-full bg-foreground/[0.08]"
                 />
               ) : (
                 <span className={cn("truncate", usageDisplay.error && "text-destructive")}>
@@ -791,9 +793,10 @@ function ProviderCardRow(props: {
             ) : null}
             <div className="mt-0.5 flex min-h-4 min-w-0 items-center">
               {usageDisplay.loading ? (
-                <span
+                <Skeleton
+                  render={<span />}
                   aria-hidden="true"
-                  className="h-2 w-16 animate-pulse rounded-full bg-foreground/[0.06] motion-reduce:animate-none"
+                  className="h-2 w-16 rounded-full bg-foreground/[0.06]"
                 />
               ) : (
                 <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">

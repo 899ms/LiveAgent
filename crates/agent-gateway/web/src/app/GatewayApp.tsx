@@ -4,6 +4,7 @@ import type {
   MentionComposerHandle,
 } from "@liveagent/ui/components/chat/MentionComposer";
 import { useConfirmDialog } from "@liveagent/ui/components/ui/confirm-dialog";
+import { SidebarProvider, useSidebar } from "@liveagent/ui/components/ui/sidebar";
 import { type ToastTone, toast } from "@liveagent/ui/components/ui/toast-manager";
 import { LocaleContext, t as translate, useLocaleContextValue } from "@liveagent/ui/i18n/index";
 import { searchMentionConversations } from "@liveagent/ui/lib/chat/conversationSearch";
@@ -84,7 +85,7 @@ import {
   createLocalDraftConversationId,
   isLocalDraftConversationId,
 } from "./gatewayLocalDraft";
-import { resolveVisibleConversationId, shouldOpenSidebarByDefault } from "./historyUtils";
+import { resolveVisibleConversationId } from "./historyUtils";
 import { resolveConversationUploadWorkdir } from "./hooks/uploadWorkdirRouting";
 import { useDirectoryDropActions } from "./hooks/useDirectoryDropActions";
 import { useGatewayChatConfiguration } from "./hooks/useGatewayChatConfiguration";
@@ -214,7 +215,9 @@ function useGatewayAppController() {
   }, []);
   const effectiveTheme = resolveEffectiveTheme(settings.theme);
   const isAgentMode = settings.system.executionMode !== "text";
-  const [sidebarOpen, setSidebarOpen] = useState(shouldOpenSidebarByDefault);
+  const sidebar = useSidebar();
+  const sidebarOpen = sidebar.isMobile ? sidebar.openMobile : sidebar.open;
+  const setSidebarOpen = sidebar.isMobile ? sidebar.setOpenMobile : sidebar.setOpen;
   const {
     settingsOpen,
     overlay,
@@ -2234,6 +2237,13 @@ export type GatewayAppViewModel = Extract<
 >;
 
 export default function GatewayApp() {
+  return (
+    <SidebarProvider>
+      <GatewayAppContent />
+    </SidebarProvider>
+  );
+}
+function GatewayAppContent() {
   const result = useGatewayAppController();
   if (!result || !("activeFloorKey" in result)) {
     return result;

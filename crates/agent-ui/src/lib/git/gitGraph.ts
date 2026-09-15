@@ -1,9 +1,9 @@
 export const GRAPH_COLORS = [
-  "var(--ui-color-ffb000)",
-  "var(--ui-color-dc267f)",
-  "var(--ui-color-994f00)",
-  "var(--ui-color-40b0a6)",
-  "var(--ui-color-b66dff)",
+  "var(--git-review-graph-lane-1)",
+  "var(--git-review-graph-lane-2)",
+  "var(--git-review-graph-lane-3)",
+  "var(--git-review-graph-lane-4)",
+  "var(--git-review-graph-lane-5)",
 ];
 
 export const GRAPH_REF_COLORS = {

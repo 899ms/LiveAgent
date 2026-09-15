@@ -68,6 +68,7 @@ import {
 import type { SidebarConversation } from "../../lib/sidebar/types";
 import type { SidebarReorderPointer } from "../../lib/sidebar/useSidebarReorderDrag";
 import type { WorkspaceProjectGroup } from "../../lib/workspaceProjectTypes";
+import { SidebarMenuAction, SidebarMenuButton } from "../ui/sidebar";
 import {
   HISTORY_RENAME_INPUT_CLASS,
   PROJECT_ICON_BUTTON_CLASS,
@@ -837,7 +838,8 @@ export const HistoryRow = memo(function HistoryRow(props: HistoryRowProps) {
               />
             ) : null}
 
-            <button
+            <SidebarMenuButton
+              isActive={isActive}
               ref={titleButtonRef}
               type="button"
               draggable={!props.onReorderPointerDown && !onWorkbenchDragIntent && !item.isPending}
@@ -864,7 +866,8 @@ export const HistoryRow = memo(function HistoryRow(props: HistoryRowProps) {
               aria-pressed={isSelectionMode ? isSelected : undefined}
               disabled={isInteractionDisabled || (isSelectionMode && isSelectionDisabled)}
               className={cn(
-                "flex h-30px w-full min-w-0 items-center gap-2 rounded-md px-2",
+                "flex h-30px w-full min-w-0 items-center gap-2 rounded-md px-2 py-0",
+                "bg-transparent hover:bg-transparent active:bg-transparent data-active:bg-transparent",
                 "text-left outline-hidden transition-colors",
                 "focus-visible:ring-2 focus-visible:ring-ring web:max-820:[-webkit-touch-callout:none] web:max-820:select-none web:max-820:touch-pan-y",
               )}
@@ -904,7 +907,7 @@ export const HistoryRow = memo(function HistoryRow(props: HistoryRowProps) {
                   {blockedBadgeLabel}
                 </span>
               ) : null}
-            </button>
+            </SidebarMenuButton>
           </div>
 
           <div
@@ -954,11 +957,9 @@ export const HistoryRow = memo(function HistoryRow(props: HistoryRowProps) {
             >
               {!isMobileMenuLayout ? (
                 <>
-                  <Button
+                  <SidebarMenuAction
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className={PROJECT_ICON_BUTTON_CLASS}
+                    className={cn(PROJECT_ICON_BUTTON_CLASS, "static after:hidden")}
                     title={item.isPinned ? t("chat.conversationUnpin") : t("chat.conversationPin")}
                     aria-label={
                       item.isPinned ? t("chat.conversationUnpin") : t("chat.conversationPin")
@@ -967,14 +968,12 @@ export const HistoryRow = memo(function HistoryRow(props: HistoryRowProps) {
                     disabled={isInteractionDisabled || isBusy || item.isPending}
                   >
                     {item.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-                  </Button>
+                  </SidebarMenuAction>
                   <DropdownMenuTrigger
                     render={
-                      <Button
+                      <SidebarMenuAction
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className={PROJECT_ICON_BUTTON_CLASS}
+                        className={cn(PROJECT_ICON_BUTTON_CLASS, "static after:hidden")}
                         disabled={isInteractionDisabled || isBusy}
                         title={t("chat.conversationMore")}
                         aria-label={t("chat.conversationMore")}
@@ -1528,14 +1527,16 @@ export const ProjectRow = memo(function ProjectRow(props: {
           delay={0}
           closeOnClick
           render={
-            <button
+            <SidebarMenuButton
+              isActive={isActive}
               type="button"
               aria-current={isActive ? "page" : undefined}
               aria-disabled={isArchived || undefined}
               aria-expanded={props.onToggleExpanded ? props.expanded : undefined}
               draggable={false}
               className={cn(
-                "flex h-30px min-w-0 items-center gap-2 rounded-md px-2",
+                "flex h-30px min-w-0 items-center gap-2 rounded-md px-2 py-0",
+                "bg-transparent hover:bg-transparent active:bg-transparent data-active:bg-transparent",
                 "text-left outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-ring",
                 isMissing
                   ? "hover:text-destructive focus-visible:bg-destructive/10"
@@ -1611,7 +1612,7 @@ export const ProjectRow = memo(function ProjectRow(props: {
               >
                 {project.name}
               </span>
-            </button>
+            </SidebarMenuButton>
           }
         />
         <TooltipContent
@@ -1680,18 +1681,16 @@ export const ProjectRow = memo(function ProjectRow(props: {
           ) : (
             <>
               {!isArchived ? (
-                <Button
+                <SidebarMenuAction
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={PROJECT_ICON_BUTTON_CLASS}
+                  className={cn(PROJECT_ICON_BUTTON_CLASS, "static after:hidden")}
                   title={t("chat.newConversation")}
                   aria-label={t("chat.newConversation")}
                   onClick={() => props.onNewConversation?.(project)}
                   disabled={isInteractionDisabled || !props.onNewConversation}
                 >
                   <SquarePen className="size-3.5" />
-                </Button>
+                </SidebarMenuAction>
               ) : null}
               <DropdownMenu
                 open={!isInteractionDisabled && menuOpen}
@@ -1700,11 +1699,9 @@ export const ProjectRow = memo(function ProjectRow(props: {
               >
                 <DropdownMenuTrigger
                   render={
-                    <Button
+                    <SidebarMenuAction
                       type="button"
-                      variant="ghost"
-                      size="icon"
-                      className={PROJECT_ICON_BUTTON_CLASS}
+                      className={cn(PROJECT_ICON_BUTTON_CLASS, "static after:hidden")}
                       title={t("chat.workspaceMore")}
                       aria-label={t("chat.workspaceMore")}
                       disabled={isInteractionDisabled}

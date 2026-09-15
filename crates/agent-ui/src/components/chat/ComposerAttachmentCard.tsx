@@ -1,4 +1,5 @@
 import { X } from "@liveagent/ui/components/IconSet";
+import { Skeleton } from "@liveagent/ui/components/ui/skeleton";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import { type ReactNode, useMemo, useState } from "react";
 import type { PendingUploadedFile } from "../../lib/chat/uploadedFiles";
@@ -118,7 +119,10 @@ export function ComposerAttachmentCard(props: {
             {fallbackIcon}
           </span>
         ) : (
-          <span className="block size-full animate-pulse bg-black/[0.055] dark:bg-white/[0.09]" />
+          <Skeleton
+            render={<span />}
+            className="block size-full bg-black/[0.055] dark:bg-white/[0.09]"
+          />
         )}
         <button
           type="button"

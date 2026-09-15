@@ -1399,12 +1399,14 @@ export function GitBranchSelector(props: {
               ) : (
                 <div className="space-y-1">
                   <div className="flex items-center gap-1">
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       disabled={!canWrite || mutating}
                       title={!canWrite ? disabledMessage : undefined}
                       className={cn(
-                        "relative flex min-w-0 flex-1 cursor-default select-none items-center gap-2",
+                        "relative flex min-w-0 flex-1 cursor-default select-none items-center justify-start gap-2",
                         "rounded-xs px-2 py-1.5",
                         "text-left text-xs outline-hidden transition-colors",
                         "hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
@@ -1417,7 +1419,7 @@ export function GitBranchSelector(props: {
                     >
                       <Plus className="size-3.5" />
                       {t("git.branchSelector.createNewBranch")}
-                    </button>
+                    </Button>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger
                         clickToggle
@@ -1459,12 +1461,14 @@ export function GitBranchSelector(props: {
                     </DropdownMenuSub>
                   </div>
                   {gitClient?.createWorktree ? (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       disabled={!canWrite || mutating}
                       title={!canWrite ? disabledMessage : undefined}
                       className={cn(
-                        "relative flex min-w-0 w-full cursor-default select-none items-center gap-2",
+                        "relative flex min-w-0 w-full cursor-default select-none items-center justify-start gap-2",
                         "rounded-xs px-2 py-1.5",
                         "text-left text-xs outline-hidden transition-colors",
                         "hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
@@ -1477,7 +1481,7 @@ export function GitBranchSelector(props: {
                     >
                       <FolderTree className="size-3.5" />
                       {t("git.branchSelector.createWorktree")}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               )}
@@ -1485,6 +1489,34 @@ export function GitBranchSelector(props: {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      {gitClient?.createWorktree ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className={COMPOSER_CONTROL_TRIGGER_CLASS}
+          disabled={
+            disabled ||
+            !canWrite ||
+            loading ||
+            mutating ||
+            worktreeBusy ||
+            noRepo ||
+            !workdir.trim()
+          }
+          title={
+            visibleError ||
+            (!canWrite ? disabledMessage : "") ||
+            (loading ? t("projectTools.loading") : noRepo ? label : "") ||
+            t("git.branchSelector.worktreeDescription")
+          }
+          onClick={openWorktreeModal}
+        >
+          <FolderTree className="size-3.5 shrink-0" />
+          <span className={COMPOSER_CONTROL_LABEL_CLASS}>
+            {t("git.branchSelector.worktreeEntry")}
+          </span>
+        </Button>
+      ) : null}
       <BranchActionsModal
         action={branchAction}
         canWrite={canWrite}

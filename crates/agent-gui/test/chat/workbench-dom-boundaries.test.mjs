@@ -31,9 +31,9 @@ const rightDockPanelSource = readFileSync(
   new URL("../../../agent-ui/src/components/project-tools/RightDockPanel.tsx", import.meta.url),
   "utf8",
 );
-const rightDockWidthSource = readFileSync(
+const workspacePanelsSource = readFileSync(
   new URL(
-    "../../../agent-ui/src/components/project-tools/useRightDockPanelWidth.ts",
+    "../../../agent-ui/src/components/project-tools/WorkspacePanels.tsx",
     import.meta.url,
   ),
   "utf8",
@@ -69,23 +69,24 @@ const conversationPaneHarnessModelSource = readFileSync(
   "utf8",
 );
 
-test("application chrome is attached to the center column instead of the right dock", () => {
+test("application chrome is a shell row above both sidebars and the resizable workspace", () => {
   assert.match(chatPageSource, /data-app-frame="three-column"/);
   assert.match(
     chatPageSource,
-    /data-app-frame-column="main"[\s\S]*?<AppWorkbenchChrome[\s\S]*?<ApplicationView/,
+    /data-app-frame="three-column"[\s\S]*?<AppWorkbenchChrome[\s\S]*?data-app-workbench-body[\s\S]*?<WorkspacePanelGroup[\s\S]*?<ApplicationView/,
   );
   assert.match(chatPageSource, /<AppWorkbenchChrome/);
   assert.ok(chatPageSource.indexOf("<AppWorkbenchChrome") < chatPageSource.indexOf("<ApplicationView"));
   assert.ok(chatPageSource.indexOf("<ApplicationView") < chatPageSource.indexOf("<RightDockPanel"));
   assert.doesNotMatch(applicationViewSource, /ChatHeader|headerOverlay|headerClassName/);
-  assert.match(chromeSource, /layer-panel pointer-events-none relative h-12 shrink-0/);
+  assert.match(chromeSource, /relative z-20 h-12 shrink-0/);
   assert.doesNotMatch(chromeSource, /absolute inset-x-0 top-0/);
   assert.doesNotMatch(chromeSource, /left-\[272px\]|right-0/);
   assert.match(
     chatPageSource,
     /data-app-frame-column="main"[\s\S]*?className="relative flex flex-col min-h-0/,
   );
+  assert.doesNotMatch(headerSource, /createPortal|document\.body|\bfixed\b|pl-232px|pr-24/);
   assert.doesNotMatch(chromeSource, /autoHideActions/);
   assert.doesNotMatch(headerSource, /autoHideActions|app-workbench-chrome-actions/);
   assert.doesNotMatch(markdownStylesSource, /\.app-workbench-chrome-actions/);
@@ -168,19 +169,14 @@ test("closing a conversation pane resets its trajectory projection", () => {
   );
 });
 
-test("right dock commits width once and only animates its own appearance", () => {
-  assert.match(
-    rightDockPanelSource,
-    /transition-\[opacity,transform\] duration-200 ease-out/,
-  );
-  assert.match(
-    rightDockWidthSource,
-    /const effectiveWidthCollapsed = !isOpen;/,
-  );
-  assert.match(
-    rightDockPanelSource,
-    /\(isResizing \|\| \(collapseImmediately && !isOpen\)\) && "md:transition-none"/,
-  );
+test("sidebar layout and right dock resizing are delegated to standard shells", () => {
+  assert.match(chatPageSource, /<WorkspacePanelGroup/);
+  assert.match(workspacePanelsSource, /<ResizablePanelGroup/);
+  assert.match(workspacePanelsSource, /<ResizableHandle/);
+  assert.match(workspacePanelsSource, /<Sheet\s+open=\{open\}/);
+  assert.match(workspacePanelsSource, /meta.isUserInteraction/);
+  assert.doesNotMatch(rightDockPanelSource, /useRightDockPanelWidth|AnimatePresence|handleResizeStart/);
+  assert.match(rightDockPanelSource, /inert=\{!isOpen\}/);
 });
 
 test("conversation transcript and composer share one stable workbench surface", () => {

@@ -1,5 +1,5 @@
+import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ComponentProps } from "react";
 import { cn } from "../../lib/shared/utils";
 
 const skeletonVariants = cva(
@@ -19,8 +19,17 @@ const skeletonVariants = cva(
 /** Presentation only: callers retain the original dimensions, DOM attributes and content. */
 export function Skeleton({
   variant,
+  render,
   className,
   ...props
-}: ComponentProps<"div"> & VariantProps<typeof skeletonVariants>) {
-  return <div {...props} className={cn(skeletonVariants({ variant }), className)} />;
+}: useRender.ComponentProps<"div"> & VariantProps<typeof skeletonVariants>) {
+  return useRender({
+    defaultTagName: "div",
+    render,
+    props: {
+      "data-slot": "skeleton",
+      ...props,
+      className: cn(skeletonVariants({ variant }), className),
+    },
+  });
 }

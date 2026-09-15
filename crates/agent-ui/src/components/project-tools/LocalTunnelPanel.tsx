@@ -1,5 +1,4 @@
 import { workspaceProjectPathKey } from "@liveagent/app/lib/settings";
-import { LoadingSurface } from "@liveagent/ui/components/hub/HubLoading";
 import {
   AlertTriangle,
   Check,
@@ -17,6 +16,7 @@ import {
   Trash2,
   X,
 } from "@liveagent/ui/components/IconSet";
+import { Skeleton } from "@liveagent/ui/components/ui/skeleton";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { copyTextToClipboard } from "@liveagent/ui/lib/shared/clipboard";
 import { COPY_FEEDBACK_DURATION, useCopyFeedback } from "@liveagent/ui/lib/shared/useCopyFeedback";
@@ -1251,8 +1251,14 @@ export function LocalTunnelPanel({
           {loading && sortedTunnels.length === 0 ? (
             <div className="grid gap-2">
               <span className="sr-only">{t("projectTools.tunnelLoading")}</span>
-              <LoadingSurface variant="skeleton" className="h-24" aria-hidden />
-              <LoadingSurface variant="skeleton" className="h-24 opacity-70" aria-hidden />
+              <Skeleton
+                className="relative h-24 animate-none overflow-hidden rounded-14px border border-hsl-border-35 bg-hsl-background-50 backdrop-blur-18px backdrop-saturate-170"
+                aria-hidden
+              />
+              <Skeleton
+                className="relative h-24 animate-none overflow-hidden rounded-14px border border-hsl-border-35 bg-hsl-background-50 opacity-70 backdrop-blur-18px backdrop-saturate-170"
+                aria-hidden
+              />
             </div>
           ) : sortedTunnels.length === 0 ? (
             <div

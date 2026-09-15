@@ -249,22 +249,6 @@
   --project-terminal-background: hsl(var(--background));
 }
 
-.git-review-history-row {
-  --git-review-graph-background: hsl(var(--background));
-}
-
-.git-review-history-row:hover:not([data-selected="true"]):not([data-context-open="true"]) {
-  --git-review-graph-background: hsl(var(--muted) / 0.38);
-}
-
-.git-review-history-row[data-selected="true"] {
-  --git-review-graph-background: hsl(var(--accent) / 0.8);
-}
-
-.git-review-history-row[data-context-open="true"] {
-  --git-review-graph-background: hsl(var(--primary) / 0.1);
-}
-
 /* Frozen while the turn waits on the user: still legible as an indicator,
    but visibly not cycling. */
 

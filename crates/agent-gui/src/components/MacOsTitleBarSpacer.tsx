@@ -22,8 +22,6 @@ const MAC_OS_TRAFFIC_LIGHT_GROUP_WIDTH = 52;
 const MAC_OS_TRAFFIC_LIGHT_GROUP_HEIGHT = 12;
 const MAC_OS_TITLEBAR_TOGGLE_BUTTON_SIZE = 28;
 const MAC_OS_TITLEBAR_TOGGLE_GAP = 22;
-const MAC_OS_SIDEBAR_WIDTH = 272;
-const MAC_OS_SIDEBAR_TOGGLE_RIGHT_INSET = 8;
 
 function isValidMetrics(
   metrics: MacOsTrafficLightMetrics | null,
@@ -92,9 +90,8 @@ export function MacOsTitleBarSpacer({ className }: { className?: string }) {
 }
 
 /**
- * Fixed-position sidebar toggle for macOS overlay titlebar.
- * When the sidebar is open it sits at the sidebar's far-right edge; when closed it
- * returns to the titlebar controls next to the traffic lights.
+ * Inline sidebar controls in the shared application titlebar.
+ * Stays beside the traffic lights in both states so repeated clicks hit the same target.
  */
 export function MacOsTitleBarToggle({
   sidebarOpen,
@@ -110,30 +107,33 @@ export function MacOsTitleBarToggle({
   const { t } = useLocale();
   const [show] = useState(isMacOsTauri);
   const trafficLightMetrics = useMacOsTrafficLightMetrics(show);
+  useEffect(() => {
+    if (!show) return;
+    const center =
+      (trafficLightMetrics?.top ?? MAC_OS_TRAFFIC_LIGHT_TOP) +
+      (trafficLightMetrics?.height ?? MAC_OS_TRAFFIC_LIGHT_GROUP_HEIGHT) / 2;
+    document.documentElement.style.setProperty("--app-header-height", `${center * 2}px`);
+    return () => {
+      document.documentElement.style.removeProperty("--app-header-height");
+    };
+  }, [show, trafficLightMetrics]);
   if (!show) return null;
-  const trafficLightTop = trafficLightMetrics?.top ?? MAC_OS_TRAFFIC_LIGHT_TOP;
   const trafficLightLeft = trafficLightMetrics?.left ?? MAC_OS_TRAFFIC_LIGHT_LEFT;
   const trafficLightWidth = trafficLightMetrics?.width ?? MAC_OS_TRAFFIC_LIGHT_GROUP_WIDTH;
-  const trafficLightHeight = trafficLightMetrics?.height ?? MAC_OS_TRAFFIC_LIGHT_GROUP_HEIGHT;
-  const toggleTop = trafficLightTop - (MAC_OS_TITLEBAR_TOGGLE_BUTTON_SIZE - trafficLightHeight) / 2;
-  const toggleLeft = sidebarOpen
-    ? MAC_OS_SIDEBAR_WIDTH - MAC_OS_TITLEBAR_TOGGLE_BUTTON_SIZE - MAC_OS_SIDEBAR_TOGGLE_RIGHT_INSET
-    : trafficLightLeft + trafficLightWidth + MAC_OS_TITLEBAR_TOGGLE_GAP;
+  const toggleLeft = trafficLightLeft + trafficLightWidth + MAC_OS_TITLEBAR_TOGGLE_GAP;
   return (
     <div
-      className={cn(
-        "fixed z-49 flex items-center gap-0.5",
-        "transition-[left] duration-200 ease-out [-webkit-app-region:no-drag]",
-      )}
+      className="flex shrink-0 items-center gap-0.5 [-webkit-app-region:no-drag]"
       style={{
-        top: toggleTop,
-        left: toggleLeft,
+        paddingLeft: Math.max(0, toggleLeft - 16),
         height: MAC_OS_TITLEBAR_TOGGLE_BUTTON_SIZE,
       }}
     >
       <button
         type="button"
         onClick={onToggle}
+        aria-expanded={sidebarOpen}
+        aria-label={t(sidebarOpen ? "sidebar.closeSidebar" : "tooltip.openSidebar")}
         className={cn(
           "flex cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors",
           "hover:bg-accent/60 hover:text-foreground [-webkit-app-region:no-drag]",
