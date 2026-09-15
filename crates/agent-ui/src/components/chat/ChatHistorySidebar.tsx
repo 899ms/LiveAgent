@@ -1356,13 +1356,13 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
                 </div>
               )}
 
-              {!hideCloseButton ? (
+              {!hideCloseButton || isMobileMenuLayout ? (
                 <SidebarTrigger
                   type="button"
                   variant="ghost"
                   size="icon"
                   title={t("sidebar.closeSidebar")}
-                  className="shrink-0 rounded-2xl text-muted-foreground hover:text-foreground"
+                  className="shrink-0 rounded-2xl text-muted-foreground hover:text-foreground desktop:min-[768px]:hidden web:min-821:hidden"
                 >
                   <PanelLeftClose className="size-4" />
                 </SidebarTrigger>

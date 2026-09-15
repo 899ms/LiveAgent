@@ -28,6 +28,7 @@ export type ChatHeaderProps = {
   leadingActions?: ReactNode;
   preThemeActions?: ReactNode;
   trailingActions?: ReactNode;
+  windowControls?: ReactNode;
   className?: string;
 };
 
@@ -42,6 +43,7 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
     leadingActions,
     preThemeActions,
     trailingActions,
+    windowControls,
     className,
   } = props;
   const { t } = useLocale();
@@ -55,7 +57,13 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
   const desktopTitleBarInset = isDesktopChatHeaderInset();
 
   return (
-    <header data-tauri-drag-region className={cn("flex items-center gap-3 px-4", className)}>
+    <header
+      data-tauri-drag-region
+      className={cn(
+        "flex items-center gap-3 pl-4 pr-4 has-[[data-windows-window-controls]]:pr-0",
+        className,
+      )}
+    >
       <div className="flex shrink-0 items-center gap-1.5">
         {navigationActions}
         {!desktopTitleBarInset ? (
@@ -72,7 +80,9 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
           </Button>
         ) : null}
       </div>
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">{leadingActions}</div>
+      <div data-tauri-drag-region className="flex h-full min-w-0 flex-1 items-center gap-1.5">
+        {leadingActions}
+      </div>
 
       <div
         data-app-workbench-actions=""
@@ -102,6 +112,7 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
         ) : null}
         {trailingActions}
       </div>
+      {windowControls}
     </header>
   );
 });

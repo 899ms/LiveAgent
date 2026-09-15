@@ -985,3 +985,11 @@ Git 图测试改为从组件样式读取色板，仍验证原来的五个色值�
 
 - 按用户截图修正顶栏整条白色造成的侧栏背景断层。顶栏左侧装饰背景使用与侧栏一致的 bg-settings-rail、--sidebar-width 和 200ms ease-out 宽度过渡；关闭侧栏时收起，移动抽屉模式隐藏。
 - 仅修改背景层，按钮仍在正常 Flex 布局中，不恢复 Portal 或固定坐标定位。
+
+### Windows 统一顶栏兼容（2026-09-15）
+
+- WindowsTitleBar 增加 controlsOnly 组合方式，沿用原有 Tauri 窗口操作与监听清理。ChatPage 将窗口按钮放入统一 ChatHeader 的正常布局，AppChrome 不再为聊天页叠加第二行标题栏。
+- 设置覆盖层显示时仍由 AppChrome 提供独立标题栏；AppBootShell 和聊天错误边界回退也保留窗口控制。非 Windows 环境不会渲染这些控件。
+- 中间 flex-1 空白区域显式标记 data-tauri-drag-region，窗口按钮区显式禁止拖拽。桌面隐藏侧栏内重复开关，移动抽屉保留关闭入口。
+- 模拟 Win32 + Tauri 环境验证单行 header、最小化/关闭调用、最大化标签更新、侧栏开关、订阅清理、启动/错误回退和非 Windows 隐藏；新增 2 项通过，原有 16 项相关回归通过。两端类型检查和生产构建、Biome/diff 检查通过。
+- 本机无法执行 Windows 原生验收。WebView2 命中测试、高 DPI、系统缩放、拖拽吸附与 Windows 11 Snap Layout 不属于上述 DOM 模拟结论。

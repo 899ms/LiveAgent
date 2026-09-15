@@ -14,6 +14,7 @@ type FallbackLabels = {
 type ErrorBoundaryInnerProps = {
   children: ReactNode;
   labels: FallbackLabels;
+  fallbackHeader?: ReactNode;
 };
 
 type ErrorBoundaryInnerState = {
@@ -39,50 +40,54 @@ class ErrorBoundaryInner extends Component<ErrorBoundaryInnerProps, ErrorBoundar
       return this.props.children;
     }
     return (
-      <div
-        className={cn(
-          "flex size-full flex-col items-center justify-center gap-4 bg-background p-8",
-          "text-center",
-        )}
-      >
-        <div className="text-base font-semibold text-foreground">{this.props.labels.title}</div>
-        <div className="max-w-md text-sm text-muted-foreground">
-          {this.props.labels.description}
-        </div>
+      <div className="flex size-full min-h-0 flex-col">
+        {this.props.fallbackHeader}
         <div
           className={cn(
-            "max-h-40 max-w-xl overflow-auto",
-            "whitespace-pre-wrap rounded-lg border border-border/60 bg-muted/40 p-3",
-            "text-left font-mono text-xs text-muted-foreground",
+            "flex min-h-0 flex-1 flex-col items-center justify-center gap-4 bg-background p-8",
+            "text-center",
           )}
         >
-          {error.message}
-          {import.meta.env.DEV && this.state.componentStack
-            ? `\n${this.state.componentStack}`
-            : null}
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => window.location.reload()}>{this.props.labels.reload}</Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              void copyTextToClipboard(
-                `${error.stack ?? error.message}\n${this.state.componentStack}`,
-              );
-            }}
+          <div className="text-base font-semibold text-foreground">{this.props.labels.title}</div>
+          <div className="max-w-md text-sm text-muted-foreground">
+            {this.props.labels.description}
+          </div>
+          <div
+            className={cn(
+              "max-h-40 max-w-xl overflow-auto",
+              "whitespace-pre-wrap rounded-lg border border-border/60 bg-muted/40 p-3",
+              "text-left font-mono text-xs text-muted-foreground",
+            )}
           >
-            {this.props.labels.copy}
-          </Button>
+            {error.message}
+            {import.meta.env?.DEV && this.state.componentStack
+              ? `\n${this.state.componentStack}`
+              : null}
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => window.location.reload()}>{this.props.labels.reload}</Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                void copyTextToClipboard(
+                  `${error.stack ?? error.message}\n${this.state.componentStack}`,
+                );
+              }}
+            >
+              {this.props.labels.copy}
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 }
 
-export function AppErrorBoundary(props: { children: ReactNode }) {
+export function AppErrorBoundary(props: { children: ReactNode; fallbackHeader?: ReactNode }) {
   const { t } = useLocale();
   return (
     <ErrorBoundaryInner
+      fallbackHeader={props.fallbackHeader}
       labels={{
         title: t("app.errorBoundaryTitle"),
         description: t("app.errorBoundaryDesc"),

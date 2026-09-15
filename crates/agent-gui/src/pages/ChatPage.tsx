@@ -119,6 +119,7 @@ import { WorkspaceCloneTaskOverlayAdapter } from "../agent-ui-adapters/workspace
 import { desktopWorkspaceProjectRootClient } from "../agent-ui-adapters/workspaceProjectRoots";
 import { PaneLoadingSkeleton } from "../components/app/PaneLoadingSkeleton";
 import { MacOsTitleBarToggle } from "../components/MacOsTitleBarSpacer";
+import { WindowsTitleBar } from "../components/WindowsTitleBar";
 import type { CompactionStatus } from "../lib/chat/compaction/types";
 import {
   buildRequestContext,
@@ -3968,6 +3969,7 @@ function ChatPageContent(props: ChatPageProps) {
       className="relative flex size-full min-h-0 flex-col overflow-hidden"
     >
       <AppWorkbenchChrome
+        windowControls={<WindowsTitleBar controlsOnly />}
         navigationActions={
           <MacOsTitleBarToggle
             sidebarOpen={sidebarOpen}

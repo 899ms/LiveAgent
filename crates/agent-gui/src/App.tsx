@@ -93,7 +93,7 @@ function interpolateMessage(template: string, values: Record<string, string>) {
 
 const GATEWAY_SETTINGS_SYNC_EVENT = "gateway:settings-sync";
 
-function AppChrome(props: { children: ReactNode }) {
+function AppChrome(props: { children: ReactNode; standaloneTitleBar?: boolean }) {
   // Plain inputs get a shared cut/copy/paste menu; everything else keeps the
   // suppressed native menu (surfaces with their own menus opt out upstream).
   const { onRootContextMenu, onRootMouseDownCapture, menu } = useNativeInputContextMenu();
@@ -104,7 +104,7 @@ function AppChrome(props: { children: ReactNode }) {
       onContextMenu={onRootContextMenu}
       onMouseDownCapture={onRootMouseDownCapture}
     >
-      <WindowsTitleBar />
+      {props.standaloneTitleBar ? <WindowsTitleBar /> : null}
       <div className="relative min-h-0 flex-1 overflow-hidden bg-background">{props.children}</div>
       {menu}
     </div>
@@ -716,14 +716,14 @@ export default function App() {
   return (
     <LocaleContext.Provider value={localeContextValue}>
       <Toaster />
-      <AppChrome>
+      <AppChrome standaloneTitleBar={visible}>
         {backgroundHostsReady ? (
           <Suspense fallback={null}>
             <CronPromptRunner settings={settings} />
             <MemoryOrganizerHost settings={settings} setSettings={setSettings} />
           </Suspense>
         ) : null}
-        <AppErrorBoundary>
+        <AppErrorBoundary fallbackHeader={<WindowsTitleBar />}>
           <Suspense
             fallback={<AppBootShell loadingLabel={translate("app.loading", settings.locale)} />}
           >
