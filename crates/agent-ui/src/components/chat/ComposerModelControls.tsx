@@ -13,6 +13,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Funnel,
   Layers,
   Lightbulb,
   LightbulbOff,
@@ -190,6 +191,9 @@ export const ComposerModelControls = memo(function ComposerModelControls(
 
   const normalizedSearch = modelSearch.trim().toLowerCase();
   const groups = sortModelOptionGroups(groupModelOptionsByProvider(modelOptions), providerSortMode);
+  const activeProviderName = providerFilter
+    ? (groups.find((group) => group.id === providerFilter)?.name ?? null)
+    : null;
   const selectedOption = modelOptions.find((option) => option.value === selectedValue);
   const triggerLabel = selectedOption?.label ?? currentModelLabel;
   const isAgent = isAgentExecutionMode(executionMode);
@@ -285,7 +289,7 @@ export const ComposerModelControls = memo(function ComposerModelControls(
         }}
         aria-label={t("chat.selectModel")}
         className={cn(
-          "flex max-h-[min(360px,75dvh)] w-[300px] max-w-[calc(100vw-16px)] flex-col overflow-hidden",
+          "flex max-h-[min(380px,75dvh)] w-[324px] max-w-[calc(100vw-16px)] flex-col overflow-hidden",
           menuSurfaceClassName,
           "p-1.5 text-xs leading-5",
           "web:font-app web:text-xs web:leading-5",
@@ -390,22 +394,31 @@ export const ComposerModelControls = memo(function ComposerModelControls(
           </div>
         ) : (
           <div className="flex min-h-0 flex-col">
-            <button
-              type="button"
-              data-model-back
-              onClick={() => showView("root")}
-              className={cn(
-                "mb-1 flex h-8 items-center gap-2 rounded-lg px-2.5",
-                "text-left hover:bg-settings-active/60 focus-visible:ring-2 focus-visible:ring-ring",
-              )}
-            >
-              <ChevronRight className="size-3.5 rotate-180" />
-              {t(view === "model" ? "chat.selectModel" : "chat.runtime.reasoning")}
-            </button>
+            <div className="mb-1.5 shrink-0 border-b border-border/60 pb-1.5">
+              <button
+                type="button"
+                data-model-back
+                onClick={() => showView("root")}
+                className={cn(
+                  "flex h-7 w-full items-center gap-1.5 rounded-lg px-2",
+                  "text-left text-[11px] text-muted-foreground",
+                  "hover:bg-settings-active/60 hover:text-foreground",
+                  "focus-visible:ring-2 focus-visible:ring-ring",
+                )}
+              >
+                <ChevronRight className="size-3 shrink-0 rotate-180" />
+                <span className="shrink-0 font-medium">
+                  {t(view === "model" ? "chat.selectModel" : "chat.runtime.reasoning")}
+                </span>
+                {view === "reasoning" && (
+                  <span className="ml-auto min-w-0 truncate">{triggerLabel}</span>
+                )}
+              </button>
+            </div>
             {view === "model" ? (
               <>
-                <div className="mb-2 flex items-center gap-2 px-1">
-                  <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg bg-settings-tile-hover px-2.5">
+                <div className="mb-1.5 flex shrink-0 items-center gap-1.5">
+                  <label className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-lg bg-settings-tile-hover px-2">
                     <Search className="size-3.5 shrink-0 text-muted-foreground" />
                     <input
                       ref={searchInputRef}
@@ -416,9 +429,56 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                       className="min-w-0 w-full bg-transparent outline-none"
                     />
                   </label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className={cn(
+                            "shrink-0 bg-settings-tile-hover",
+                            providerFilter && "text-foreground ring-1 ring-inset ring-border",
+                          )}
+                        />
+                      }
+                      title={activeProviderName ?? t("settings.modelAllProviders")}
+                      aria-label={`${t("settings.modelAllProviders")}: ${
+                        activeProviderName ?? t("settings.modelAllProviders")
+                      }`}
+                    >
+                      <Funnel className="size-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      variant="soft"
+                      align="start"
+                      className="max-h-64 min-w-40 w-48 overflow-y-auto text-xs leading-5"
+                    >
+                      <DropdownMenuRadioGroup
+                        value={providerFilter}
+                        onValueChange={setProviderFilter}
+                      >
+                        <DropdownMenuRadioItem value="" className="h-7 py-0 text-xs">
+                          {t("settings.modelAllProviders")}
+                        </DropdownMenuRadioItem>
+                        {groups.map((group) => (
+                          <DropdownMenuRadioItem
+                            key={group.id}
+                            value={group.id}
+                            className="h-7 gap-2 py-0 text-xs"
+                          >
+                            <span className="min-w-0 truncate">{group.name}</span>
+                            <span className="shrink-0 text-tiny text-muted-foreground">
+                              {group.opts.length}
+                            </span>
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon-xs"
+                    className="shrink-0 bg-settings-tile-hover"
                     onClick={toggleProviderSortMode}
                     title={sortToggleTitle}
                     aria-label={sortToggleTitle}
@@ -431,40 +491,12 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                     )}
                   </Button>
                 </div>
-                <div className="mb-1 shrink-0">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          className="h-7 w-full justify-between bg-settings-tile-hover px-2 text-xs"
-                        />
-                      }
-                    >
-                      <span className="truncate">
-                        {groups.find((group) => group.id === providerFilter)?.name ??
-                          t("settings.modelAllProviders")}
-                      </span>
-                      <ChevronDown className="size-3 shrink-0" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent variant="soft" className="max-h-64 w-64 overflow-y-auto">
-                      <DropdownMenuRadioGroup
-                        value={providerFilter}
-                        onValueChange={setProviderFilter}
-                      >
-                        <DropdownMenuRadioItem value="">
-                          {t("settings.modelAllProviders")}
-                        </DropdownMenuRadioItem>
-                        {groups.map((group) => (
-                          <DropdownMenuRadioItem key={group.id} value={group.id}>
-                            {group.name} ({group.opts.length})
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="min-h-0 overflow-y-auto overscroll-contain">
+                <div
+                  className={cn(
+                    "min-h-0 overflow-y-auto overscroll-contain",
+                    "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:size-0",
+                  )}
+                >
                   {(() => {
                     const filteredGroups = groups
                       .filter(
@@ -488,12 +520,13 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                         </p>
                       );
                     return filteredGroups.map((group) => (
-                      <div key={group.id}>
-                        <div className="flex h-8 items-center justify-between px-2.5 text-xs text-muted-foreground">
-                          <span>{group.name}</span>
+                      <div key={group.id} className="group/provider space-y-0.5 pb-1.5 last:pb-0">
+                        <div className="sticky top-0 z-10 flex h-6 items-center justify-between gap-2 bg-popover px-2.5 text-tiny font-medium uppercase tracking-wide text-muted-foreground">
+                          <span className="min-w-0 truncate">{group.name}</span>
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon-xs"
+                            className="-mr-1 size-5 shrink-0 opacity-0 transition-opacity group-hover/provider:opacity-100 focus-visible:opacity-100"
                             aria-label={`${t("settings.editProvider")}: ${group.name}`}
                             onClick={() => {
                               setIsModelPickerOpen(false);
@@ -518,7 +551,7 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                                 setIsModelPickerOpen(false);
                               }}
                               className={cn(
-                                "flex h-7 w-full items-center justify-between gap-2 rounded-lg px-2.5",
+                                "flex h-8 w-full items-center justify-between gap-2 rounded-lg px-2.5",
                                 "text-left hover:bg-settings-active/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                                 isSelected && "bg-settings-active/60",
                               )}
@@ -526,14 +559,14 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                               <span className="min-w-0 flex-1 truncate" title={option.model}>
                                 {option.label}
                               </span>
-                              <span className="flex shrink-0 items-center gap-1 text-tiny text-muted-foreground">
+                              <span className="flex shrink-0 items-center gap-1 text-tiny text-muted-foreground/80">
                                 {option.reasoning && (
-                                  <span className="rounded bg-settings-tile-hover px-1">
+                                  <span className="rounded bg-muted/60 px-1 py-px">
                                     {t("settings.modelBadgeReasoning")}
                                   </span>
                                 )}
                                 {option.vision && (
-                                  <span className="rounded bg-settings-tile-hover px-1">
+                                  <span className="rounded bg-muted/60 px-1 py-px">
                                     {t("settings.modelBadgeVision")}
                                   </span>
                                 )}
@@ -559,9 +592,12 @@ export const ComposerModelControls = memo(function ComposerModelControls(
               </>
             ) : (
               <div className="space-y-1 overflow-y-auto">
-                <p className="px-3 pb-2 text-xs text-muted-foreground">{triggerLabel}</p>
                 {showEffortBar ? (
-                  <div role="radiogroup" aria-label={t("chat.runtime.reasoning")}>
+                  <div
+                    role="radiogroup"
+                    aria-label={t("chat.runtime.reasoning")}
+                    className="flex flex-col gap-0.5"
+                  >
                     {effortChoices.map((level) => (
                       <label
                         key={level}
