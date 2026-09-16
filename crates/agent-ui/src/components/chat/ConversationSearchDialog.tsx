@@ -54,14 +54,31 @@ function toSearchResult(item: SidebarConversation): PersistedConversationSearchR
   };
 }
 
-function formatUpdatedAt(value: number | undefined, locale: string) {
-  if (!value || !Number.isFinite(value)) return "";
-  return cachedDateTimeFormat(locale, "search-updated-at", {
-    month: "short",
-    day: "numeric",
+function formatChineseUpdatedAt(date: Date, locale: string) {
+  const parts = cachedDateTimeFormat(locale, "search-updated-at-zh", {
+    month: "2-digit",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const read = (type: "month" | "day" | "hour" | "minute") =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${read("month")}月${read("day")}日 ${read("hour")}:${read("minute")}`;
+}
+
+function formatUpdatedAt(value: number | undefined, locale: string) {
+  if (!value || !Number.isFinite(value)) return "";
+  const date = new Date(value);
+  if (locale.toLowerCase().startsWith("zh")) {
+    return formatChineseUpdatedAt(date, locale);
+  }
+  return cachedDateTimeFormat(locale, "search-updated-at", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function renderSearchPreview(value: string | undefined): ReactNode {
@@ -297,12 +314,13 @@ export function ConversationSearchDialog({
                                 {renderSearchPreview(item.searchPreview)}
                               </div>
                             ) : null}
-                            {meta ? (
+                            {item.cwd || updatedAt ? (
                               <div
-                                className="mt-1 w-full truncate text-xs leading-4 text-muted-foreground"
+                                className="mt-1 flex w-full items-center gap-3 text-xs leading-4 text-muted-foreground"
                                 title={meta}
                               >
-                                {meta}
+                                <span className="min-w-0 flex-1 truncate">{item.cwd}</span>
+                                <span className="shrink-0 tabular-nums">{updatedAt}</span>
                               </div>
                             ) : null}
                           </CommandItem>

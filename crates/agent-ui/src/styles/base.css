@@ -256,53 +256,12 @@
   .font-chat {
     font-family: var(--chat-font-family);
   }
-
-  /*
-   * Streamdown Mermaid fullscreen is rendered via a portal to document.body,
-   * and its fullscreen path applies Tailwind utilities like `[&_svg]:w-auto`.
-   * Keep this rule in the utilities layer so it can reliably override those
-   * generated utilities and avoid a blank (white) fullscreen canvas.
-   */
-  [data-streamdown="mermaid"] svg {
-    display: block;
-    width: 100%;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-  }
-
-  /*
-   * Streamdown pan-zoom always attaches `transition-transform duration-150`.
-   * That eases zoom-button / wheel scale changes nicely, but it also eases
-   * every pointermove pan update — large diagrams lag and jitter while
-   * dragging. Keep the idle transition; drop it only for an active drag:
-   * `:active` covers the pointerdown frame before React flips the cursor,
-   * and the grabbing cursor (set on the pan surface) covers the rest of the
-   * gesture, including pointer-captured moves outside the element.
-   */
-  [data-streamdown="mermaid"] [role="application"]:active,
-  [data-streamdown="mermaid"] [style*="cursor: grabbing"] [role="application"],
-  [data-streamdown="mermaid"] [style*="cursor:grabbing"] [role="application"] {
-    /* biome-ignore lint/complexity/noImportantStyles: Streamdown writes drag transitions inline; reduced-motion must override them. */
-    transition: none !important;
-    /* biome-ignore lint/complexity/noImportantStyles: Streamdown writes drag transitions inline; reduced-motion must override them. */
-    transition-property: none !important;
-  }
 }
 
 /* Streamdown owns these document-level portals, so no React component can carry the utilities. */
-body > div:has([data-streamdown="mermaid"]):not(#root),
-body > div:has([data-streamdown="table-fullscreen"]):not(#root),
-body > div:not(#root) [data-streamdown="mermaid"] svg {
+body > div:has([data-streamdown="table-fullscreen"]):not(#root) {
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-}
-
-body > div:not(#root) [data-streamdown="mermaid"]:has([role="application"]:active) svg,
-body > div:not(#root) [data-streamdown="mermaid"]:has([style*="cursor: grabbing"]) svg,
-body > div:not(#root) [data-streamdown="mermaid"]:has([style*="cursor:grabbing"]) svg {
-  -webkit-transform: none;
-  transform: none;
 }
 
 @layer base {

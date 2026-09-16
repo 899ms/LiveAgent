@@ -163,30 +163,17 @@ export function WorkspaceCloneModal({
         closeLabel={t("settings.cancel")}
         showCloseButton
       >
-        <DialogHeader className="flex-row items-start gap-3">
-          {step === "clone" ? (
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              disabled={cloning}
-              aria-label={t("chat.workspaceCreate")}
-              onClick={() => setStep("choose")}
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
-          ) : null}
-          <div className="min-w-0">
-            <DialogTitle>
-              {t(step === "choose" ? "chat.workspaceCreate" : "chat.workspaceCloneRepository")}
-            </DialogTitle>
-            <DialogDescription>
-              {t(
-                step === "choose"
-                  ? "chat.workspaceCreateDescription"
-                  : "chat.workspaceCloneDescription",
-              )}
-            </DialogDescription>
-          </div>
+        <DialogHeader>
+          <DialogTitle>
+            {t(step === "choose" ? "chat.workspaceCreate" : "chat.workspaceCloneRepository")}
+          </DialogTitle>
+          <DialogDescription className="text-xs leading-relaxed">
+            {t(
+              step === "choose"
+                ? "chat.workspaceCreateDescription"
+                : "chat.workspaceCloneDescription",
+            )}
+          </DialogDescription>
         </DialogHeader>
         <DialogBody>
           {step === "choose" ? (
@@ -331,7 +318,19 @@ export function WorkspaceCloneModal({
             </fieldset>
           )}
         </DialogBody>
-        <DialogFooter>
+        <DialogFooter className={cn(step === "clone" && "min-[821px]:justify-between")}>
+          {step === "clone" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={cloning}
+              onClick={() => setStep("choose")}
+            >
+              <ArrowLeft className="size-4" />
+              {t("chat.workspaceCloneBack")}
+            </Button>
+          ) : null}
           <DialogActions>
             <Button size="sm" variant="outline" onClick={onClose} disabled={cloning}>
               {t("settings.cancel")}

@@ -4,7 +4,6 @@ import { useLocale } from "@liveagent/ui/i18n/index";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
-import { mermaid } from "@streamdown/mermaid";
 import {
   type ComponentProps,
   cloneElement,
@@ -43,7 +42,7 @@ import {
 import { normalizeLatexDelimiters } from "../lib/normalizeLatexDelimiters";
 import { copyTextToClipboard } from "../lib/shared/clipboard";
 import { cn } from "../lib/shared/utils";
-import { MermaidFullscreenButton } from "./MarkdownMermaidFullscreen";
+import { MarkdownMermaidBlock } from "./markdown/MarkdownMermaidBlock";
 import {
   CHAT_MARKDOWN_CLASS,
   DOCUMENT_MARKDOWN_CLASS,
@@ -217,7 +216,7 @@ export type MarkdownProps = {
   onOpenFileLink?: (link: ChatFileLink) => void;
 };
 
-const streamdownPlugins = { code, math, mermaid, cjk };
+const streamdownPlugins = { code, math, cjk };
 const remarkPlugins = [...Object.values(defaultRemarkPlugins), remarkBreaks];
 const chatRemarkPlugins = [...remarkPlugins, remarkChatFileLinks];
 
@@ -501,13 +500,14 @@ export function CollapsibleCodePre({
 
   if (!childElement) return children;
 
+  if (isRenderedMermaid) {
+    return <MarkdownMermaidBlock chart={codeContent} readOnly={!allowMermaidFullscreen} />;
+  }
+
   if (!isCollapsible) {
     const codeBlock = cloneElement(childElement, { "data-block": "true" });
     return (
       <div className="relative w-full">
-        {isRenderedMermaid && allowMermaidFullscreen ? (
-          <MermaidFullscreenButton chart={codeContent} className="absolute right-7 top-1.5 z-30" />
-        ) : null}
         {isMermaid ? null : <CodeBlockActions code={codeContent} />}
         {codeBlock}
       </div>
@@ -714,9 +714,7 @@ const MARKDOWN_EMBED_CLASSNAME = cn(
   "[&_[data-streamdown='mermaid-block']]:my-4 [&_[data-streamdown='mermaid-block']]:flex [&_[data-streamdown='mermaid-block']]:!w-full [&_[data-streamdown='mermaid-block']]:min-w-0 [&_[data-streamdown='mermaid-block']]:gap-2 [&_[data-streamdown='mermaid-block']]:rounded-none [&_[data-streamdown='mermaid-block']]:border-0 [&_[data-streamdown='mermaid-block']]:bg-transparent [&_[data-streamdown='mermaid-block']]:p-0 [&_[data-streamdown='mermaid-block']]:shadow-none",
   "[&_[data-streamdown='mermaid-block']>div:last-child]:!w-full [&_[data-streamdown='mermaid-block']>div:last-child]:min-w-0 [&_[data-streamdown='mermaid-block']>div:last-child]:rounded-none [&_[data-streamdown='mermaid-block']>div:last-child]:border-0 [&_[data-streamdown='mermaid-block']>div:last-child]:bg-transparent [&_[data-streamdown='mermaid-block']>div:last-child]:p-0 [&_[data-streamdown='mermaid-block']>div:last-child]:shadow-none",
   "[&_[data-streamdown='mermaid']]:my-0 [&_[data-streamdown='mermaid']]:block [&_[data-streamdown='mermaid']]:!w-full [&_[data-streamdown='mermaid']]:max-h-280px [&_[data-streamdown='mermaid']]:min-w-0 [&_[data-streamdown='mermaid']]:overflow-hidden [&_[data-streamdown='mermaid']]:rounded-none [&_[data-streamdown='mermaid']]:border-0 [&_[data-streamdown='mermaid']]:bg-transparent [&_[data-streamdown='mermaid']]:shadow-none",
-  "[&_[data-streamdown='mermaid']>div]:!w-full [&_[data-streamdown='mermaid']>div]:min-w-0 [&_[data-streamdown='mermaid']>div]:max-w-none",
   "[&_[data-streamdown='mermaid']_svg]:mx-auto [&_[data-streamdown='mermaid']_svg]:block [&_[data-streamdown='mermaid']_svg]:h-auto [&_[data-streamdown='mermaid']_svg]:max-h-280px [&_[data-streamdown='mermaid']_svg]:max-w-full [&_[data-streamdown='mermaid']_svg]:bg-transparent",
-  "[&_[data-streamdown='mermaid']>div>div:first-child]:!left-0 [&_[data-streamdown='mermaid']>div>div:first-child]:rounded-none [&_[data-streamdown='mermaid']>div>div:first-child]:border-0 [&_[data-streamdown='mermaid']>div>div:first-child]:bg-transparent [&_[data-streamdown='mermaid']>div>div:first-child]:p-0 [&_[data-streamdown='mermaid']>div>div:first-child]:shadow-none [&_[data-streamdown='mermaid']>div>div:first-child]:backdrop-blur-none",
   "[&_[data-streamdown='mermaid-block-actions']]:gap-2 [&_[data-streamdown='mermaid-block-actions']]:rounded-none [&_[data-streamdown='mermaid-block-actions']]:border-0 [&_[data-streamdown='mermaid-block-actions']]:bg-transparent [&_[data-streamdown='mermaid-block-actions']]:p-0 [&_[data-streamdown='mermaid-block-actions']]:shadow-none [&_[data-streamdown='mermaid-block-actions']]:backdrop-blur-none",
   "[&_[data-streamdown='mermaid-block-actions']_svg]:size-3 [&_[data-streamdown='mermaid-block']_button>svg]:size-3",
   "[&_[data-streamdown='table-wrapper']]:my-4 [&_[data-streamdown='table-wrapper']]:!w-full [&_[data-streamdown='table-wrapper']]:min-w-0 [&_[data-streamdown='table-wrapper']]:gap-0 [&_[data-streamdown='table-wrapper']]:rounded-none [&_[data-streamdown='table-wrapper']]:border-0 [&_[data-streamdown='table-wrapper']]:bg-transparent [&_[data-streamdown='table-wrapper']]:p-0 [&_[data-streamdown='table-wrapper']]:shadow-none [&_[data-streamdown='table-wrapper']]:outline-none [&_[data-streamdown='table-wrapper']]:ring-0",

@@ -15,7 +15,7 @@ export function CommandDialogPopup({ className, children, ...props }: DialogPrim
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Backdrop className="layer-modal fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
-      <DialogPrimitive.Viewport className="layer-modal fixed inset-0 flex flex-col items-center px-4 py-[4vh] sm:py-[10vh]">
+      <DialogPrimitive.Viewport className="layer-modal fixed inset-0 flex flex-col items-center justify-center px-4 py-[4vh] sm:py-[6vh]">
         <DialogPrimitive.Popup
           data-slot="command-dialog-popup"
           className={cn(

@@ -200,6 +200,7 @@ export const EN_US_COMMON_TRANSLATIONS = {
   "chat.workspaceCloneTaskPhase.cancelled": "Clone cancelled",
   "chat.workspaceCloneSubmit": "Clone",
   "chat.workspaceCloning": "Starting clone…",
+  "chat.workspaceCloneBack": "Back",
   "chat.workspaceCloneWebDisabled": "Enable Web Git in Remote settings before cloning.",
   "chat.workspaceNewConversation": "New conversation",
   "chat.workspaceMore": "More",

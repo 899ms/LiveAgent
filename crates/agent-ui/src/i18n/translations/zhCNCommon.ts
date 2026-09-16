@@ -187,6 +187,7 @@ export const ZH_CN_COMMON_TRANSLATIONS = {
   "chat.workspaceCloneTaskPhase.cancelled": "克隆已取消",
   "chat.workspaceCloneSubmit": "克隆",
   "chat.workspaceCloning": "正在启动克隆…",
+  "chat.workspaceCloneBack": "返回",
   "chat.workspaceCloneWebDisabled": "请先在远程设置中启用网页 Git 操作。",
   "chat.workspaceNewConversation": "新对话",
   "chat.workspaceMore": "更多",
