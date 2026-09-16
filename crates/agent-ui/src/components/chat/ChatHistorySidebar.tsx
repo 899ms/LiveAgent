@@ -1339,7 +1339,7 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
           )}
         >
           {headerTop}
-          <SidebarHeader className="px-3 pb-2 pt-4">
+          <SidebarHeader className="px-3 pb-2 pt-2">
             <div className="flex items-center justify-between gap-2">
               {brand ?? (
                 <div className="flex min-w-0 -translate-y-0.5 items-center gap-2">
@@ -1356,17 +1356,31 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
                 </div>
               )}
 
-              {!hideCloseButton || isMobileMenuLayout ? (
-                <SidebarTrigger
+              <div className="flex shrink-0 items-center gap-0.5">
+                <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  title={t("sidebar.closeSidebar")}
-                  className="shrink-0 rounded-2xl text-muted-foreground hover:text-foreground desktop:min-[768px]:hidden web:min-821:hidden"
+                  size="icon-sm"
+                  disabled={sectionsDisabled}
+                  onClick={() => setConversationSearchOpen(true)}
+                  title={t("chat.searchConversations")}
+                  aria-label={t("chat.searchConversations")}
+                  className="chat-history-search-button rounded-lg text-muted-foreground hover:text-foreground"
                 >
-                  <PanelLeftClose className="size-4" />
-                </SidebarTrigger>
-              ) : null}
+                  <Search className="size-4" />
+                </Button>
+                {!hideCloseButton || isMobileMenuLayout ? (
+                  <SidebarTrigger
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    title={t("sidebar.closeSidebar")}
+                    className="shrink-0 rounded-lg text-muted-foreground hover:text-foreground desktop:min-[768px]:hidden"
+                  >
+                    <PanelLeftClose className="size-4" />
+                  </SidebarTrigger>
+                ) : null}
+              </div>
             </div>
 
             <SidebarMenu className="mt-2.5 gap-px">
@@ -1387,24 +1401,6 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
                   <CirclePlus className="size-4 shrink-0 text-foreground/85" />
                   <span className="web:font-app web:[font-size:inherit] web:[line-height:inherit] web:[font-weight:inherit]">
                     {t("chat.newConversation")}
-                  </span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  type="button"
-                  disabled={sectionsDisabled}
-                  onClick={() => setConversationSearchOpen(true)}
-                  className={cn(
-                    "chat-history-search-button h-8 w-full justify-start gap-2.5 rounded-md px-2.5",
-                    "text-sm font-normal leading-5 text-foreground/75 shadow-none transition-colors",
-                    "hover:bg-foreground/5 hover:text-foreground focus-visible:bg-foreground/5",
-                  )}
-                  title={t("chat.searchConversations")}
-                >
-                  <Search className="size-4 shrink-0 text-foreground/85" />
-                  <span className="min-w-0 flex-1 truncate text-left">
-                    {t("chat.searchConversations")}
                   </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>

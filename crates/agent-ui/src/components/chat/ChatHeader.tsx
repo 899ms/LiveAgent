@@ -69,7 +69,7 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
         className={cn(
           "flex min-w-0 shrink-0 items-center gap-1.5 transition-[min-width] duration-200 ease-out motion-reduce:transition-none",
           sidebarOpen &&
-            "desktop:min-[768px]:min-w-[calc(var(--sidebar-width)-1rem)] web:min-821:min-w-[calc(var(--sidebar-width)-1rem)]",
+            "desktop:min-[768px]:min-w-[calc(var(--sidebar-width)-1rem)] web:min-[821px]:min-w-[calc(var(--sidebar-width)-1rem)]",
         )}
       >
         {navigationActions}
@@ -81,7 +81,11 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
             title={t(sidebarOpen ? "sidebar.closeSidebar" : "tooltip.openSidebar")}
             aria-expanded={sidebarOpen}
             aria-label={t(sidebarOpen ? "sidebar.closeSidebar" : "tooltip.openSidebar")}
-            className="rounded-lg text-muted-foreground hover:text-foreground"
+            className={cn(
+              "rounded-lg text-muted-foreground hover:text-foreground",
+              // web 端侧栏打开时折叠入口在侧栏品牌行（搜索右侧），顶部只保留收起态的展开入口；桌面端不变。
+              sidebarOpen && "web:hidden",
+            )}
           >
             <PanelLeft className="size-4.5" />
           </Button>
