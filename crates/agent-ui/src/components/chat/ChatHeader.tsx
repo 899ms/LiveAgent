@@ -60,11 +60,18 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
     <header
       data-tauri-drag-region
       className={cn(
-        "flex items-center gap-3 pl-4 pr-4 has-[[data-windows-window-controls]]:pr-0",
+        "flex items-center gap-4 pl-4 pr-4 has-[[data-windows-window-controls]]:pr-0",
         className,
       )}
     >
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div
+        data-app-header-navigation=""
+        className={cn(
+          "flex min-w-0 shrink-0 items-center gap-1.5 transition-[min-width] duration-200 ease-out motion-reduce:transition-none",
+          sidebarOpen &&
+            "desktop:min-[768px]:min-w-[calc(var(--sidebar-width)-1rem)] web:min-821:min-w-[calc(var(--sidebar-width)-1rem)]",
+        )}
+      >
         {navigationActions}
         {!desktopTitleBarInset ? (
           <Button
@@ -80,7 +87,11 @@ export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
           </Button>
         ) : null}
       </div>
-      <div data-tauri-drag-region className="flex h-full min-w-0 flex-1 items-center gap-1.5">
+      <div
+        data-conversation-header=""
+        data-tauri-drag-region
+        className="flex h-full min-w-0 flex-1 items-center gap-1.5"
+      >
         {leadingActions}
       </div>
 

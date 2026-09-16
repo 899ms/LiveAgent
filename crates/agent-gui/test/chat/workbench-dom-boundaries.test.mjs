@@ -92,13 +92,17 @@ test("application chrome is a shell row above both sidebars and the resizable wo
   assert.doesNotMatch(markdownStylesSource, /\.app-workbench-chrome-actions/);
 });
 
-test("conversation view switcher lives in the chrome and waits for an assistant reply", () => {
+test("conversation view switcher stays in the main header region on the shared titlebar row", () => {
   const chromeIndex = chatPageSource.indexOf("<AppWorkbenchChrome");
   const tabsIndex = chatPageSource.indexOf("<ConversationViewTabs");
   const applicationViewIndex = chatPageSource.indexOf("<ApplicationView");
 
   assert.ok(chromeIndex >= 0);
   assert.ok(tabsIndex > chromeIndex);
+  assert.match(headerSource, /data-conversation-header/);
+  assert.match(headerSource, /data-app-header-navigation/);
+  assert.match(headerSource, /var\(--sidebar-width\)-1rem/);
+  assert.doesNotMatch(chatPageSource, /<header\s+data-conversation-header/);
   assert.ok(tabsIndex < applicationViewIndex);
   assert.equal(chatPageSource.match(/<ConversationViewTabs/g)?.length, 1);
   assert.match(headerSource, /leadingActions\?: ReactNode/);

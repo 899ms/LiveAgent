@@ -993,3 +993,27 @@ Git 图测试改为从组件样式读取色板，仍验证原来的五个色值�
 - 中间 flex-1 空白区域显式标记 data-tauri-drag-region，窗口按钮区显式禁止拖拽。桌面隐藏侧栏内重复开关，移动抽屉保留关闭入口。
 - 模拟 Win32 + Tauri 环境验证单行 header、最小化/关闭调用、最大化标签更新、侧栏开关、订阅清理、启动/错误回退和非 Windows 隐藏；新增 2 项通过，原有 16 项相关回归通过。两端类型检查和生产构建、Biome/diff 检查通过。
 - 本机无法执行 Windows 原生验收。WebView2 命中测试、高 DPI、系统缩放、拖拽吸附与 Windows 11 Snap Layout 不属于上述 DOM 模拟结论。
+
+### 搜索会话迁移 coss Command 结构（2026-09-16）
+
+- 参考用户指定的 https://coss.com/ui/docs/components/command 及官方 command/autocomplete 源码，使用现有 Base UI Dialog + Autocomplete 独立实现项目 Command 封装，替换原 cmdk 转导出。沿用项目语义颜色，并采用搜索框、圆角结果面板、分组及底部键盘提示结构。
+- ConversationSearchDialog 移除 activeIndex、手写高亮和方向键逻辑，保留后端全文搜索排序、防抖、过期请求防护、失败重试、草稿/持久化会话打开语义。关闭客户端过滤；保留 Home/End 编辑输入，IME 组合期间不执行列表快捷键。
+- 使用真实 Dialog/Autocomplete 更新 DOM 回归与跨工作区导航回归。24 项相关测试通过，两端类型检查及生产构建通过，修改源码 Biome/diff 检查通过。弹窗高度受视口约束；尚未完成 dev 原生视觉验收。
+
+### 搜索弹窗配色与设置页统一（2026-09-16）
+
+- 根据用户三张对照截图，将 Command 顶底背景由偏蓝的通用 muted 改为 settings-tile；浅色选中态复用 settings-active，暗色使用 settings-tile-hover，保持结果行高亮可辨。
+- 外框、面板分隔线与键盘提示边框改为低透明度 foreground，减少蓝灰描边。正文、辅助文字、弹窗结构与交互保持原有实现。
+- 修改源码 Biome、共享 UI 类型检查与 diff 检查通过；未声称完成 dev 视觉验收。
+
+### 对话/轨迹切换回归主区域（2026-09-16）
+
+- 按用户要求，GUI 与 Gateway 的 ConversationViewTabs 从窗口级 AppWorkbenchChrome 移入 WorkspaceMainPanel 内的独立 header。左右侧栏展开/收起时，切换器始终跟随主区域布局，不依赖固定坐标或 Portal。
+- 保留已有展示条件：聊天有回复且非多分屏时显示；多分屏继续使用 PaneChrome 的轨迹入口。窗口按钮与侧栏开关仍归统一顶栏。
+- 7 项工作台边界回归通过，两端类型检查通过；未进行原生窗口视觉验收。
+
+### 修正主区域 header 纵向错位（2026-09-16）
+
+- 用户截图确认上一轮独立 h-11 header 多占一行。删除该行，统一顶栏内分为导航区、主区域 header、右侧操作区和 Windows 窗口控制区，保持同一中心线。
+- 导航区在桌面展开时使用与侧栏相同的 --sidebar-width 预留宽度，并扣除外层左侧 padding；主区域 header 因而位于侧栏右侧。收起时回到导航控件所需宽度，移动抽屉模式不预留侧栏宽度。无需 Portal、负 margin 或纵向定位补偿。
+- 10 项 header/Windows/工作台回归通过；两端构建用于检查 TS 与新增响应式宽度样式。此项替代上一轮单独新增主区域 header 行的实现。

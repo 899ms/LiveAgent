@@ -3984,8 +3984,6 @@ function ChatPageContent(props: ChatPageProps) {
         onToggleTheme={onToggleTheme}
         onOpenSidebar={handleToggleSidebar}
         leadingActions={
-          // 多 Pane 时切换点内嵌在聚焦 Pane 的左上角(PaneChrome),顶栏
-          // 不再重复;单 Pane 无 Pane chrome,保留顶栏 Tabs。
           activeView === "chat" && hasConversationReply && !workbenchHasMultiplePanes ? (
             <ConversationViewTabs
               active={renderedConversationView}

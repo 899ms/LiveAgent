@@ -5,10 +5,9 @@ import { createDomTestEnv } from "../helpers/dom-test-env.mjs";
 test("conversation search preserves ordering, navigation, draft opening and stale request guards", async () => {
   let env;
   const pending = [];
-  const Box = ({ children }) => env.React.createElement("div", null, children);
   env = await createDomTestEnv({ mocks: {
+    "../IconSet": new Proxy({}, {get: () => () => null}),
     "@liveagent/ui/components/IconSet": Object.fromEntries(["Clock3", "Loader2", "MessageSquareText", "Pin", "Search"].map(name => [name, () => null])),
-    "@liveagent/ui/components/ui/dialog": Object.fromEntries(["Dialog", "DialogContent", "DialogDescription", "DialogTitle"].map(name => [name, Box])),
     "@liveagent/ui/i18n/index": { useLocale: () => ({ t: key => key, locale: "en" }) },
     "@liveagent/ui/lib/chat/conversationSearch": { searchPersistedConversations: args => new Promise((resolve, reject) => pending.push({ args, resolve, reject })) },
   }});
@@ -23,8 +22,8 @@ test("conversation search preserves ordering, navigation, draft opening and stal
     { id: "pinned", title: "Pinned", isPinned: true },
   ], onOpenChange: value => events.push(["open", value]), onSelectConversation: (...args) => events.push(["select", ...args]) };
   const render = changes => act(async () => root.render(React.createElement(ConversationSearchDialog, { ...props, ...changes })));
-  const input = () => host.querySelector("input");
-  const options = () => [...host.querySelectorAll('[role="option"]')];
+  const input = () => document.querySelector("input");
+  const options = () => [...document.querySelectorAll('[role="option"]')];
   const key = (value, modifiers = {}) => act(async () => input().dispatchEvent(new KeyboardEvent("keydown", { key: value, ...modifiers, bubbles: true, cancelable: true })));
   const type = value => act(async () => {
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(input(), value);
@@ -35,17 +34,13 @@ test("conversation search preserves ordering, navigation, draft opening and stal
     await render();
     assert.deepEqual(options().map(el => el.textContent), ["Pinned", "Recent"]);
     await key("ArrowUp");
-    assert.equal(options()[0].getAttribute("aria-selected"), "true");
+    assert.equal(options()[0].hasAttribute("data-highlighted"), true);
     await key("ArrowDown"); await key("ArrowDown");
-    assert.equal(options()[1].getAttribute("aria-selected"), "true");
-    await key("ArrowUp", { isComposing: true });
-    assert.equal(options()[0].getAttribute("aria-selected"), "true");
-    await key("ArrowDown", { isComposing: true });
+    assert.equal(options()[1].hasAttribute("data-highlighted"), true);
+    await key("Enter", { isComposing: true });
+    assert.deepEqual(events, [], "confirming IME composition must not open a conversation");
     await key("Home");
-    assert.equal(options()[1].getAttribute("aria-selected"), "true");
-    await key("ArrowUp", { metaKey: true });
-    assert.equal(options()[0].getAttribute("aria-selected"), "true");
-    await key("ArrowDown");
+    assert.equal(options()[1].hasAttribute("data-highlighted"), true);
     await key("Enter");
     assert.deepEqual(events, [["open", false], ["select", "recent", undefined]]);
     events.length = 0;
@@ -60,7 +55,7 @@ test("conversation search preserves ordering, navigation, draft opening and stal
     assert.deepEqual(events, [["open", false], ["select", "z", { source: "search" }]]);
     await type("failure"); await debounce();
     await act(async () => pending[2].reject(new Error("offline")));
-    const retry = [...host.querySelectorAll("button")].find(el => el.textContent === "chat.retryConversationSearch");
+    const retry = [...document.querySelectorAll("button")].find(el => el.textContent === "chat.retryConversationSearch");
     assert.ok(retry);
     await act(async () => retry.click());
     assert.equal(pending.length, 4);
@@ -69,6 +64,12 @@ test("conversation search preserves ordering, navigation, draft opening and stal
     await render();
     assert.equal(input().value, "");
     assert.deepEqual(options().map(el => el.textContent), ["Pinned", "Recent"]);
+    events.length = 0;
+    await act(async () => options()[0].click());
+    assert.deepEqual(events, [["open", false], ["select", "pinned", { source: "search" }]]);
+    events.length = 0;
+    await key("Escape");
+    assert.deepEqual(events, [["open", false]], "Escape closes the search once");
   } finally {
     await act(async () => root.unmount()); host.remove(); env.cleanup();
   }
