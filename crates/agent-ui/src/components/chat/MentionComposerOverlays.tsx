@@ -51,6 +51,7 @@ export function Popup({
   onBack,
   onClose,
   onSelect,
+  onHighlight,
 }: {
   anchorRef: RefObject<HTMLElement | null>;
   trigger: MentionContext["trigger"];
@@ -64,14 +65,22 @@ export function Popup({
   onBack: () => void;
   onClose: () => void;
   onSelect: (suggestion: MentionSuggestion) => void;
+  onHighlight: (index: number) => void;
 }) {
   const { locale, t } = useLocale();
 
   const listRef = useRef<HTMLDivElement>(null);
   const hlRef = useRef<HTMLButtonElement>(null);
+  // Pointer-driven highlight changes must not scroll: the row is already under
+  // the cursor, and scrolling it would slide the list out from under the mouse.
+  const skipScrollRef = useRef(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: highlightIndex is the trigger — hlRef points at a different row after each keyboard move, and the scroll must follow it.
   useEffect(() => {
+    if (skipScrollRef.current) {
+      skipScrollRef.current = false;
+      return;
+    }
     hlRef.current?.scrollIntoView({ block: "nearest" });
   }, [highlightIndex]);
 
@@ -92,7 +101,7 @@ export function Popup({
         sideOffset={8}
         initialFocus={false}
         finalFocus={false}
-        className="flex max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-0 flex-col overflow-hidden p-0"
+        className="flex max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-0 flex-col overflow-hidden p-1"
         onMouseDown={(event) => {
           // Any mousedown inside the popup must not blur the editor (blur closes
           // the mention session), except on the native scrollbar strip where
@@ -109,34 +118,40 @@ export function Popup({
           event.preventDefault();
         }}
       >
-        <div
-          className={cn(
-            "flex min-h-10 shrink-0 items-center px-3.5 pb-1 pt-2",
-            "text-xs font-medium text-muted-foreground",
-          )}
-        >
-          {trigger === "skill" ? (
-            "Skills"
-          ) : mode === "root" ? (
-            t("chat.composer.add")
+        <div className="mb-0.5 shrink-0">
+          {trigger === "skill" || mode === "root" ? (
+            <div
+              className={cn(
+                "flex h-6 items-center gap-1.5 px-2",
+                "text-tiny font-medium text-muted-foreground",
+              )}
+            >
+              <span className="min-w-0 truncate">
+                {trigger === "skill" ? "Skills" : t("chat.composer.add")}
+              </span>
+            </div>
           ) : (
             <button
               type="button"
               className={cn(
-                "-ml-1 flex min-h-8 items-center gap-1 rounded-md px-1.5 transition-colors",
+                "flex h-6 w-full items-center gap-1.5 rounded-md px-2",
+                "text-tiny font-medium text-muted-foreground transition-colors",
                 "hover:bg-foreground/[0.05] hover:text-foreground",
+                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               )}
               onMouseDown={(event) => {
                 event.preventDefault();
                 onBack();
               }}
             >
-              <ArrowLeft className="size-3.5" />
-              {mode === "apps"
-                ? t("chat.composer.mentionGroupApps")
-                : mode === "files"
-                  ? t("chat.composer.filesAndFolders")
-                  : t("chat.composer.conversations")}
+              <ArrowLeft className="size-3 shrink-0" />
+              <span className="min-w-0 truncate">
+                {mode === "apps"
+                  ? t("chat.composer.mentionGroupApps")
+                  : mode === "files"
+                    ? t("chat.composer.filesAndFolders")
+                    : t("chat.composer.conversations")}
+              </span>
             </button>
           )}
         </div>
@@ -154,16 +169,21 @@ export function Popup({
                     ? t("chat.composer.filesAndFolders")
                     : t("chat.composer.conversations")
           }
-          className="relative flex min-h-0 max-h-60 flex-col overflow-y-auto px-2 pb-2 web:[scrollbar-color:var(--gateway-scrollbar-thumb)_transparent] web:[&::-webkit-scrollbar]:size-8px"
+          className={cn(
+            "relative flex min-h-0 max-h-60 flex-col gap-0.5 overflow-y-auto overscroll-contain",
+            "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:size-0",
+          )}
         >
           {isLoading && (
-            <div className="p-2 text-xs text-muted-foreground">
+            <div className="flex h-8 items-center px-2 text-xs text-muted-foreground">
               {mode === "conversations"
                 ? t("chat.composer.searchingConversations")
                 : t("chat.composer.indexingFiles")}
             </div>
           )}
-          {error && !isLoading && <div className="p-2 text-xs text-destructive">{error}</div>}
+          {error && !isLoading && (
+            <div className="flex h-8 items-center px-2 text-xs text-destructive">{error}</div>
+          )}
           {suggestions.map((suggestion, i) => {
             const isCategory = suggestion.type === "category";
             const isSkill = suggestion.type === "skill";
@@ -189,9 +209,6 @@ export function Popup({
                     ? t("chat.composer.conversations")
                     : (conversation?.title ?? skill?.name ?? fileName));
             const updatedAtLabel = conversationUpdatedAtLabel(conversation?.updatedAt, locale);
-            const conversationMeta = [conversation?.cwd, updatedAtLabel]
-              .filter(Boolean)
-              .join(" · ");
             const subtitle =
               category === "apps"
                 ? t("chat.composer.appsHint")
@@ -200,7 +217,7 @@ export function Popup({
                   : category === "conversations"
                     ? t("chat.composer.conversationsHint")
                     : conversation
-                      ? conversation.searchPreview || conversationMeta
+                      ? conversation.searchPreview || (conversation.cwd ?? "")
                       : (app?.bundleId ?? skill?.description ?? (dirPath ? `${dirPath}/` : ""));
             const RowIcon =
               category === "apps"
@@ -228,17 +245,17 @@ export function Popup({
                 }
                 ref={i === highlightIndex ? hlRef : undefined}
                 className={cn(
-                  // Rows are 38px hitboxes with 2px transparent borders so the
-                  // visual 34px row keeps the 4px gap while clicks in the gap
-                  // still land on a row instead of a dead strip. shrink-0 stops
-                  // the max-h flex column from compressing rows before it scrolls.
-                  "group flex h-38px shrink-0 cursor-pointer items-center gap-3",
-                  "rounded-lg border-y-2 border-transparent bg-clip-padding px-3",
-                  "text-left text-xs leading-5 transition-colors",
+                  "group flex h-8 shrink-0 cursor-pointer items-center gap-2",
+                  "rounded-md px-2 text-left text-xs leading-5 transition-colors",
                   i === highlightIndex
                     ? "bg-foreground/[0.07] text-foreground"
-                    : "text-foreground/85 hover:bg-foreground/[0.05] dark:text-foreground/90",
+                    : "text-foreground/85 dark:text-foreground/90",
                 )}
+                onMouseMove={() => {
+                  if (i === highlightIndex) return;
+                  skipScrollRef.current = true;
+                  onHighlight(i);
+                }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onSelect(suggestion);
@@ -268,21 +285,28 @@ export function Popup({
                     <Blend className="size-4" />
                   )}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-left">
-                  <span className="font-normal text-foreground/95">{title}</span>
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="shrink-0 truncate font-normal text-foreground/95">{title}</span>
                   {subtitle && (
-                    <span className="ml-2 text-xs text-muted-foreground/75">{subtitle}</span>
+                    <span className="min-w-0 flex-1 truncate text-tiny text-muted-foreground/75">
+                      {subtitle}
+                    </span>
                   )}
                 </span>
+                {updatedAtLabel ? (
+                  <span className="shrink-0 text-tiny tabular-nums text-muted-foreground/70">
+                    {updatedAtLabel}
+                  </span>
+                ) : null}
                 {isCategory ? (
-                  <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/65" />
+                  <ChevronRight className="size-3 shrink-0 text-muted-foreground/65" />
                 ) : isSkill ? (
-                  <span className="shrink-0 text-tiny uppercase tracking-wider text-muted-foreground/60">
+                  <span className="shrink-0 rounded bg-muted/60 px-1 py-px text-tiny uppercase tracking-wide text-muted-foreground">
                     skill
                   </span>
                 ) : (
                   isDir && (
-                    <span className="shrink-0 text-tiny uppercase tracking-wider text-muted-foreground/60">
+                    <span className="shrink-0 rounded bg-muted/60 px-1 py-px text-tiny uppercase tracking-wide text-muted-foreground">
                       dir
                     </span>
                   )
@@ -291,7 +315,9 @@ export function Popup({
             );
           })}
           {showEmpty && !isLoading && !error && suggestions.length === 0 && (
-            <div className="p-2 text-xs text-muted-foreground">{emptyLabel}</div>
+            <div className="flex h-8 items-center px-2 text-xs text-muted-foreground">
+              {emptyLabel}
+            </div>
           )}
         </div>
       </PopoverContent>

@@ -2005,6 +2005,7 @@ export const MentionComposer = memo(
               onBack={returnToMentionRoot}
               onClose={closeMentionSession}
               onSelect={selectSuggestion}
+              onHighlight={setHighlightIdx}
             />
           ) : null}
         </AnimatePresence>

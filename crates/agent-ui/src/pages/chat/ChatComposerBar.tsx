@@ -30,7 +30,6 @@ import {
 import { GitBranchSelector } from "@liveagent/ui/components/git/GitBranchSelector";
 import {
   ArrowUp,
-  ChevronDown,
   ChevronUp,
   Clock3,
   FolderOpen,
@@ -91,7 +90,6 @@ import {
   memo,
   type DragEvent as ReactDragEvent,
   type ReactNode,
-  type PointerEvent as ReactPointerEvent,
   type RefObject,
   useCallback,
   useEffect,
@@ -203,19 +201,6 @@ export type ChatQueueTurnPreview = {
   id: string;
   previewText: string;
   fileCount: number;
-};
-
-type QueueScrollbarState = {
-  visible: boolean;
-  thumbHeight: number;
-  thumbTop: number;
-};
-
-const QUEUE_SCROLLBAR_MIN_THUMB_HEIGHT = 24;
-const DEFAULT_QUEUE_SCROLLBAR_STATE: QueueScrollbarState = {
-  visible: false,
-  thumbHeight: QUEUE_SCROLLBAR_MIN_THUMB_HEIGHT,
-  thumbTop: 0,
 };
 
 const COMPOSER_EXPAND_ANIMATION_MS = 280;
@@ -541,19 +526,10 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
   // 跟着重新观察它。
   const [taskProgressBarElement, setTaskProgressBarElement] = useState<HTMLDivElement | null>(null);
   const queueListRef = useRef<HTMLUListElement | null>(null);
-  const queueScrollbarTrackRef = useRef<HTMLDivElement | null>(null);
-  const queueScrollbarDragRef = useRef<{
-    pointerId: number;
-    startScrollTop: number;
-    startY: number;
-  } | null>(null);
   const queueHadTurnsRef = useRef(false);
   const [queueCollapsed, setQueueCollapsed] = useState(false);
   const [workspacePathDropState, setWorkspacePathDropState] = useState<"accept" | "blocked" | null>(
     null,
-  );
-  const [queueScrollbar, setQueueScrollbar] = useState<QueueScrollbarState>(
-    DEFAULT_QUEUE_SCROLLBAR_STATE,
   );
   const isAgentMode = isAgentExecutionMode(executionMode);
   const uploadDisabled =
@@ -1027,107 +1003,6 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
 
   const showComposerExpandToggle = isComposerExpanded || composerHasOverflow;
 
-  const shouldShowQueueScrollbar = !queueCollapsed && queuedTurns.length > 2;
-
-  const updateQueueScrollbar = useCallback(() => {
-    const list = queueListRef.current;
-    if (!list || !shouldShowQueueScrollbar) {
-      setQueueScrollbar((current) => (current.visible ? DEFAULT_QUEUE_SCROLLBAR_STATE : current));
-      return;
-    }
-
-    const { clientHeight, scrollHeight, scrollTop } = list;
-    const trackHeight = Math.max(clientHeight, QUEUE_SCROLLBAR_MIN_THUMB_HEIGHT);
-    const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
-    const thumbHeight =
-      maxScrollTop <= 1
-        ? trackHeight
-        : Math.min(
-            trackHeight,
-            Math.max(
-              QUEUE_SCROLLBAR_MIN_THUMB_HEIGHT,
-              Math.round((clientHeight / scrollHeight) * trackHeight),
-            ),
-          );
-    const maxThumbTop = Math.max(0, trackHeight - thumbHeight);
-    const thumbTop = maxScrollTop <= 1 ? 0 : Math.round((scrollTop / maxScrollTop) * maxThumbTop);
-
-    setQueueScrollbar((current) => {
-      if (current.visible && current.thumbHeight === thumbHeight && current.thumbTop === thumbTop) {
-        return current;
-      }
-      return { visible: true, thumbHeight, thumbTop };
-    });
-  }, [shouldShowQueueScrollbar]);
-
-  const scrollQueueToThumbPosition = useCallback(
-    (clientY: number) => {
-      const list = queueListRef.current;
-      const track = queueScrollbarTrackRef.current;
-      if (!list || !track || !shouldShowQueueScrollbar) return;
-
-      const rect = track.getBoundingClientRect();
-      const maxThumbTop = Math.max(1, rect.height - queueScrollbar.thumbHeight);
-      const nextThumbTop = Math.min(
-        Math.max(clientY - rect.top - queueScrollbar.thumbHeight / 2, 0),
-        maxThumbTop,
-      );
-      const maxScrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
-      list.scrollTop = (nextThumbTop / maxThumbTop) * maxScrollTop;
-      updateQueueScrollbar();
-    },
-    [queueScrollbar.thumbHeight, shouldShowQueueScrollbar, updateQueueScrollbar],
-  );
-
-  const handleQueueScrollbarPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!shouldShowQueueScrollbar || event.button !== 0) return;
-      const list = queueListRef.current;
-      const track = queueScrollbarTrackRef.current;
-      if (!list || !track) return;
-
-      event.preventDefault();
-      const target = event.target as HTMLElement;
-      if (!target.closest(".chat-queue-scrollbar-thumb")) {
-        scrollQueueToThumbPosition(event.clientY);
-      }
-
-      queueScrollbarDragRef.current = {
-        pointerId: event.pointerId,
-        startScrollTop: list.scrollTop,
-        startY: event.clientY,
-      };
-      event.currentTarget.setPointerCapture(event.pointerId);
-    },
-    [shouldShowQueueScrollbar, scrollQueueToThumbPosition],
-  );
-
-  const handleQueueScrollbarPointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const drag = queueScrollbarDragRef.current;
-      if (!drag || drag.pointerId !== event.pointerId) return;
-
-      const list = queueListRef.current;
-      const track = queueScrollbarTrackRef.current;
-      if (!list || !track) return;
-
-      const maxScrollTop = Math.max(0, list.scrollHeight - list.clientHeight);
-      const maxThumbTop = Math.max(1, track.clientHeight - queueScrollbar.thumbHeight);
-      list.scrollTop =
-        drag.startScrollTop + ((event.clientY - drag.startY) / maxThumbTop) * maxScrollTop;
-      updateQueueScrollbar();
-    },
-    [queueScrollbar.thumbHeight, updateQueueScrollbar],
-  );
-
-  const handleQueueScrollbarPointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = queueScrollbarDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-
-    queueScrollbarDragRef.current = null;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-  }, []);
-
   useEffect(() => {
     const hasQueuedTurns = queuedTurns.length > 0;
     if (hasQueuedTurns && !queueHadTurnsRef.current) {
@@ -1135,27 +1010,6 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
     }
     queueHadTurnsRef.current = hasQueuedTurns;
   }, [queuedTurns.length]);
-
-  useEffect(() => {
-    const list = queueListRef.current;
-    if (!list) {
-      updateQueueScrollbar();
-      return;
-    }
-
-    updateQueueScrollbar();
-    list.addEventListener("scroll", updateQueueScrollbar, { passive: true });
-    const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateQueueScrollbar);
-    resizeObserver?.observe(list);
-    window.addEventListener("resize", updateQueueScrollbar);
-
-    return () => {
-      list.removeEventListener("scroll", updateQueueScrollbar);
-      resizeObserver?.disconnect();
-      window.removeEventListener("resize", updateQueueScrollbar);
-    };
-  }, [updateQueueScrollbar]);
 
   useEffect(() => {
     const composerLayer = composerLayerRef.current;
@@ -1308,62 +1162,68 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
         {queuedTurns.length > 0 ? (
           <div ref={queuePanelRef} className="relative z-30 mx-auto mb-minus-1px w-inset-1p5rem">
             <div
-              aria-hidden={queueCollapsed}
               className={cn(
-                "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
-                queueCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+                "rounded-t-lg border border-b-0 border-black/[0.055] bg-white/70",
+                "px-1.5 pb-1 pt-1",
+                "shadow-ui-clarifypanel-22 backdrop-blur-2xl backdrop-saturate-[165%]",
+                "dark:border-white/[0.10] dark:bg-white/[0.06] dark:shadow-ui-clarifypanel-23",
               )}
             >
-              <div className="min-h-0 overflow-hidden">
-                <div
+              <button
+                type="button"
+                onClick={toggleQueueCollapsed}
+                title={toggleQueueTooltip}
+                aria-label={toggleQueueTooltip}
+                aria-expanded={!queueCollapsed}
+                className={cn(
+                  "flex h-6 w-full items-center gap-1.5 rounded-md px-2",
+                  "text-tiny font-medium text-muted-foreground transition-colors",
+                  "hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.06]",
+                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                )}
+              >
+                <Clock3 className="size-3 shrink-0" />
+                <span className="min-w-0 truncate">
+                  {t("chat.queue.title").replace("{count}", String(queuedTurns.length))}
+                </span>
+                <ChevronUp
                   className={cn(
-                    "rounded-t-lg border border-b-0 border-black/[0.055] bg-white/70",
-                    "px-1 pb-1 pt-2",
-                    "shadow-ui-clarifypanel-22 backdrop-blur-2xl backdrop-saturate-[165%]",
-                    "dark:border-white/[0.10] dark:bg-white/[0.06] dark:shadow-ui-clarifypanel-23",
+                    "ml-auto size-3 shrink-0 transition-transform duration-200 ease-out",
+                    queueCollapsed && "rotate-180",
                   )}
-                >
-                  <div className="relative min-h-0">
+                />
+              </button>
+              <div
+                aria-hidden={queueCollapsed}
+                className={cn(
+                  "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+                  queueCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+                )}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <div className="relative min-h-0 pt-0.5">
                     <ul
                       ref={queueListRef}
-                      data-scrollable={queuedTurns.length > 2 ? "true" : "false"}
                       className={cn(
-                        "chat-queue-scroll flex min-w-0 flex-col gap-1 overflow-x-hidden overscroll-contain",
+                        "chat-queue-scroll flex min-w-0 flex-col gap-0.5 overflow-x-hidden overscroll-contain",
                         "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:size-0",
-                        queuedTurns.length > 2
-                          ? "h-76px overflow-y-scroll pr-3"
-                          : "max-h-76px overflow-y-hidden pr-1",
+                        queuedTurns.length > 3
+                          ? "h-88px overflow-y-scroll"
+                          : "max-h-88px overflow-y-hidden",
                       )}
                     >
                       {queuedTurns.map((item, index) => (
                         <li
                           key={item.id}
                           className={cn(
-                            "relative grid h-9 min-h-9 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5",
-                            "rounded-md border border-black/[0.035] bg-white/42 px-2",
-                            "text-xs shadow-ui-chatcomposerbar-35 backdrop-blur-xl backdrop-saturate-[150%] transition-[border-color,background-color]",
-                            "dark:border-white/[0.06] dark:bg-white/[0.04] dark:shadow-ui-chatcomposerbar-36",
+                            "relative grid h-7 min-h-7 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5",
+                            "rounded-md pl-2 pr-1 text-xs transition-colors",
+                            "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
                           )}
                         >
-                          <div className="flex shrink-0 items-center gap-0.5">
-                            {index > 0 ? (
-                              <button
-                                type="button"
-                                disabled={queueCollapsed}
-                                onClick={() => onMoveQueuedTurnUp(item.id)}
-                                aria-label={t("chat.queue.moveUp")}
-                                className={cn(
-                                  "inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors",
-                                  "hover:bg-background/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-35",
-                                )}
-                              >
-                                <ChevronUp className="size-3" />
-                              </button>
-                            ) : (
-                              <span aria-hidden className="size-6" />
-                            )}
-                            <Clock3 className="size-3 shrink-0 text-muted-foreground/65" />
-                          </div>
+                          <span className="w-3 shrink-0 text-center text-tiny tabular-nums text-muted-foreground/60">
+                            {index + 1}
+                          </span>
                           <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
                             <span
                               className={cn(
@@ -1383,6 +1243,20 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                             ) : null}
                           </div>
                           <div className="flex shrink-0 items-center gap-0.5">
+                            <RuntimeControlTooltip label={t("chat.queue.moveUp")}>
+                              <button
+                                type="button"
+                                disabled={queueCollapsed || index === 0}
+                                onClick={() => onMoveQueuedTurnUp(item.id)}
+                                aria-label={t("chat.queue.moveUp")}
+                                className={cn(
+                                  "inline-flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                                  "hover:bg-background/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-25",
+                                )}
+                              >
+                                <ArrowUp className="size-3" />
+                              </button>
+                            </RuntimeControlTooltip>
                             <RuntimeControlTooltip label={t("chat.queue.edit")}>
                               <button
                                 type="button"
@@ -1390,7 +1264,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                                 onClick={() => onEditQueuedTurn(item.id)}
                                 aria-label={t("chat.queue.edit")}
                                 className={cn(
-                                  "inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                                  "inline-flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors",
                                   "hover:bg-background/80 hover:text-foreground",
                                 )}
                               >
@@ -1404,7 +1278,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                                 onClick={() => onRunQueuedTurnNow(item.id)}
                                 aria-label={t("chat.queue.runNow")}
                                 className={cn(
-                                  "inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                                  "inline-flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors",
                                   "hover:bg-background/80 hover:text-foreground",
                                 )}
                               >
@@ -1418,7 +1292,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                                 onClick={() => onRemoveQueuedTurn(item.id)}
                                 aria-label={t("chat.queue.delete")}
                                 className={cn(
-                                  "inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                                  "inline-flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors",
                                   "hover:bg-destructive/10 hover:text-destructive",
                                 )}
                               >
@@ -1429,59 +1303,10 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                         </li>
                       ))}
                     </ul>
-                    {shouldShowQueueScrollbar ? (
-                      <div
-                        ref={queueScrollbarTrackRef}
-                        aria-hidden
-                        className={cn(
-                          "chat-queue-scrollbar absolute inset-y-2px right-1px z-2 w-8px touch-none",
-                          "rounded-full bg-muted/36 shadow-[inset_0_0_0_var(--spacing-1px)_hsl(var(--background)/0.42)] [&:hover_.chat-queue-scrollbar-thumb]:bg-muted-foreground/56",
-                        )}
-                        onPointerCancel={handleQueueScrollbarPointerUp}
-                        onPointerDown={handleQueueScrollbarPointerDown}
-                        onPointerMove={handleQueueScrollbarPointerMove}
-                        onPointerUp={handleQueueScrollbarPointerUp}
-                      >
-                        <div
-                          className={cn(
-                            "chat-queue-scrollbar-thumb absolute inset-x-1px top-0 min-h-24px",
-                            "rounded-full bg-muted-foreground/42 shadow-[inset_0_0_0_var(--spacing-1px)_hsl(var(--background)/0.55),0_var(--spacing-1px)_var(--spacing-2px)_var(--ui-color-hsl-220-22-10-0p08)]",
-                            "transition-colors duration-160 ease-default active:bg-muted-foreground/70",
-                          )}
-                          style={{
-                            height: `${queueScrollbar.thumbHeight}px`,
-                            transform: `translateY(${queueScrollbar.thumbTop}px)`,
-                          }}
-                        />
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={toggleQueueCollapsed}
-              title={toggleQueueTooltip}
-              aria-label={toggleQueueTooltip}
-              aria-expanded={!queueCollapsed}
-              className={cn(
-                "absolute left-1/2 top-0 z-40 inline-flex h-18px -translate-x-1/2 -translate-y-1/2",
-                "items-center gap-1 rounded-full border border-black/[0.07] bg-white/90 pl-1.5 pr-2",
-                "text-muted-foreground shadow-ui-chatcomposerbar-37 backdrop-blur-xl backdrop-saturate-150 transition-[background-color,color,scale]",
-                "hover:bg-white hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:border-white/[0.12] dark:bg-zinc-900/90",
-                "dark:shadow-ui-chatcomposerbar-38 dark:hover:bg-zinc-900",
-              )}
-            >
-              {queueCollapsed ? (
-                <ChevronDown className="size-3" />
-              ) : (
-                <ChevronUp className="size-3" />
-              )}
-              <span className="text-tiny font-medium leading-none tabular-nums">
-                {queuedTurns.length}
-              </span>
-            </button>
           </div>
         ) : null}
 
