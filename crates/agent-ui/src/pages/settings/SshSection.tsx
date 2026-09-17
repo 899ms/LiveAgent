@@ -1379,8 +1379,8 @@ export function SshSection(props: SettingsSectionProps) {
         <SettingsSection
           description={t("settings.sshDesc")}
           actions={
-            <>
-              {hosts.length > 0 ? (
+            hosts.length > 0 ? (
+              <>
                 <div
                   className={cn(
                     "flex items-center gap-2 rounded-lg bg-muted/50 px-2.5 py-1.5",
@@ -1390,22 +1390,22 @@ export function SshSection(props: SettingsSectionProps) {
                   <span className="tabular-nums font-medium text-foreground">{hosts.length}</span>
                   {t("settings.sshCount")}
                 </div>
-              ) : null}
-              <SshViewModeToggle value={viewMode} onChange={setViewMode} />
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setImportOpen(true)}
-              >
-                <Upload className="size-3.5" />
-                {t("settings.sshImport")}
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={openAdd}>
-                <Plus className="size-3.5" />
-                {t("settings.sshAdd")}
-              </Button>
-            </>
+                <SshViewModeToggle value={viewMode} onChange={setViewMode} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setImportOpen(true)}
+                >
+                  <Upload className="size-3.5" />
+                  {t("settings.sshImport")}
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={openAdd}>
+                  <Plus className="size-3.5" />
+                  {t("settings.sshAdd")}
+                </Button>
+              </>
+            ) : null
           }
         />
 
