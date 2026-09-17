@@ -230,7 +230,7 @@ export function SkillsImportView(props: {
               aria-busy="true"
             >
               {[1, 2, 3, 4].map((item) => (
-                <LoadingSurface variant="skeleton" key={item} className="min-h-48 p-3.5">
+                <LoadingSurface variant="skeleton" key={item} className="min-h-48 p-5">
                   <div className="flex h-full flex-col gap-3">
                     <div className="flex items-center gap-3">
                       <Skeleton className="size-5 shrink-0 rounded" />

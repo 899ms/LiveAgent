@@ -60,6 +60,7 @@ import {
 } from "@liveagent/ui/lib/skills/skillCardMetadata";
 import { memo, useMemo } from "react";
 import { InstalledSkillCategoryChip } from "./SkillCategoryControls";
+import { SKILL_CARD_SHELL_CLASS } from "./skillCardLayout";
 
 const INSTALLED_SKILL_CARD_ICONS: Record<InstalledSkillCardIconName, typeof Activity> = {
   bookOpen: BookOpen,
@@ -247,7 +248,7 @@ export const InstalledSkillCard = memo(function InstalledSkillCard(props: Instal
         data-card-action-zone=""
         role="toolbar"
         aria-label={skill.name}
-        className="flex shrink-0 items-center gap-1"
+        className="flex shrink-0 items-center gap-1 self-center"
         onPointerDown={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
@@ -327,9 +328,7 @@ export const InstalledSkillCard = memo(function InstalledSkillCard(props: Instal
   );
 
   const cardClassName = cn(
-    "group relative flex min-w-0 w-full items-center gap-3 rounded-xl",
-    "bg-settings-tile px-3.5 py-2.5 text-left transition-colors",
-    "hover:bg-settings-tile-hover",
+    SKILL_CARD_SHELL_CLASS,
     "[content-visibility:auto] [contain-intrinsic-size:auto_4.5rem]",
     bulkSelected && "bg-settings-active",
   );

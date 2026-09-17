@@ -4,8 +4,14 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { createTsModuleLoader } from "../helpers/load-ts-module.mjs";
 
-const page = new URL("../../../agent-ui/src/pages/skills-hub/SkillsHubPage.tsx", import.meta.url);
-const source = readFileSync(page, "utf8");
+const source = ["SkillsHubPage.tsx", "InstalledSkillsView.tsx"]
+  .map((file) =>
+    readFileSync(
+      new URL(`../../../agent-ui/src/pages/skills-hub/${file}`, import.meta.url),
+      "utf8",
+    ),
+  )
+  .join("\n");
 const guiLoader = createTsModuleLoader();
 const webRoot = fileURLToPath(new URL("../../../agent-gateway/web/", import.meta.url));
 const hostTranslations = [
@@ -24,7 +30,7 @@ test("the shared Skills Hub preserves the initial list and defers subsequent upd
       /skills\.length > 0 && !hasPresentedInstalledSkills && installedContentPending/,
     );
     assert.match(source, /<SkillsContentLoadingState[\s\S]*settings\.skillsHubPreparing/);
-    assert.match(source, /aria-busy=\{loading \|\| showInitialInstalledContentLoading\}/);
+    assert.match(source, /aria-busy=\{loading \|\| initialContentPending\}/);
 });
 
 test("the shared Skills Hub derives installed Skills from the deferred snapshot", () => {

@@ -6,10 +6,14 @@ const controlsSource = readFileSync(
   new URL("../../../agent-ui/src/pages/skills-hub/SkillCategoryControls.tsx", import.meta.url),
   "utf8",
 );
-const hubSource = readFileSync(
-  new URL("../../../agent-ui/src/pages/skills-hub/SkillsHubPage.tsx", import.meta.url),
-  "utf8",
-);
+const hubSource = ["SkillsHubPage.tsx", "InstalledSkillsView.tsx"]
+  .map((file) =>
+    readFileSync(
+      new URL(`../../../agent-ui/src/pages/skills-hub/${file}`, import.meta.url),
+      "utf8",
+    ),
+  )
+  .join("\n");
 const importSource = readFileSync(
   new URL("../../../agent-ui/src/pages/skills-hub/SkillsImportView.tsx", import.meta.url),
   "utf8",
@@ -37,7 +41,7 @@ test("skill category navigation uses the shared standard Tabs components", () =>
 });
 
 test("installed skill categories reuse the quiet store tabs with icons", () => {
-  assert.match(hubSource, /<StoreCategoryChips[\s\S]*value=\{installedCategory\}/);
+  assert.match(hubSource, /<StoreCategoryChips[\s\S]*value=\{category\}/);
   assert.doesNotMatch(hubSource, /appearance="outlined"/);
   assert.doesNotMatch(hubSource, /showIcons=\{false\}/);
   assert.match(controlsSource, /appearance === "outlined"/);

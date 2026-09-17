@@ -11,6 +11,7 @@ const implementations = [
     loader: createTsModuleLoader(),
     sources: [
       "SkillsHubPage.tsx",
+      "InstalledSkillsView.tsx",
       "InstalledSkillCard.tsx",
       "InstalledSkillPreviewDrawer.tsx",
       "SkillsImportView.tsx",
@@ -112,7 +113,8 @@ for (const { label, loader, sources } of implementations) {
     assert.match(source, /<SelectItem[\s\S]*value=\{option\.value\}/);
     assert.match(source, /overflow-y-auto[^"]*\[overflow-anchor:none\]/);
     assert.match(source, /<LazyMotion features=\{domAnimation\}>/);
-    assert.match(source, /<LayoutGroup id=\{`\$\{toastScope\}-installed-skills`\}>/);
+    assert.match(source, /<LayoutGroup id=\{layoutGroupId\}>/);
+    assert.match(source, /layoutGroupId=\{`\$\{toastScope\}-installed-skills`\}/);
     assert.match(source, /<m\.div/);
     assert.match(source, /layout=\{prefersReducedMotion \? false : "position"\}/);
     assert.match(source, /type: "spring"/);

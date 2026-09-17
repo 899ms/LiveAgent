@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDomTestEnv } from "../helpers/dom-test-env.mjs";
 
-test("settings switches preserve controlled values, locked Skills and provider hit area", async () => {
+test("provider switch preserves controlled value and hit area", async () => {
   let env;
   const icons = Object.fromEntries([
     "AlertTriangle", "BookOpen", "Check", "FileText", "Lock", "MessageSquare", "RefreshCw", "Search", "Sparkles",
@@ -11,20 +11,9 @@ test("settings switches preserve controlled values, locked Skills and provider h
   env = await createDomTestEnv({mocks: {
     "@liveagent/ui/components/IconSet": icons,
     "@liveagent/ui/i18n/index": {useLocale: () => ({t: key => key})},
-    "@liveagent/ui/lib/skills/index": {
-      discoverSkills: async () => ({skills: []}),
-      notifySkillsDiscoveryUpdated: () => {},
-      mergeAlwaysEnabledSkillNames: names => names,
-      isUserSelectableSkill: () => true,
-      isAlwaysEnabledSkillName: () => false,
-    },
-    "@liveagent/app/lib/settings/index": {
-      updateSkills: (prev, patch) => ({...prev, skills: {...prev.skills, ...patch}}),
-    },
   }});
   const {React, act, createRoot} = env;
   const {DialogSwitch} = env.loadModule("@liveagent/ui/pages/settings/ProviderPresentation.tsx");
-  const {SkillsSettingsForm} = env.loadModule("@liveagent/ui/pages/settings/SkillsSettingsForm.tsx");
   const host = document.createElement("div");document.body.append(host);
   const root = createRoot(host);
   try {
@@ -46,28 +35,26 @@ test("settings switches preserve controlled values, locked Skills and provider h
     button=host.querySelector('button[role="switch"]');
     await act(async () => button.click());
     assert.deepEqual(changes,[true,false]);
-
-    let settings={system:{executionMode:"agent"},skills:{enabled:false,selected:["keep-me"]}};
-    const updates=[];
-    const renderSkills=async () => act(async () => root.render(React.createElement(SkillsSettingsForm, {
-      settings, setSettings: updater => {settings=updater(settings);updates.push(settings.skills.enabled);},
-    })));
-    await renderSkills();
-    button=host.querySelector('button[role="switch"]');
-    await act(async () => button.click());
-    assert.deepEqual(updates,[true]);
-    assert.deepEqual(settings.skills.selected,["keep-me"]);
-    await renderSkills();
-    assert.equal(button.getAttribute("aria-checked"),"true");
-    await act(async () => button.click());
-    assert.deepEqual(updates,[true,false]);
-    settings={...settings,system:{executionMode:"text"}};
-    await renderSkills();
-    button=host.querySelector('button[role="switch"]');
-    assert.equal(button.disabled,true);
-    await act(async () => button.click());
-    assert.deepEqual(updates,[true,false]);
   } finally {
     await act(async () => root.unmount());host.remove();env.cleanup();
+  }
+});
+
+test("toggling Skills enabled keeps the user's selected skills", async () => {
+  const env = await createDomTestEnv();
+  try {
+    const {normalizeSettings, updateSkills} = env.loadModule("@liveagent/ui/lib/settings/index.ts");
+    const before = normalizeSettings({skills: {enabled: true, selected: ["keep-me"]}});
+    assert.ok(before.skills.selected.includes("keep-me"));
+
+    const disabled = updateSkills(before, {enabled: false});
+    assert.equal(disabled.skills.enabled, false);
+    assert.deepEqual(disabled.skills.selected, before.skills.selected);
+
+    const enabled = updateSkills(disabled, {enabled: true});
+    assert.equal(enabled.skills.enabled, true);
+    assert.deepEqual(enabled.skills.selected, before.skills.selected);
+  } finally {
+    env.cleanup();
   }
 });

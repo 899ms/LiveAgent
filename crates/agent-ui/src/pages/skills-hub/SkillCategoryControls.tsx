@@ -149,10 +149,8 @@ export function InstalledSkillCategoryChip(props: {
   );
 }
 
-export function SkillCategoryBadges(props: {
+export function SkillCategoryChips(props: {
   categories: ClawHubCategorySlug[];
-  topics?: string[];
-  searchQuery?: string;
   onSelect: (category: ClawHubCategorySlug) => void;
 }) {
   const { t } = useLocale();
@@ -177,10 +175,17 @@ export function SkillCategoryBadges(props: {
           </Button>
         );
       })}
+    </div>
+  );
+}
+
+export function SkillTopicBadges(props: { topics?: string[]; searchQuery?: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
       {(props.topics ?? []).slice(0, 3).map((topic) => (
         <span
           key={topic}
-          className="shrink-0 rounded-md bg-muted px-1.5 py-1 text-tiny text-muted-foreground"
+          className="inline-flex h-5 shrink-0 items-center rounded-md bg-muted px-1.5 text-tiny text-muted-foreground"
         >
           <SearchHighlight text={topic} query={props.searchQuery ?? ""} />
         </span>

@@ -6,8 +6,6 @@ import {
 } from "@liveagent/app/lib/settings";
 import { GlassPanel, HubHeader } from "@liveagent/ui/components/hub/HubChrome";
 import {
-  AlertTriangle,
-  BookOpen,
   Check,
   Cloud,
   Download,
@@ -68,26 +66,19 @@ import {
   readInstalledSortPreference,
   sortInstalledSkillItems,
 } from "@liveagent/ui/lib/skills/installedSort";
-import { domAnimation, LayoutGroup, LazyMotion, useReducedMotion } from "motion/react";
-import * as m from "motion/react-m";
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AgentModeRequired } from "../../components/settings/AgentModeRequired";
 import { reconcileExternalToolScans } from "./externalSkillScanState";
-import { InstalledSkillCard } from "./InstalledSkillCard";
 import {
   emptyInstalledSkillPreviewState,
   INSTALLED_SKILL_PREVIEW_LINES,
   InstalledSkillPreviewDrawer,
   type InstalledSkillPreviewState,
 } from "./InstalledSkillPreviewDrawer";
-import {
-  classifyInstalledSkill,
-  StoreCategoryChips,
-  type StoreCategoryValue,
-} from "./SkillCategoryControls";
+import { InstalledSkillsView } from "./InstalledSkillsView";
+import { classifyInstalledSkill, type StoreCategoryValue } from "./SkillCategoryControls";
 import { SkillsImportView } from "./SkillsImportView";
-import { SkillsContentLoadingState } from "./SkillsLoading";
-import { SkillsStoreView, TERMINAL_INSTALL_PHASES } from "./SkillsStoreView";
+import { SkillsStoreView, STORE_SORT_OPTIONS, TERMINAL_INSTALL_PHASES } from "./SkillsStoreView";
 import {
   includesEveryBulkSelection,
   toggleBulkSelection,
@@ -129,6 +120,11 @@ const INSTALLED_SORT_OPTIONS: Array<{ value: InstalledSkillSort; labelKey: strin
   { value: "name-desc", labelKey: "settings.skillsInstalledSortNameDesc" },
   { value: "installed-desc", labelKey: "settings.skillsInstalledSortNewest" },
 ];
+
+const HUB_SORT_TRIGGER_CLASS = cn(
+  "h-8 w-auto max-w-44 shrink-0 gap-2 border-0 bg-transparent px-2.5",
+  "text-xs font-medium text-foreground shadow-none hover:bg-muted max-sm:max-w-32",
+);
 type SkillsHubPageProps = {
   settings: AppSettings;
   setSettings: (updater: (prev: AppSettings) => AppSettings) => void;
@@ -149,7 +145,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
   );
   const [rootDir, setRootDir] = useState(initialRootDir ?? initialDiscovery?.rootDir ?? "");
   const [hasPresentedInstalledSkills, setHasPresentedInstalledSkills] = useState(false);
-  const prefersReducedMotion = useReducedMotion();
   const [loading, setLoading] = useState(
     !lockedByChatMode && initialSkills === undefined && initialDiscovery === null,
   );
@@ -1552,10 +1547,7 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                         <SelectTrigger
                           aria-label={t("settings.skillsInstalledSortLabel")}
                           title={t("settings.skillsInstalledSortLabel")}
-                          className={cn(
-                            "h-8 w-auto max-w-44 shrink-0 gap-2 border-0 bg-transparent px-2.5",
-                            "text-xs font-medium text-foreground shadow-none hover:bg-muted max-sm:max-w-32",
-                          )}
+                          className={HUB_SORT_TRIGGER_CLASS}
                         >
                           <SelectValue>
                             {t(
@@ -1567,6 +1559,36 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                         </SelectTrigger>
                         <SelectContent>
                           {INSTALLED_SORT_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value} className="text-xs">
+                              {t(option.labelKey)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
+                    {view === "store" ? (
+                      <Select
+                        value={storeSort}
+                        onValueChange={(value) => {
+                          const next = STORE_SORT_OPTIONS.find((option) => option.value === value);
+                          if (!next || next.value === storeSort) return;
+                          setStoreSort(next.value);
+                        }}
+                      >
+                        <SelectTrigger
+                          aria-label={t("settings.skillsStoreSortLabel")}
+                          title={t("settings.skillsStoreSortLabel")}
+                          className={HUB_SORT_TRIGGER_CLASS}
+                        >
+                          <SelectValue>
+                            {t(
+                              STORE_SORT_OPTIONS.find((option) => option.value === storeSort)
+                                ?.labelKey ?? STORE_SORT_OPTIONS[0].labelKey,
+                            )}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STORE_SORT_OPTIONS.map((option) => (
                             <SelectItem key={option.value} value={option.value} className="text-xs">
                               {t(option.labelKey)}
                             </SelectItem>
@@ -1598,150 +1620,37 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                 ) : (
                   <>
                     <TabsContent value="installed" className="h-full min-h-0">
-                      <div
-                        aria-busy={loading || showInitialInstalledContentLoading}
-                        className={cn(
-                          "h-full min-h-0 overflow-y-auto px-0.5 pr-1 [overflow-anchor:none]",
-                          bulkMode ? "pb-safe-bottom-10rem sm:pb-24" : "pb-4",
-                        )}
-                      >
-                        <div className="flex flex-col gap-3">
-                          {skills.length > 0 || loading ? (
-                            <StoreCategoryChips
-                              value={installedCategory}
-                              counts={installedCategoryCounts}
-                              onChange={setInstalledCategory}
-                              className="sticky top-0 z-30 -mx-0.5 bg-background/95 px-0.5 backdrop-blur supports-[backdrop-filter]:bg-background/90"
-                            />
-                          ) : null}
-
-                          {loadError ? (
-                            <GlassPanel tone="error">
-                              <div className="flex items-center gap-2">
-                                <AlertTriangle className="size-4 shrink-0 text-destructive" />
-                                <span className="text-xs text-destructive">{loadError}</span>
-                              </div>
-                            </GlassPanel>
-                          ) : null}
-
-                          {!skillsEnabled ? (
-                            <GlassPanel tone="muted">
-                              <div className="flex items-center gap-2">
-                                <BookOpen className="size-4 shrink-0 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">
-                                  {t("settings.skillsDisabledHint")}
-                                </span>
-                              </div>
-                            </GlassPanel>
-                          ) : null}
-
-                          {!loading && skills.length === 0 && !loadError ? (
-                            <GlassPanel>
-                              <div className="flex flex-col items-center gap-3 py-8 text-center">
-                                <div className="flex size-12 items-center justify-center rounded-full bg-muted/60">
-                                  <BookOpen className="size-5 text-muted-foreground" />
-                                </div>
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    {t("settings.skillsNotFound")}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {t("settings.skillsNotFoundHint")}
-                                  </p>
-                                </div>
-                                <RefreshButton
-                                  aria-busy={loading}
-                                  variant="outline"
-                                  size="sm"
-                                  className="mt-1 gap-1.5 rounded-full"
-                                  onClick={() => void refresh({ announce: true })}
-                                >
-                                  <RefreshCw data-refresh-icon className="size-3.5" />
-                                  {t("settings.skillsRescan")}
-                                </RefreshButton>
-                              </div>
-                            </GlassPanel>
-                          ) : null}
-
-                          {loading && skills.length === 0 ? (
-                            <SkillsContentLoadingState
-                              title={t("settings.skillsScanning")}
-                              description={t("settings.skillsHubScanning")}
-                            />
-                          ) : showInitialInstalledContentLoading ? (
-                            <SkillsContentLoadingState
-                              title={t("settings.skillsHubPreparing")}
-                              description={t("settings.skillsHubPreparingDesc")}
-                            />
-                          ) : null}
-
-                          {sortedFiltered.length > 0 ? (
-                            <LazyMotion features={domAnimation}>
-                              <LayoutGroup id={`${toastScope}-installed-skills`}>
-                                <div className="grid gap-1.5">
-                                  {sortedFiltered.map(({ skill, categories }) => {
-                                    const alwaysEnabled = isAlwaysEnabledSkillName(skill.name);
-                                    const key = `${skill.name}-${rootDir}`;
-                                    return (
-                                      <m.div
-                                        key={key}
-                                        layout={prefersReducedMotion ? false : "position"}
-                                        transition={{
-                                          layout: {
-                                            type: "spring",
-                                            stiffness: 420,
-                                            damping: 36,
-                                            mass: 0.7,
-                                          },
-                                        }}
-                                        className="min-w-0"
-                                      >
-                                        <InstalledSkillCard
-                                          skill={skill}
-                                          primaryCategory={categories[0] ?? "other"}
-                                          alwaysEnabled={alwaysEnabled}
-                                          checked={alwaysEnabled || selected.has(skill.name)}
-                                          skillsEnabled={skillsEnabled}
-                                          bulkMode={bulkMode}
-                                          bulkSelected={bulkSelection.has(skill.name)}
-                                          deleting={deletingSkillName === skill.name}
-                                          deleteDisabled={deletingSkillName !== null}
-                                          searchQuery={deferredFilter}
-                                          onToggle={handleCardToggle}
-                                          onEnterBulkMode={enterBulkMode}
-                                          onToggleBulkSelection={toggleBulkSelectionName}
-                                          onBulkCardClick={handleCardBulkClick}
-                                          onOpenPreview={handleCardOpenPreview}
-                                          onDelete={handleCardDelete}
-                                          onSelectCategory={setInstalledCategory}
-                                        />
-                                      </m.div>
-                                    );
-                                  })}
-                                </div>
-                              </LayoutGroup>
-                            </LazyMotion>
-                          ) : null}
-
-                          {(filter.trim() || installedCategory !== "all") &&
-                          sortedFiltered.length === 0 &&
-                          skills.length > 0 ? (
-                            <GlassPanel tone="muted">
-                              <p className="py-2 text-center text-sm text-muted-foreground">
-                                {filter.trim()
-                                  ? t("settings.skillsNoMatch").replace("{filter}", filter)
-                                  : t("settings.skillsStoreEmptyTitle")}
-                              </p>
-                            </GlassPanel>
-                          ) : null}
-                        </div>
-                      </div>
+                      <InstalledSkillsView
+                        items={sortedFiltered}
+                        loading={loading}
+                        initialContentPending={showInitialInstalledContentLoading}
+                        bulkMode={bulkMode}
+                        hasSkills={skills.length > 0}
+                        loadError={loadError}
+                        skillsEnabled={skillsEnabled}
+                        rootDir={rootDir}
+                        layoutGroupId={`${toastScope}-installed-skills`}
+                        category={installedCategory}
+                        categoryCounts={installedCategoryCounts}
+                        onSelectCategory={setInstalledCategory}
+                        searchQuery={deferredFilter}
+                        filter={filter}
+                        selected={selected}
+                        bulkSelection={bulkSelection}
+                        deletingSkillName={deletingSkillName}
+                        onRescan={() => void refresh({ announce: true })}
+                        onToggle={handleCardToggle}
+                        onEnterBulkMode={enterBulkMode}
+                        onToggleBulkSelection={toggleBulkSelectionName}
+                        onBulkCardClick={handleCardBulkClick}
+                        onOpenPreview={handleCardOpenPreview}
+                        onDelete={handleCardDelete}
+                      />
                     </TabsContent>
                     <TabsContent value="store" className="h-full min-h-0">
                       <SkillsStoreView
                         items={storeItems}
                         query={storeQuery}
-                        sort={storeSort}
                         loading={storeLoading}
                         loadingMore={storeLoadingMore}
                         error={storeError}
@@ -1751,7 +1660,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                         pendingInstallKeys={pendingInstallKeys}
                         installingByStoreKey={installingByStoreKey}
                         installJobs={installJobs}
-                        onSortChange={setStoreSort}
                         onLoadMore={() => void loadMoreStore()}
                         onInstall={(skill) => void installStoreSkill(skill)}
                       />

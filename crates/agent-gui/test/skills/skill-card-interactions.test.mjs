@@ -21,7 +21,7 @@ test("installed Skill card actions do not bubble into the card preview trigger",
 
 test("installed Skill cards follow the global Skills activation state", () => {
   const cardSource = readUiSource("pages/skills-hub/InstalledSkillCard.tsx");
-  const pageSource = readUiSource("pages/skills-hub/SkillsHubPage.tsx");
+  const pageSource = readUiSource("pages/skills-hub/InstalledSkillsView.tsx");
 
   assert.match(cardSource, /const effectivelyEnabled = skillsEnabled && checked/);
   assert.match(

@@ -63,9 +63,11 @@ test("manual rescans retain stale content and only mark the button busy", () => 
 test("the local import shell and card padding stay stable during the initial scan", () => {
   assert.match(importViewSource, /<SkillsImportSourceTabs[\s\S]*disabled=\{initializing\}/);
   assert.match(importViewSource, /overflow-y-auto px-1\.5 pb-4 pt-1\.5/);
-  assert.match(importViewSource, /<LoadingSurface\s+variant="skeleton"[^>]*className="min-h-48 p-3\.5"/);
-  assert.match(importViewSource, /group flex min-h-48[^\"]*p-3\.5/);
-  assert.match(importViewSource, /className="h-9 w-full gap-1\.5 rounded-xl"/);
+  const cardPadding = importViewSource.match(/rounded-xl (p-[\d.]+) text-left transition-colors/)?.[1];
+  const skeletonPadding = importViewSource.match(/variant="skeleton"[^>]*className="min-h-48 (p-[\d.]+)"/)?.[1];
+  assert.equal(cardPadding, "p-5", "导入卡内边距变了就要同步骨架屏");
+  assert.equal(skeletonPadding, cardPadding, "骨架屏与真实卡片内边距必须一致，否则扫描完成时卡片会跳一次");
+  assert.match(importViewSource, /ml-auto flex gap-1\.5 rounded-lg bg-background/);
   assert.doesNotMatch(importViewSource, /w-fit self-end/);
   assert.doesNotMatch(importViewSource, /skill-card-enter group flex min-h-48/);
 });

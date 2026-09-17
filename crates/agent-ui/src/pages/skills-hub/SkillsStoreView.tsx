@@ -12,10 +12,8 @@ import {
   Loader2,
   RefreshCw,
   SkillIcon,
-  X,
 } from "@liveagent/ui/components/IconSet";
 import { Button } from "@liveagent/ui/components/ui/button";
-import { SearchHighlight } from "@liveagent/ui/components/ui/search-highlight";
 import { Separator } from "@liveagent/ui/components/ui/separator";
 import {
   Sheet,
@@ -26,7 +24,6 @@ import {
   SheetTitle,
 } from "@liveagent/ui/components/ui/sheet";
 import { Skeleton } from "@liveagent/ui/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@liveagent/ui/components/ui/toggle-group";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { rankFuzzySearchResults } from "@liveagent/ui/lib/shared/fuzzySearch";
 import { cn } from "@liveagent/ui/lib/shared/utils";
@@ -37,27 +34,31 @@ import {
   type ClawHubSort,
 } from "@liveagent/ui/lib/skills/clawHub";
 import { classifyClawHubSkill } from "@liveagent/ui/lib/skills/clawHubCategories";
-import {
-  cancelSkillInstallJob,
-  type SkillInstallJobSnapshot,
-} from "@liveagent/ui/lib/skills/index";
+import type { SkillInstallJobSnapshot } from "@liveagent/ui/lib/skills/index";
 import { useEffect, useMemo, useState } from "react";
-import {
-  SkillCategoryBadges,
-  STORE_CATEGORY_ICONS,
-  StoreCategoryChips,
-  type StoreCategoryValue,
-} from "./SkillCategoryControls";
+import { StoreCategoryChips, type StoreCategoryValue } from "./SkillCategoryControls";
+import { StoreSkillCard, type StoreSkillInstallState } from "./StoreSkillCard";
+import { SKILL_LIST_GRID_CLASS } from "./skillCardLayout";
 import {
   isSkillStoreDetailFresh,
   loadSkillStoreDetail,
   readSkillStoreDetail,
 } from "./skillStoreCache";
+import {
+  buildClawHubSkillUrl,
+  formatCompactNumber,
+  formatFullStoreDate,
+  formatInstallProgress,
+  formatStoreDate,
+  getInstallProgressPercent,
+  installPhaseLabel,
+} from "./skillStoreFormat";
 import { useDrawerPresence } from "./useDrawerPresence";
 
 export const TERMINAL_INSTALL_PHASES = new Set(["done", "error", "cancelled"]);
+
 const STORE_CATEGORY_FILL_TARGET = 12;
-const STORE_SORT_OPTIONS: Array<{ value: ClawHubSort; labelKey: string }> = [
+export const STORE_SORT_OPTIONS: Array<{ value: ClawHubSort; labelKey: string }> = [
   { value: "downloads", labelKey: "settings.skillsStoreSortMostDownloaded" },
   { value: "stars", labelKey: "settings.skillsStoreSortMostStarred" },
   { value: "installs", labelKey: "settings.skillsStoreSortMostInstalled" },
@@ -65,32 +66,9 @@ const STORE_SORT_OPTIONS: Array<{ value: ClawHubSort; labelKey: string }> = [
   { value: "newest", labelKey: "settings.skillsStoreSortNewest" },
 ];
 
-type StoreSkillInstallState = {
-  done: boolean;
-  installing: boolean;
-  pending: boolean;
-  terminalJob: boolean;
-  job: SkillInstallJobSnapshot | undefined;
-  progress: number | null;
-};
-
-let cachedCompactNumberFormat: Intl.NumberFormat | null = null;
-let cachedShortDateFormat: Intl.DateTimeFormat | null = null;
-let cachedFullDateFormat: Intl.DateTimeFormat | null = null;
-
-function getFullDateFormat() {
-  cachedFullDateFormat ??= new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-  return cachedFullDateFormat;
-}
-
 export function SkillsStoreView(props: {
   items: ClawHubSkillCard[];
   query: string;
-  sort: ClawHubSort;
   loading: boolean;
   loadingMore: boolean;
   error: string | null;
@@ -100,14 +78,12 @@ export function SkillsStoreView(props: {
   pendingInstallKeys: ReadonlySet<string>;
   installingByStoreKey: Record<string, string>;
   installJobs: Record<string, SkillInstallJobSnapshot>;
-  onSortChange: (value: ClawHubSort) => void;
   onLoadMore: () => void;
   onInstall: (skill: ClawHubSkillCard) => void;
 }) {
   const {
     items,
     query,
-    sort,
     loading,
     loadingMore,
     error,
@@ -117,7 +93,6 @@ export function SkillsStoreView(props: {
     pendingInstallKeys,
     installingByStoreKey,
     installJobs,
-    onSortChange,
     onLoadMore,
     onInstall,
   } = props;
@@ -244,67 +219,41 @@ export function SkillsStoreView(props: {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden" aria-busy={loading}>
-      <div className="relative flex items-center justify-start">
-        <div className="flex shrink-0 items-center">
-          <ToggleGroup
-            value={[sort]}
-            onValueChange={(values) => {
-              const nextSort = values[0] as ClawHubSort | undefined;
-              if (nextSort) onSortChange(nextSort);
-            }}
-            aria-label={t("settings.skillsStoreSortMostDownloaded")}
-            className="flex max-w-full shrink-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {STORE_SORT_OPTIONS.map((option) => {
-              return (
-                <ToggleGroupItem
-                  key={option.value}
-                  value={option.value}
-                  disabled={searching}
-                  className={cn(
-                    "h-8 shrink-0 rounded-md px-2.5 text-xs text-muted-foreground",
-                    "hover:bg-muted/60 hover:text-foreground data-[pressed]:bg-muted data-[pressed]:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
-                  )}
-                >
-                  {t(option.labelKey)}
-                </ToggleGroupItem>
-              );
-            })}
-          </ToggleGroup>
-        </div>
-        <div
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute inset-x-0 -bottom-1 h-px overflow-hidden rounded-full bg-transparent",
-            "transition-opacity duration-200 motion-reduce:transition-none",
-            refreshing ? "opacity-100" : "opacity-0",
-          )}
-        >
-          <div className="w-[42%] origin-left animate-hub-loading-progress motion-reduce:animate-none! h-full rounded-full bg-foreground/45" />
-        </div>
-        <span className="sr-only" aria-live="polite">
-          {refreshing ? t("settings.skillsStoreLoadingTitle") : ""}
-        </span>
+    <div
+      className="relative flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden"
+      aria-busy={loading}
+    >
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 z-40 h-px overflow-hidden rounded-full bg-transparent",
+          "transition-opacity duration-200 motion-reduce:transition-none",
+          refreshing ? "opacity-100" : "opacity-0",
+        )}
+      >
+        <div className="w-[42%] origin-left animate-hub-loading-progress motion-reduce:animate-none! h-full rounded-full bg-foreground/45" />
       </div>
+      <span className="sr-only" aria-live="polite">
+        {refreshing ? t("settings.skillsStoreLoadingTitle") : ""}
+      </span>
 
-      <StoreCategoryChips
-        value={storeCategory}
-        counts={categoryCounts}
-        onChange={setStoreCategory}
-      />
-
-      {error ? (
-        <GlassPanel tone="error">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="size-4 shrink-0 text-destructive" />
-            <span className="text-xs text-destructive">{error}</span>
-          </div>
-        </GlassPanel>
-      ) : null}
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-0.5 pb-4 pr-1 pt-1.5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-0.5 pb-4 pr-1">
         <div className="flex flex-col gap-3">
+          <StoreCategoryChips
+            value={storeCategory}
+            counts={categoryCounts}
+            onChange={setStoreCategory}
+            className="sticky top-0 z-30 -mx-0.5 bg-background/95 px-0.5 backdrop-blur supports-[backdrop-filter]:bg-background/90"
+          />
+
+          {error ? (
+            <GlassPanel tone="error">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="size-4 shrink-0 text-destructive" />
+                <span className="text-xs text-destructive">{error}</span>
+              </div>
+            </GlassPanel>
+          ) : null}
           {loading && items.length === 0 ? (
             <>
               <LoadingSurface variant="hero" className="px-4 py-3.5">
@@ -322,7 +271,7 @@ export function SkillsStoreView(props: {
                 <LoadingTrack className="mt-3.5" />
               </LoadingSurface>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className={SKILL_LIST_GRID_CLASS}>
                 {[1, 2, 3, 4, 5, 6].map((item) => (
                   <LoadingSurface variant="skeleton" key={item} className="p-3.5">
                     <div className="space-y-3">
@@ -360,190 +309,19 @@ export function SkillsStoreView(props: {
           ) : null}
 
           {items.length > 0 ? (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4">
-              {filteredItems.map(({ skill, categories }) => {
-                const { done, installing, pending, job, progress } = getInstallState(skill);
-                const link = buildClawHubSkillUrl(skill);
-                const PrimaryCategoryIcon = STORE_CATEGORY_ICONS[categories[0] ?? "other"];
-
-                return (
-                  // biome-ignore lint/a11y/useSemanticElements: The card contains nested controls and cannot be a native button.
-                  <div
-                    key={buildClawHubSkillKey(skill)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={skill.displayName}
-                    onClick={() => setPreviewSkill(skill)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setPreviewSkill(skill);
-                      }
-                    }}
-                    className={cn(
-                      "flex h-full cursor-pointer flex-col",
-                      "rounded-xl bg-settings-tile p-5 text-left transition-colors hover:bg-settings-tile-hover",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    )}
-                  >
-                    <div className="flex h-full flex-col gap-3">
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={cn(
-                            "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                            "text-foreground/70",
-                          )}
-                        >
-                          <PrimaryCategoryIcon className="size-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex min-w-0 items-start gap-1.5">
-                            <SearchHighlight
-                              text={skill.displayName}
-                              query={query}
-                              className="line-clamp-2 text-sm font-semibold leading-5 text-foreground"
-                            />
-                            {link ? (
-                              <a
-                                href={link}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(event) => event.stopPropagation()}
-                                onKeyDown={(event) => event.stopPropagation()}
-                                className="shrink-0 text-foreground/70 transition-colors hover:text-foreground"
-                                title={t("settings.skillsStoreOpenInClawHub")}
-                              >
-                                <ExternalLink className="size-3.5" />
-                              </a>
-                            ) : null}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            v{skill.latestVersion ?? t("settings.skillsStoreVersionLatest")}
-                          </div>
-                        </div>
-                      </div>
-
-                      <SkillCategoryBadges
-                        categories={categories}
-                        topics={skill.topics}
-                        searchQuery={query}
-                        onSelect={setStoreCategory}
-                      />
-
-                      {skill.summary ? (
-                        <p className="line-clamp-3 text-sm leading-5 text-foreground/80">
-                          <SearchHighlight text={skill.summary} query={query} />
-                        </p>
-                      ) : null}
-
-                      <div
-                        className={cn(
-                          "flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2",
-                          "text-xs text-muted-foreground",
-                        )}
-                      >
-                        <span
-                          className="inline-flex items-center gap-1"
-                          title={t("settings.skillsStorePreviewDownloads")}
-                        >
-                          <span className="size-1 rounded-full bg-foreground/40" />
-                          {formatCompactNumber(skill.downloads)}
-                        </span>
-                        <span
-                          className="inline-flex items-center gap-1"
-                          title={t("settings.skillsStorePreviewStars")}
-                        >
-                          <span className="size-1 rounded-full bg-foreground/40" />
-                          {formatCompactNumber(skill.stars)}
-                        </span>
-                        <span
-                          className="inline-flex items-center gap-1"
-                          title={t("settings.skillsStorePreviewInstalls")}
-                        >
-                          <span className="size-1 rounded-full bg-foreground/40" />
-                          {formatCompactNumber(skill.installsCurrent)}
-                        </span>
-                        {skill.updatedAt ? (
-                          <span className="ml-auto opacity-75">
-                            {formatStoreDate(skill.updatedAt)}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {installing && !done ? (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-3 text-xs text-foreground/70">
-                            <span>{installPhaseLabel(pending ? undefined : job, t)}</span>
-                            {job && !pending ? (
-                              <span className="flex items-center gap-1.5">
-                                {formatInstallProgress(job)}
-                                <button
-                                  type="button"
-                                  title={t("settings.cancel")}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    void cancelSkillInstallJob(job.jobId).catch(() => undefined);
-                                  }}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                  className="text-foreground/70 transition-colors hover:text-foreground"
-                                >
-                                  <X className="size-3" />
-                                </button>
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
-                            {progress === null ? (
-                              <div className="w-[42%] origin-left animate-hub-loading-progress motion-reduce:animate-none! h-full rounded-full bg-foreground/55" />
-                            ) : (
-                              <div
-                                className="h-full rounded-full bg-foreground/65 transition-[width] duration-300"
-                                style={{ width: `${progress}%` }}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {job?.phase === "error" && job.error && !done && !pending ? (
-                        <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                          {job.error}
-                        </div>
-                      ) : null}
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "mt-auto self-end gap-1.5 rounded-lg bg-background text-foreground hover:bg-settings-active",
-                          done && "bg-transparent text-muted-foreground disabled:opacity-100",
-                        )}
-                        disabled={done || installing}
-                        aria-busy={installing}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onInstall(skill);
-                        }}
-                        onKeyDown={(event) => event.stopPropagation()}
-                      >
-                        {installing ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : done ? (
-                          <Check className="size-3.5" />
-                        ) : (
-                          <Cloud className="size-3.5" />
-                        )}
-                        {installing
-                          ? installPhaseLabel(pending ? undefined : job, t)
-                          : done
-                            ? t("settings.skillsStoreInstalled")
-                            : t("settings.skillsStoreInstall")}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className={SKILL_LIST_GRID_CLASS}>
+              {filteredItems.map(({ skill, categories }) => (
+                <StoreSkillCard
+                  key={buildClawHubSkillKey(skill)}
+                  skill={skill}
+                  categories={categories}
+                  query={query}
+                  installState={getInstallState(skill)}
+                  onOpenPreview={setPreviewSkill}
+                  onSelectCategory={setStoreCategory}
+                  onInstall={onInstall}
+                />
+              ))}
             </div>
           ) : null}
 
@@ -925,76 +703,4 @@ function StorePreviewField(props: { label: string; value?: string | null }) {
       <div className="min-w-0 break-words text-foreground">{props.value}</div>
     </div>
   );
-}
-
-function buildClawHubSkillUrl(skill: ClawHubSkillCard) {
-  if (!skill.ownerHandle) return null;
-  return `https://clawhub.ai/${encodeURIComponent(skill.ownerHandle)}/${encodeURIComponent(skill.slug)}`;
-}
-
-function formatCompactNumber(value: number) {
-  cachedCompactNumberFormat ??= new Intl.NumberFormat(undefined, {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  });
-  return cachedCompactNumberFormat.format(value);
-}
-
-function formatStoreDate(value: number) {
-  cachedShortDateFormat ??= new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-  return cachedShortDateFormat.format(new Date(value));
-}
-
-function formatFullStoreDate(value: number) {
-  return getFullDateFormat().format(new Date(value));
-}
-
-function getInstallProgressPercent(job: SkillInstallJobSnapshot) {
-  if (job.phase === "done") return 100;
-  if (!job.totalBytes || job.totalBytes <= 0) return null;
-  return Math.max(2, Math.min(100, Math.round((job.downloadedBytes / job.totalBytes) * 100)));
-}
-
-function formatInstallProgress(job: SkillInstallJobSnapshot) {
-  if (job.phase === "done") return "100%";
-  if (job.totalBytes && job.totalBytes > 0) {
-    return `${formatBytes(job.downloadedBytes)} / ${formatBytes(job.totalBytes)}`;
-  }
-  return job.downloadedBytes > 0 ? formatBytes(job.downloadedBytes) : "";
-}
-
-function formatBytes(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  let next = value;
-  let unit = 0;
-  while (next >= 1024 && unit < units.length - 1) {
-    next /= 1024;
-    unit += 1;
-  }
-  return `${next >= 10 || unit === 0 ? Math.round(next) : next.toFixed(1)} ${units[unit]}`;
-}
-
-function installPhaseLabel(job: SkillInstallJobSnapshot | undefined, t: (key: string) => string) {
-  switch (job?.phase) {
-    case "queued":
-      return t("settings.skillsStorePhaseQueued");
-    case "downloading":
-      return t("settings.skillsStorePhaseDownloading");
-    case "extracting":
-      return t("settings.skillsStorePhaseExtracting");
-    case "validating":
-      return t("settings.skillsStorePhaseValidating");
-    case "installing":
-      return t("settings.skillsStorePhaseInstalling");
-    case "done":
-      return t("settings.skillsStoreInstalled");
-    case "error":
-      return t("settings.skillsStorePhaseError");
-    default:
-      return t("settings.skillsStorePhasePreparing");
-  }
 }
