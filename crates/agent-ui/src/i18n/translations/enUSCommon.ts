@@ -470,18 +470,22 @@ export const EN_US_COMMON_TRANSLATIONS = {
   "chat.runtime.reasoningCompact.xhigh": "XHigh",
   "chat.runtime.reasoningCompact.max": "Max",
   "chat.safety.label": "Command execution mode",
-  "chat.safety.ask": "Approve each",
-  "chat.safety.askDesc": "Confirm each command and write; read-only runs free",
-  "chat.safety.auto": "Auto",
-  "chat.safety.autoDesc": "Run directly per your tool permission policies",
+  "chat.safety.ask": "Per-action approval",
+  "chat.safety.askDesc":
+    "Requests approval before each run; read-only operations need no confirmation",
+  "chat.safety.auto": "Auto-execute",
+  "chat.safety.autoDesc":
+    "Runs according to the tool permission policies, without per-step approval",
   "chat.safety.sandbox": "Sandbox",
-  "chat.safety.sandboxDesc": "OS sandbox: writes fenced, sensitive dirs unreadable",
+  "chat.safety.sandboxDesc":
+    "Runs inside the sandbox, with writes restricted and sensitive directories unreadable",
   // The Windows networked backend (WRITE_RESTRICTED token) fences writes only; reads stay
   // broadly allowed, so this platform must not promise credential read masking. Masking is
   // only real on the offline (AppContainer) backend.
-  "chat.safety.sandboxDescNoReadMask": "OS sandbox: writes fenced only, reads not masked here",
-  "chat.safety.sandboxOffline": "Sandbox · offline",
-  "chat.safety.sandboxOfflineDesc": "Sandbox, plus no network for commands",
+  "chat.safety.sandboxDescNoReadMask":
+    "Runs inside the sandbox with writes restricted; read masking is unavailable on this platform",
+  "chat.safety.sandboxOffline": "Offline sandbox",
+  "chat.safety.sandboxOfflineDesc": "Runs inside the sandbox, with no network access for commands",
   "chat.safety.sandboxUnavailable": "Sandbox mechanism unavailable on this platform",
   "chat.safety.sandboxOfflineUnavailable": "Offline sandbox unavailable on this platform",
   "chat.emptyRound": "(No reply)",

@@ -115,7 +115,7 @@ export function CommandSafetyModeSelector(props: {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         variant="soft"
-        className={cn("composer-safety-dropdown flex w-72", "flex-col gap-1 overflow-hidden")}
+        className="flex w-[324px] max-w-[calc(100vw-16px)] flex-col gap-0.5 overflow-hidden"
         side="top"
         align="start"
       >
@@ -133,21 +133,21 @@ export function CommandSafetyModeSelector(props: {
               disabled={entryDisabled}
               onSelect={() => onChange(mode)}
               className={cn(
-                "composer-safety-item items-start gap-2 whitespace-normal",
+                "h-auto items-start gap-2.5 py-2 text-xs whitespace-normal",
                 isSelected && "bg-accent text-accent-foreground",
               )}
             >
               {modeIcon(mode, "mt-0.5 size-3.5 shrink-0 text-muted-foreground")}
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="font-medium leading-5">{t(MODE_I18N_KEYS[mode])}</span>
-                <span className="text-xs font-normal leading-4 text-muted-foreground">
+                <span className="font-medium leading-4">{t(MODE_I18N_KEYS[mode])}</span>
+                <span className="text-tiny font-normal leading-4 text-muted-foreground">
                   {entryDisabled ? disabledHint : t(modeDescKey(mode))}
                 </span>
               </span>
               {isSelected ? (
-                <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
               ) : (
-                <span className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               )}
             </DropdownMenuItem>
           );

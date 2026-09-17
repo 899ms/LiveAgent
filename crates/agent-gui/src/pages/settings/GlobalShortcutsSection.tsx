@@ -1,6 +1,9 @@
 import { X } from "@liveagent/ui/components/IconSet";
+import {
+  SettingsToggleGroup,
+  SettingsToggleGroupItem,
+} from "@liveagent/ui/components/settings/SettingsToggleGroup";
 import { Button } from "@liveagent/ui/components/ui/button";
-import { Switch } from "@liveagent/ui/components/ui/switch";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import {
   readSendShortcut,
@@ -153,25 +156,20 @@ function ShortcutChoiceSwitch({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 text-xs" title={title}>
-      <span className={checked ? "text-muted-foreground" : "font-medium text-foreground"}>
-        {leftLabel}
-      </span>
-      <Switch
-        checked={checked}
-        aria-label={label}
-        onCheckedChange={onChange}
-        onKeyDown={(event) => {
-          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-          event.preventDefault();
-          event.stopPropagation();
-          onChange(event.key === "ArrowRight");
-        }}
-      />
-      <span className={checked ? "font-medium text-foreground" : "text-muted-foreground"}>
-        {rightLabel}
-      </span>
-    </div>
+    <SettingsToggleGroup
+      value={[checked ? "right" : "left"]}
+      aria-label={label}
+      title={title}
+      className="shrink-0"
+      onValueChange={(values) => {
+        const next = values[0];
+        if (next === "left") onChange(false);
+        else if (next === "right") onChange(true);
+      }}
+    >
+      <SettingsToggleGroupItem value="left">{leftLabel}</SettingsToggleGroupItem>
+      <SettingsToggleGroupItem value="right">{rightLabel}</SettingsToggleGroupItem>
+    </SettingsToggleGroup>
   );
 }
 

@@ -1560,7 +1560,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     variant="soft"
-                    className={cn("composer-add-dropdown flex w-60", "flex-col overflow-hidden")}
+                    className="flex w-60 flex-col overflow-hidden"
                     side="top"
                     align="start"
                   >
@@ -1568,7 +1568,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                     <DropdownMenuItem
                       onSelect={onPickReadableFiles}
                       disabled={uploadDisabled}
-                      className="composer-safety-item gap-2"
+                      className="gap-2"
                     >
                       <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="font-medium leading-5">{t("chat.upload.files")}</span>
@@ -1576,7 +1576,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                     <DropdownMenuItem
                       onSelect={onPickWorkspaceFolder}
                       disabled={uploadDisabled}
-                      className="composer-safety-item gap-2"
+                      className="gap-2"
                     >
                       <FolderOpen className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="font-medium leading-5">{t("chat.upload.folder")}</span>
@@ -1595,7 +1595,7 @@ export const ChatComposerBar = memo(function ChatComposerBar(props: ChatComposer
                             planModeEnabled: !chatRuntimeControls.planModeEnabled,
                           })
                         }
-                        className="composer-safety-item gap-2"
+                        className="gap-2"
                       >
                         <Lightbulb
                           className={cn(
