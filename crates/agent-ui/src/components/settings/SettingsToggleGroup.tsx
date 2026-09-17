@@ -25,7 +25,6 @@ export function SettingsToggleGroupItem({
         "h-7 min-w-9 rounded-lg px-2.5 text-xs font-normal text-muted-foreground",
         "hover:bg-background/55 hover:text-foreground",
         "data-[pressed]:bg-background data-[pressed]:font-medium data-[pressed]:text-foreground",
-        "data-[pressed]:shadow-sm data-[pressed]:ring-1 data-[pressed]:ring-foreground/10",
         className,
       )}
       {...props}

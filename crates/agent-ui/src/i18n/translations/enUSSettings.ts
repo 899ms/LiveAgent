@@ -285,6 +285,8 @@ export const EN_US_SETTINGS_TRANSLATIONS = {
   "settings.auto": "Auto",
   "settings.autoDesc": "Follow the system appearance setting",
   "settings.language": "Language",
+  "settings.languageDesc":
+    "Choose the display language for the interface. Changes take effect immediately.",
   "settings.chinese": "简体中文",
   "settings.english": "English",
   "settings.fontSize": "Font Size",
@@ -1102,9 +1104,7 @@ export const EN_US_SETTINGS_TRANSLATIONS = {
   "settings.skillsDesc": "Extend the AI with callable skill modules",
   "settings.skillsHubTitle": "Skills Hub",
   "settings.skillsHubSubtitle": "Browse, install, and manage skills for your conversations",
-  "settings.skillsHubEnabled": "Skills enabled",
   "settings.skillsHubEnabledBadge": "Enabled",
-  "settings.skillsHubDisabled": "Skills disabled",
   "settings.skillsHubSelectedShort": "selected",
   "settings.skillsHubToggleEnable": "Enable Skills",
   "settings.skillsHubToggleDisable": "Disable Skills",

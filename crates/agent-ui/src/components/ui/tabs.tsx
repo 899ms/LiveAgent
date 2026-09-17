@@ -60,7 +60,7 @@ export const TabsTrigger = React.forwardRef<
         "h-7 min-w-9 rounded-lg px-2.5 py-0 text-xs font-normal text-muted-foreground",
         "hover:bg-background/55 hover:text-foreground",
         "data-[active]:bg-background data-[active]:font-medium data-[active]:text-foreground",
-        "data-[active]:shadow-sm data-[active]:ring-1 data-[active]:ring-foreground/10",
+        "data-[active]:shadow-none",
       ],
       className,
     )}

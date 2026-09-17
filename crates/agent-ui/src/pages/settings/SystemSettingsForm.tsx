@@ -408,6 +408,7 @@ export function SystemSettingsForm(props: SettingsSectionProps) {
 
         <SettingsRow
           title={t("settings.language")}
+          description={t("settings.languageDesc")}
           control={
             <Select
               value={settings.locale}

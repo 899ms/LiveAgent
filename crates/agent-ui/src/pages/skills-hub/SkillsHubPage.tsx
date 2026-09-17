@@ -20,7 +20,6 @@ import {
   X,
 } from "@liveagent/ui/components/IconSet";
 import { ResourceTabsList } from "@liveagent/ui/components/resources/ResourceTabsList";
-import { Badge } from "@liveagent/ui/components/ui/badge";
 import { Button, RefreshButton } from "@liveagent/ui/components/ui/button";
 import { ConfirmActionPopover } from "@liveagent/ui/components/ui/confirm-action-popover";
 import { Input } from "@liveagent/ui/components/ui/input";
@@ -1385,12 +1384,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
           prominent
           actions={
             <div className="flex items-center gap-2">
-              <Badge
-                variant={skillsEnabled ? "success" : "muted"}
-                className="hidden h-7 sm:inline-flex"
-              >
-                {skillsEnabled ? t("settings.skillsHubEnabled") : t("settings.skillsHubDisabled")}
-              </Badge>
               <Switch
                 tone="success"
                 checked={skillsEnabled}
