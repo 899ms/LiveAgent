@@ -79,4 +79,3 @@ test("the local import bulk bar reuses the installed bulk bar shell", () => {
   assert.match(importViewSource, /const showBulkBar = importableSelectedCount > 0 \|\| importing/);
   assert.match(importViewSource, /skillsImportButton/);
 });
-

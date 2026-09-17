@@ -271,12 +271,7 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
               web && "flex items-center justify-between",
             )}
           >
-            <div
-              className={cn(
-                "settings-main-title w-full overflow-hidden",
-                !fillContent && "mx-auto max-w-920px",
-              )}
-            >
+            <div className="settings-main-title mx-auto w-full max-w-920px overflow-hidden">
               <div key={activeSection.id} className="text-2xl font-semibold tracking-tight">
                 {t(activeSection.labelKey)}
               </div>
@@ -304,9 +299,8 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
           >
             <div
               className={cn(
-                "relative isolate web:min-w-0",
+                "relative isolate mx-auto w-full max-w-920px web:min-w-0",
                 `settings-section-shell-${activeSection.id}`,
-                !fillContent && "mx-auto w-full max-w-920px",
                 fillContent ? "flex min-h-0 flex-1 flex-col" : "min-h-full",
               )}
             >
