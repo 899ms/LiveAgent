@@ -298,7 +298,6 @@ export const McpServerCard = memo(function McpServerCard(props: {
             value={policy}
             ariaLabel={displayName}
             onChange={onPolicyChange}
-            size="sm"
           />
           <Button
             type="button"

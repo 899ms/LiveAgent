@@ -82,12 +82,29 @@ function BrowserModeRow(props: {
 
   return (
     <div className="space-y-2 bg-settings-tile-hover px-3 py-2.5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <span className="text-xs text-muted-foreground">{t("settings.browserMode.label")}</span>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">{t("settings.browserMode.label")}</span>
+          {needsExtension && info !== null ? (
+            <span
+              className={
+                info.connected
+                  ? "rounded-full bg-emerald-500/10 px-2 py-0.5 text-tiny leading-none text-emerald-500"
+                  : "rounded-full bg-amber-500/10 px-2 py-0.5 text-tiny leading-none text-amber-500"
+              }
+            >
+              {t(
+                info.connected
+                  ? "settings.browserMode.extensionConnected"
+                  : "settings.browserMode.extensionMissing",
+              )}
+            </span>
+          ) : null}
+        </div>
         <SettingsToggleGroup
           value={[mode]}
           aria-label={t("settings.browserMode.label")}
-          className="min-w-0 shrink-0 bg-background"
+          className="min-w-0 shrink-0"
           onValueChange={(values) => {
             const nextMode = values[0] as BrowserAutomationMode | undefined;
             if (nextMode) onChange(nextMode);
@@ -99,21 +116,6 @@ function BrowserModeRow(props: {
             </SettingsToggleGroupItem>
           ))}
         </SettingsToggleGroup>
-        {needsExtension && info !== null ? (
-          <span
-            className={
-              info.connected
-                ? "rounded-full bg-emerald-500/10 px-2 py-0.5 text-tiny leading-none text-emerald-500"
-                : "rounded-full bg-amber-500/10 px-2 py-0.5 text-tiny leading-none text-amber-500"
-            }
-          >
-            {t(
-              info.connected
-                ? "settings.browserMode.extensionConnected"
-                : "settings.browserMode.extensionMissing",
-            )}
-          </span>
-        ) : null}
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground/80">
         {t(`settings.browserMode.${mode}.desc`)}

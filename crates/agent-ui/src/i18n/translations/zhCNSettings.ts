@@ -1278,6 +1278,7 @@ export const ZH_CN_SETTINGS_TRANSLATIONS = {
   "settings.cuaDriver.stepDone": "已完成",
   "settings.cuaDriver.stepNext": "下一步",
   "settings.cuaDriver.stepPending": "待完成",
+  "settings.cuaDriver.goToStep": "前往：{step}",
   "settings.cuaDriver.permissionsGuide":
     "点击前往授权，在系统设置中为 CuaDriver 开启辅助功能和屏幕录制权限，再返回这里检查。",
   "settings.cuaDriver.enablePreview":
@@ -1309,13 +1310,13 @@ export const ZH_CN_SETTINGS_TRANSLATIONS = {
   "settings.cuaDriver.stepGrant": "系统授权",
   "settings.cuaDriver.stepEnable": "启用",
   "settings.cuaDriver.groupDriver": "驱动引擎",
-  "settings.cuaDriver.recheck": "重新检测",
+  "settings.cuaDriver.recheck": "检测",
   "settings.cuaDriver.detected": "已安装 cua-driver",
   "settings.cuaDriver.detectedWithVersion": "已安装 cua-driver {version}",
   "settings.cuaDriver.notInstalledTitle": "未检测到 cua-driver",
   "settings.cuaDriver.notInstalledDesc":
     "未检测到本地驱动，可点击按钮由 LiveAgent 自动安装，或自行安装后重新检测。",
-  "settings.cuaDriver.install": "安装驱动",
+  "settings.cuaDriver.install": "安装",
   "settings.cuaDriver.installing": "安装中…",
   "settings.cuaDriver.installLog": "安装日志",
   "settings.cuaDriver.confirmTitle": "即将运行安装脚本",

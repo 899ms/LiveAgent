@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
-  Download,
   ExternalLink,
   type IconComponent,
   Loader2,
@@ -19,7 +18,11 @@ import {
   Video,
 } from "@liveagent/ui/components/IconSet";
 import { SettingsCopyButton } from "@liveagent/ui/components/settings/SettingsCopyButton";
-import { SettingsRow, SettingsSection } from "@liveagent/ui/components/settings/SettingsLayout";
+import {
+  SettingsCard,
+  SettingsRow,
+  SettingsSection,
+} from "@liveagent/ui/components/settings/SettingsLayout";
 import { SettingsNotice } from "@liveagent/ui/components/settings/SettingsNotice";
 import {
   SettingsToggleGroup,
@@ -409,15 +412,15 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
               {checking ? t("settings.cuaDriver.heroChecking") : error}
             </p>
             {!checking ? (
-              <RefreshButton
-                aria-busy={checking}
+              <Button
+                type="button"
                 size="sm"
                 variant="outline"
+                disabled={checking}
                 onClick={() => void refresh({ force: true })}
               >
-                <RefreshCw data-refresh-icon className="size-4" />
                 {t("settings.cuaDriver.recheck")}
-              </RefreshButton>
+              </Button>
             ) : null}
           </div>
         ) : (
@@ -439,35 +442,41 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
                       aria-controls="cua-step-content"
                       onClick={() => setSelectedStep(index)}
                       className={cn(
-                        "group flex shrink-0 cursor-pointer items-center gap-2.5 rounded-lg p-1",
-                        "text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        selected
-                          ? "text-foreground"
-                          : "text-muted-foreground hover:bg-settings-tile-hover hover:text-foreground",
+                        "group flex shrink-0 cursor-pointer rounded-lg",
+                        "text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       )}
                     >
                       <span
                         className={cn(
-                          "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+                          "flex items-center gap-2.5 rounded-lg p-1 pr-2.5 transition-colors",
                           selected
-                            ? "bg-foreground text-background"
-                            : done
-                              ? "bg-settings-active text-foreground"
-                              : "bg-settings-tile text-muted-foreground ring-1 ring-inset ring-border",
+                            ? "bg-settings-tile text-foreground"
+                            : "text-muted-foreground group-hover:bg-foreground/[0.04] group-hover:text-foreground",
                         )}
                       >
-                        {done ? <Check className="size-3.5" /> : index + 1}
-                      </span>
-                      <span className="flex flex-col gap-0.5">
-                        <span className="font-medium">{t(`settings.cuaDriver.${step}`)}</span>
-                        <span className="text-tiny text-muted-foreground">
-                          {t(
-                            done
-                              ? "settings.cuaDriver.stepDone"
-                              : index === setupStep
-                                ? "settings.cuaDriver.stepNext"
-                                : "settings.cuaDriver.stepPending",
+                        <span
+                          className={cn(
+                            "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+                            selected
+                              ? "bg-background text-foreground ring-1 ring-inset ring-foreground/15"
+                              : done
+                                ? "bg-settings-active text-foreground"
+                                : "bg-settings-tile text-muted-foreground ring-1 ring-inset ring-border",
                           )}
+                        >
+                          {index + 1}
+                        </span>
+                        <span className="flex flex-col gap-0.5">
+                          <span className="font-medium">{t(`settings.cuaDriver.${step}`)}</span>
+                          <span className="text-tiny text-muted-foreground">
+                            {t(
+                              done
+                                ? "settings.cuaDriver.stepDone"
+                                : index === setupStep
+                                  ? "settings.cuaDriver.stepNext"
+                                  : "settings.cuaDriver.stepPending",
+                            )}
+                          </span>
                         </span>
                       </span>
                     </button>
@@ -484,7 +493,10 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
                 );
               })}
             </ol>
-            <div id="cua-step-content" className="space-y-4 rounded-xl bg-settings-tile p-4">
+            <div
+              id="cua-step-content"
+              className="grid gap-4 rounded-xl bg-settings-tile p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+            >
               <div>
                 <h3 className="text-sm font-medium">
                   {t(
@@ -507,13 +519,27 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
                   )}
                 </p>
                 {viewedStep > setupStep ? (
-                  <p className="mt-2 text-xs font-medium text-foreground">
-                    {t(
-                      setupStep === 0
-                        ? "settings.cuaDriver.installFirst"
-                        : "settings.cuaDriver.permissionsFirst",
-                    )}
-                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <p className="text-xs font-medium text-foreground">
+                      {t(
+                        setupStep === 0
+                          ? "settings.cuaDriver.installFirst"
+                          : "settings.cuaDriver.permissionsFirst",
+                      )}
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-6 gap-1 rounded-full px-2 text-tiny"
+                      onClick={() => setSelectedStep(setupStep)}
+                    >
+                      {t("settings.cuaDriver.goToStep").replace(
+                        "{step}",
+                        t(`settings.cuaDriver.${steps[setupStep]}`),
+                      )}
+                    </Button>
+                  </div>
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -523,8 +549,9 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
                     disabled={checking || installing}
                     onClick={() => void beginInstall()}
                   >
-                    <Download className="size-4" />
-                    {t("settings.cuaDriver.install")}
+                    {installing
+                      ? t("settings.cuaDriver.installing")
+                      : t("settings.cuaDriver.install")}
                   </Button>
                 ) : viewedStep === 1 ? (
                   <Button
@@ -543,23 +570,20 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
                     {t("settings.cuaDriver.enable")}
                   </Button>
                 ) : null}
-                <RefreshButton
-                  aria-busy={checking}
+                <Button
+                  type="button"
                   size="sm"
                   variant="outline"
                   disabled={checking || installing}
                   onClick={() => void refresh({ force: true })}
                 >
-                  <RefreshCw
-                    data-refresh-icon
-                    className={checking ? "size-4 animate-spin" : "size-4"}
-                  />
-                  <RefreshCw data-refresh-icon className="size-4" />
-                  {t("settings.cuaDriver.recheck")}
-                </RefreshButton>
+                  {checking
+                    ? t("settings.cuaDriver.heroChecking")
+                    : t("settings.cuaDriver.recheck")}
+                </Button>
               </div>
               {!installed && !canProvision ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground sm:col-span-2">
                   {t("settings.cuaDriver.desktopOnlyInstall")}
                 </p>
               ) : null}
@@ -788,104 +812,101 @@ export function CuaDriverSection(props: SettingsSectionProps & { surface?: UiSur
 
             {/* 安全与审批 */}
             <SettingsSection title={t("settings.cuaDriver.groupSecurity")}>
-              <CardBlock className="flex items-center justify-between gap-3 py-3.5">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-foreground">
-                    {t("settings.cuaDriver.policyTitle")}
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {t("settings.cuaDriver.policyDesc")}
-                  </p>
-                </div>
-                <ToolPolicyToggle
-                  value={policy}
-                  ariaLabel={t("settings.cuaDriver.policyTitle")}
-                  size="sm"
-                  onChange={setPolicy}
+              <SettingsCard>
+                <SettingsRow
+                  title={t("settings.cuaDriver.policyTitle")}
+                  description={t("settings.cuaDriver.policyDesc")}
+                  control={
+                    <ToolPolicyToggle
+                      value={policy}
+                      ariaLabel={t("settings.cuaDriver.policyTitle")}
+                      onChange={setPolicy}
+                    />
+                  }
                 />
-              </CardBlock>
 
-              <CardBlock className="flex items-center justify-between gap-3 py-3.5">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    <ShieldOff className="size-3.5 shrink-0 text-muted-foreground" />
-                    {t("settings.cuaDriver.allowSelfTitle")}
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {t("settings.cuaDriver.allowSelfDesc")}
-                  </p>
-                </div>
-                <Switch
-                  checked={allowSelfTargeting}
-                  title={t("settings.cuaDriver.allowSelfTitle")}
-                  aria-label={t("settings.cuaDriver.allowSelfTitle")}
-                  onCheckedChange={() => setAllowSelfTargeting(!allowSelfTargeting)}
+                <SettingsRow
+                  title={
+                    <span className="flex items-center gap-1.5">
+                      <ShieldOff className="size-3.5 shrink-0 text-muted-foreground" />
+                      {t("settings.cuaDriver.allowSelfTitle")}
+                    </span>
+                  }
+                  description={t("settings.cuaDriver.allowSelfDesc")}
+                  control={
+                    <Switch
+                      checked={allowSelfTargeting}
+                      title={t("settings.cuaDriver.allowSelfTitle")}
+                      aria-label={t("settings.cuaDriver.allowSelfTitle")}
+                      onCheckedChange={() => setAllowSelfTargeting(!allowSelfTargeting)}
+                    />
+                  }
                 />
-              </CardBlock>
+              </SettingsCard>
             </SettingsSection>
 
             {/* 运行时参数 */}
             <SettingsSection title={t("settings.cuaDriver.groupRuntime")}>
-              <CardBlock className="flex flex-wrap items-center justify-between gap-3 py-3.5">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-foreground">
-                    {t("settings.cuaDriver.timeoutLabel")}
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {t("settings.cuaDriver.timeoutHint")}
-                  </p>
-                </div>
-                <SettingsToggleGroup
-                  value={[String(currentTimeout)]}
-                  aria-label={t("settings.cuaDriver.timeoutLabel")}
-                  disabled={!serverEntry}
-                  className="shrink-0"
-                  onValueChange={(values) => {
-                    const nextValue = values[0];
-                    if (nextValue) applyTimeout(Number(nextValue));
-                  }}
-                >
-                  {TIMEOUT_PRESETS.map((preset) => (
-                    <SettingsToggleGroupItem key={preset.value} value={String(preset.value)}>
-                      {preset.label}
-                    </SettingsToggleGroupItem>
-                  ))}
-                </SettingsToggleGroup>
-              </CardBlock>
+              <SettingsCard>
+                <SettingsRow
+                  title={t("settings.cuaDriver.timeoutLabel")}
+                  description={t("settings.cuaDriver.timeoutHint")}
+                  control={
+                    <SettingsToggleGroup
+                      value={[String(currentTimeout)]}
+                      aria-label={t("settings.cuaDriver.timeoutLabel")}
+                      disabled={!serverEntry}
+                      className="shrink-0"
+                      onValueChange={(values) => {
+                        const nextValue = values[0];
+                        if (nextValue) applyTimeout(Number(nextValue));
+                      }}
+                    >
+                      {TIMEOUT_PRESETS.map((preset) => (
+                        <SettingsToggleGroupItem key={preset.value} value={String(preset.value)}>
+                          {preset.label}
+                        </SettingsToggleGroupItem>
+                      ))}
+                    </SettingsToggleGroup>
+                  }
+                />
+              </SettingsCard>
             </SettingsSection>
 
             {/* 能力概览与参考 */}
             <SettingsSection title={t("settings.cuaDriver.groupCapabilities")}>
-              <CardBlock className="py-4">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {capabilities.map((cap) => (
-                    <div
-                      key={cap.key}
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-2",
-                        "text-xs text-foreground/80",
-                      )}
+              <SettingsCard>
+                <div className="rounded-xl bg-settings-tile px-4 py-4">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {capabilities.map((cap) => (
+                      <div
+                        key={cap.key}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-2",
+                          "text-xs text-foreground/80",
+                        )}
+                      >
+                        <div className="size-1.5 shrink-0 rounded-full bg-sky-500/70" />
+                        <span className="truncate">{cap.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-settings-tile px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate">{t("settings.cuaDriver.policyNote")}</span>
+                    <a
+                      href={CUA_UPSTREAM_REPO_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex shrink-0 items-center gap-1 font-medium text-foreground/80 hover:text-foreground hover:underline"
                     >
-                      <div className="size-1.5 shrink-0 rounded-full bg-sky-500/70" />
-                      <span className="truncate">{cap.label}</span>
-                    </div>
-                  ))}
+                      trycua/cua
+                      <ExternalLink className="size-3" />
+                    </a>
+                  </div>
                 </div>
-              </CardBlock>
-              <CardBlock className="py-3">
-                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span className="min-w-0 truncate">{t("settings.cuaDriver.policyNote")}</span>
-                  <a
-                    href={CUA_UPSTREAM_REPO_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex shrink-0 items-center gap-1 font-medium text-foreground/80 hover:text-foreground hover:underline"
-                  >
-                    trycua/cua
-                    <ExternalLink className="size-3" />
-                  </a>
-                </div>
-              </CardBlock>
+              </SettingsCard>
             </SettingsSection>
           </DialogBody>
         </DialogContent>

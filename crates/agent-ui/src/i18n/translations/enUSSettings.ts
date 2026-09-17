@@ -1344,6 +1344,7 @@ export const EN_US_SETTINGS_TRANSLATIONS = {
   "settings.cuaDriver.stepDone": "Completed",
   "settings.cuaDriver.stepNext": "Next step",
   "settings.cuaDriver.stepPending": "Pending",
+  "settings.cuaDriver.goToStep": "Go to: {step}",
   "settings.cuaDriver.permissionsGuide":
     "Open system permissions, enable Accessibility and Screen Recording for CuaDriver, then return here to check.",
   "settings.cuaDriver.enablePreview":
@@ -1377,13 +1378,13 @@ export const EN_US_SETTINGS_TRANSLATIONS = {
   "settings.cuaDriver.stepGrant": "Permissions",
   "settings.cuaDriver.stepEnable": "Enable",
   "settings.cuaDriver.groupDriver": "Driver Engine",
-  "settings.cuaDriver.recheck": "Re-check",
+  "settings.cuaDriver.recheck": "Check",
   "settings.cuaDriver.detected": "cua-driver installed",
   "settings.cuaDriver.detectedWithVersion": "cua-driver {version} installed",
   "settings.cuaDriver.notInstalledTitle": "cua-driver not found",
   "settings.cuaDriver.notInstalledDesc":
     "Driver is missing. Click the install button to run the official script or install manually and re-check.",
-  "settings.cuaDriver.install": "Install Driver",
+  "settings.cuaDriver.install": "Install",
   "settings.cuaDriver.installing": "Installing…",
   "settings.cuaDriver.installLog": "Install Log",
   "settings.cuaDriver.confirmTitle": "About to run install script",
