@@ -1057,7 +1057,6 @@ export const ZH_CN_SETTINGS_TRANSLATIONS = {
   "settings.skillsHubImportTab": "本地导入",
   "settings.skillsImportDesc":
     "扫描本机 Claude Code、Codex、CodeBuddy 与 AGENTS 的技能目录，勾选后导入到 LiveAgent。",
-  "settings.skillsImportOverwriteHint": "同名技能将自动备份后覆盖。",
   "settings.skillsImportScanning": "正在扫描",
   "settings.skillsImportRescan": "重新扫描",
   "settings.skillsImportNotDetected": "未检测到",
@@ -1069,8 +1068,6 @@ export const ZH_CN_SETTINGS_TRANSLATIONS = {
   "settings.skillsImportDone": "导入完成",
   "settings.skillsImportFailed": "部分技能导入失败",
   "settings.skillsImportAlreadyInstalled": "所选技能已安装，不能重复导入",
-  "settings.skillsImportCodebuddyHint": "该目录为 CodeBuddy 技能市场缓存，可能包含未安装的技能。",
-  "settings.skillsImportUnparsable": "{count} 个技能无法解析，已隐藏",
   "settings.skillsImportScanFailed": "扫描失败",
   "settings.skillsImportSelectAll": "全部选中",
   "settings.skillsImportDeselectAll": "取消全选",

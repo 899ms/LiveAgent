@@ -76,7 +76,7 @@ test("primary and local-import navigation use standard Tabs without divider bord
 test("installed and local-import content keep stable scroll-area spacing", () => {
   assert.match(hubSource, /overflow-y-auto px-0\.5 pr-1 \[overflow-anchor:none\]/);
   assert.match(hubSource, /<div className="flex flex-col gap-3">/);
-  assert.match(importSource, /overflow-y-auto px-1\.5 pb-4 pt-1\.5/);
+  assert.match(importSource, /overflow-y-auto px-0\.5 pb-4 pr-1/);
   assert.match(importSource, /<div className="flex flex-col gap-3">/);
   assert.doesNotMatch(hubSource, /overflow-y-auto px-0\.5 pr-1 pt-1\.5/);
   assert.doesNotMatch(importSource, /sticky top-0[^\"]*(?:pb-1\.5|pt-1\.5)/);

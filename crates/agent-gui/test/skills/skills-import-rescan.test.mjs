@@ -47,35 +47,36 @@ test("unchanged external scan results preserve the current list reference", () =
   );
 });
 
-test("manual rescans retain stale content and only mark the button busy", () => {
+test("manual rescans retain stale content and only mark the scan button busy", () => {
   assert.match(hubSource, /reconcileExternalToolScans\(previous, scans\)/);
   assert.match(hubSource, /setExternalScans\(\(previous\) => previous \?\? \[\]\)/);
   assert.match(hubSource, /initializing=\{externalScans === null\}/);
+  assert.match(hubSource, /disabled=\{externalScans === null \|\| externalLoading\}/);
+  assert.match(hubSource, /externalLoading \? \(\s*<Loader2[^>]*animate-spin/);
+  assert.match(hubSource, /onClick=\{\(\) => void rescanExternalSkills\(\)\}/);
   assert.match(importViewSource, /\{initializing \? \(/);
-  assert.match(importViewSource, /aria-busy=\{loading\}/);
-  assert.match(importViewSource, /loading \? \(\s*<Loader2[^>]*animate-spin/);
-  assert.match(importViewSource, /rescanComplete[\s\S]*settings\.skillsScanComplete/);
-  assert.match(importViewSource, /aria-live="polite"/);
   assert.doesNotMatch(importViewSource, /\{loading \? \(\s*<GlassPanel/);
-  assert.doesNotMatch(importViewSource, /disabled=\{[^}]*importing \|\| loading/);
 });
 
 test("the local import shell and card padding stay stable during the initial scan", () => {
   assert.match(importViewSource, /<SkillsImportSourceTabs[\s\S]*disabled=\{initializing\}/);
-  assert.match(importViewSource, /overflow-y-auto px-1\.5 pb-4 pt-1\.5/);
-  const cardPadding = importViewSource.match(/rounded-xl (p-[\d.]+) text-left transition-colors/)?.[1];
-  const skeletonPadding = importViewSource.match(/variant="skeleton"[^>]*className="min-h-48 (p-[\d.]+)"/)?.[1];
-  assert.equal(cardPadding, "p-5", "导入卡内边距变了就要同步骨架屏");
-  assert.equal(skeletonPadding, cardPadding, "骨架屏与真实卡片内边距必须一致，否则扫描完成时卡片会跳一次");
-  assert.match(importViewSource, /ml-auto flex gap-1\.5 rounded-lg bg-background/);
+  assert.match(importViewSource, /overflow-y-auto px-0\.5 pb-4 pr-1/);
+  assert.match(importViewSource, /className=\{SKILL_CARD_SHELL_CLASS\}/);
+  assert.match(importViewSource, /cn\(\s*SKILL_CARD_SHELL_CLASS,/);
+  assert.match(importViewSource, /gap-1\.5 rounded-lg bg-background text-foreground/);
   assert.doesNotMatch(importViewSource, /w-fit self-end/);
   assert.doesNotMatch(importViewSource, /skill-card-enter group flex min-h-48/);
 });
 
-test("the local import bulk toolbar is bottom-aligned with balanced empty-state spacing", () => {
-  assert.match(importViewSource, /pointer-events-none absolute inset-x-0 bottom-1/);
-  assert.match(importViewSource, /max-sm:bottom-safe-bottom-offset-compact/);
-  assert.match(importViewSource, /\? "py-2 pl-4 pr-2"\s*: "px-4 py-2\.5"/);
-  assert.match(importViewSource, /className="h-7 rounded-full px-3 text-xs"/);
-  assert.doesNotMatch(importViewSource, /pointer-events-none sticky bottom-3/);
+test("the local import bulk bar reuses the installed bulk bar shell", () => {
+  const sharedBulkBarShell =
+    /rounded-full border border-border\/50 bg-background\/95[\s\S]{0,160}?py-2 pl-4 pr-2 text-xs shadow-ui-skillshubpage-51/;
+
+  assert.match(hubSource, sharedBulkBarShell);
+  assert.match(importViewSource, sharedBulkBarShell);
+  assert.match(importViewSource, /absolute inset-x-0 bottom-4 z-20 flex justify-center px-3/);
+  assert.match(importViewSource, /max-sm:bottom-safe-bottom-offset/);
+  assert.match(importViewSource, /const showBulkBar = importableSelectedCount > 0 \|\| importing/);
+  assert.match(importViewSource, /skillsImportButton/);
 });
+

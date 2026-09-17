@@ -1112,8 +1112,6 @@ export const EN_US_SETTINGS_TRANSLATIONS = {
   "settings.skillsHubImportTab": "Local Import",
   "settings.skillsImportDesc":
     "Scan local Claude Code, Codex, CodeBuddy, and AGENTS skill directories, then pick skills to import into LiveAgent.",
-  "settings.skillsImportOverwriteHint":
-    "Skills with the same name are backed up, then overwritten.",
   "settings.skillsImportScanning": "Scanning",
   "settings.skillsImportRescan": "Rescan",
   "settings.skillsImportNotDetected": "Not detected",
@@ -1126,9 +1124,6 @@ export const EN_US_SETTINGS_TRANSLATIONS = {
   "settings.skillsImportFailed": "Some skills failed to import",
   "settings.skillsImportAlreadyInstalled":
     "Selected skills are already installed and cannot be imported again",
-  "settings.skillsImportCodebuddyHint":
-    "This is CodeBuddy's marketplace cache and may include skills you haven't installed.",
-  "settings.skillsImportUnparsable": "{count} skills could not be parsed and are hidden",
   "settings.skillsImportScanFailed": "Scan failed",
   "settings.skillsImportSelectAll": "Select all",
   "settings.skillsImportDeselectAll": "Deselect all",

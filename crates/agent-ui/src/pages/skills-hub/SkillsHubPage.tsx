@@ -6,10 +6,10 @@ import {
 } from "@liveagent/app/lib/settings";
 import { GlassPanel, HubHeader } from "@liveagent/ui/components/hub/HubChrome";
 import {
-  Check,
   Cloud,
   Download,
   ListChecks,
+  Loader2,
   MessageSquare,
   RefreshCw,
   Search,
@@ -101,7 +101,6 @@ function isSkillsHubView(value: unknown): value is SkillsHubView {
 
 const STORE_PAGE_LIMIT = 24;
 const SCAN_FEEDBACK_DURATION_MS = 6500;
-const SCAN_BUTTON_COMPLETE_DURATION_MS = 2400;
 const MIN_SCAN_LOADING_DURATION_MS = 600;
 
 async function waitForMinimumScanDuration(startedAt: number) {
@@ -156,8 +155,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
     },
     [toastScope],
   );
-  const [scanButtonComplete, setScanButtonComplete] = useState(false);
-  const scanButtonCompleteTimerRef = useRef<number | null>(null);
   const [filter, setFilter] = useState("");
   const [installedCategory, setInstalledCategory] = useState<StoreCategoryValue>("all");
   const [installedSort, setInstalledSort] = useState<InstalledSkillSort>(
@@ -234,34 +231,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
     [t, toastScope],
   );
 
-  const resetScanButtonComplete = useCallback(() => {
-    if (scanButtonCompleteTimerRef.current !== null) {
-      window.clearTimeout(scanButtonCompleteTimerRef.current);
-      scanButtonCompleteTimerRef.current = null;
-    }
-    setScanButtonComplete(false);
-  }, []);
-
-  const showScanButtonComplete = useCallback(() => {
-    if (scanButtonCompleteTimerRef.current !== null) {
-      window.clearTimeout(scanButtonCompleteTimerRef.current);
-    }
-    setScanButtonComplete(true);
-    scanButtonCompleteTimerRef.current = window.setTimeout(() => {
-      setScanButtonComplete(false);
-      scanButtonCompleteTimerRef.current = null;
-    }, SCAN_BUTTON_COMPLETE_DURATION_MS);
-  }, []);
-
-  useEffect(
-    () => () => {
-      if (scanButtonCompleteTimerRef.current !== null) {
-        window.clearTimeout(scanButtonCompleteTimerRef.current);
-      }
-    },
-    [],
-  );
-
   // 唯一写入点：setState 与 discoverySignatureRef 必须同步更新，防止签名与状态漂移。
   // 签名未变时跳过 setState，保持 skills 数组引用稳定（下游 memo 链与 store 轮询零重渲）。
   const applyDiscovery = useCallback((nextRootDir: string, nextSkills: SkillSummary[]) => {
@@ -290,9 +259,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
       const silent = options?.silent === true;
       const announce = options?.announce === true;
       const startedAt = Date.now();
-      if (announce) {
-        resetScanButtonComplete();
-      }
       if (!silent) {
         setLoading(true);
       }
@@ -306,7 +272,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
         }
         if (announce) {
           showScanFeedback({ status: "success", ...summary });
-          showScanButtonComplete();
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -322,14 +287,7 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
         }
       }
     },
-    [
-      applyDiscovery,
-      lockedByChatMode,
-      resetScanButtonComplete,
-      showScanButtonComplete,
-      showScanFeedback,
-      t,
-    ],
+    [applyDiscovery, lockedByChatMode, showScanFeedback, t],
   );
 
   useEffect(() => {
@@ -1395,41 +1353,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                     : t("settings.skillsHubToggleEnable")
                 }
               />
-              <RefreshButton
-                variant="outline"
-                size="sm"
-                className="h-8 min-w-26 justify-center gap-1.5 px-3"
-                onClick={() => void refresh({ announce: true })}
-                disabled={loading || scanButtonComplete || lockedByChatMode}
-                aria-busy={loading}
-                title={
-                  loading
-                    ? t("settings.skillsHubScanning")
-                    : scanButtonComplete
-                      ? t("settings.skillsScanComplete")
-                      : t("settings.skillsScanHint")
-                }
-              >
-                {loading ? (
-                  <RefreshCw data-refresh-icon className="size-3.5 animate-spin" />
-                ) : scanButtonComplete ? (
-                  <Check className="size-3.5 text-[hsl(var(--chat-success))]" />
-                ) : (
-                  <RefreshCw data-refresh-icon className="size-3.5" />
-                )}
-                <span
-                  className="hidden items-center whitespace-nowrap sm:inline-flex"
-                  aria-live="polite"
-                >
-                  <span>
-                    {loading
-                      ? t("settings.skillsImportScanning")
-                      : scanButtonComplete
-                        ? t("settings.skillsScanComplete")
-                        : t("settings.skillsScan")}
-                  </span>
-                </span>
-              </RefreshButton>
             </div>
           }
         />
@@ -1511,7 +1434,7 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
 
                 {!lockedByChatMode ? (
                   <div className="flex w-full min-w-0 items-center justify-end gap-2">
-                    {view !== "store" ? (
+                    {view === "installed" ? (
                       <Button
                         variant={bulkMode ? "secondary" : "ghost"}
                         size="sm"
@@ -1535,6 +1458,23 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                           {bulkMode ? t("settings.skillsBulkDone") : t("settings.skillsBulkSelect")}
                         </span>
                       </Button>
+                    ) : null}
+                    {view === "import" ? (
+                      <RefreshButton
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0 gap-1.5 px-3"
+                        disabled={externalScans === null || externalLoading}
+                        aria-busy={externalLoading}
+                        onClick={() => void rescanExternalSkills()}
+                      >
+                        {externalLoading ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="size-3.5" />
+                        )}
+                        {t("settings.skillsScan")}
+                      </RefreshButton>
                     ) : null}
                     {view === "installed" ? (
                       <Select
@@ -1600,12 +1540,7 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                 ) : null}
               </div>
 
-              <div
-                className={cn(
-                  "min-h-0 flex-1 overflow-hidden",
-                  view === "import" ? "pt-0" : "pt-4",
-                )}
-              >
+              <div className={cn("min-h-0 flex-1 overflow-hidden", "pt-4")}>
                 {lockedByChatMode ? (
                   <div className="h-full min-h-0 overflow-y-auto pb-4 pr-1">
                     <GlassPanel tone="muted">
@@ -1669,7 +1604,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                         scans={externalScans ?? []}
                         initializing={externalScans === null}
                         importingExternalBaseDir={importingExternalBaseDir}
-                        loading={externalLoading}
                         error={externalError}
                         query={importQuery}
                         selected={selectedExternal}
@@ -1678,7 +1612,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                         bulkMode={bulkMode}
                         onToggle={toggleExternalSkill}
                         onBatchToggle={batchToggleExternalSkills}
-                        onRescan={rescanExternalSkills}
                         onImport={(skill) => void importSelectedExternalSkills(skill)}
                       />
                     </TabsContent>
