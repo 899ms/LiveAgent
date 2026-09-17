@@ -16,6 +16,13 @@ const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.1;
 
+// Streaming hands the diagram a longer chart every flush; a full mermaid
+// parse + layout per delta stalls the main thread. First sight renders
+// immediately, later chart changes render at most once per interval with a
+// trailing render for the final chart. The previous SVG stays visible while
+// a render is pending, so the diagram never flashes back to the spinner.
+const STREAM_RENDER_MIN_INTERVAL_MS = 500;
+
 type ViewportState = { zoom: number; viewBox: MermaidViewBox };
 
 export function MermaidDiagram({
@@ -31,6 +38,8 @@ export function MermaidDiagram({
   const config = useMermaidConfig();
   const renderId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const generation = useRef(0);
+  const lastRenderStartRef = useRef(0);
+  const lastRenderChartRef = useRef<string | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
   const originalViewBoxRef = useRef<MermaidViewBox | null>(null);
@@ -65,24 +74,45 @@ export function MermaidDiagram({
   useEffect(() => {
     if (!visible) return;
     let active = true;
-    setError("");
-    generation.current += 1;
-    void mermaid
-      .getMermaid(config)
-      .render(
-        `mermaid-${fullscreen ? "fullscreen" : "inline"}-${renderId}-${generation.current}`,
-        chart,
-      )
-      .then(({ svg: renderedSvg }) => {
-        if (active) setSvg(renderedSvg);
-      })
-      .catch((reason: unknown) => {
-        if (active) {
-          setError(reason instanceof Error ? reason.message : "Failed to render Mermaid chart");
-        }
-      });
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const render = () => {
+      timer = null;
+      lastRenderStartRef.current = performance.now();
+      lastRenderChartRef.current = chart;
+      setError("");
+      generation.current += 1;
+      void mermaid
+        .getMermaid(config)
+        .render(
+          `mermaid-${fullscreen ? "fullscreen" : "inline"}-${renderId}-${generation.current}`,
+          chart,
+        )
+        .then(({ svg: renderedSvg }) => {
+          if (active) setSvg(renderedSvg);
+        })
+        .catch((reason: unknown) => {
+          if (active) {
+            setError(reason instanceof Error ? reason.message : "Failed to render Mermaid chart");
+          }
+        });
+    };
+    // Only a grown/changed chart is throttled; theme/config changes and the
+    // first sight of a chart render immediately.
+    const wait =
+      lastRenderStartRef.current === 0 || lastRenderChartRef.current === chart
+        ? 0
+        : Math.max(
+            0,
+            STREAM_RENDER_MIN_INTERVAL_MS - (performance.now() - lastRenderStartRef.current),
+          );
+    if (wait === 0) {
+      render();
+    } else {
+      timer = setTimeout(render, wait);
+    }
     return () => {
       active = false;
+      if (timer !== null) clearTimeout(timer);
     };
   }, [chart, config, fullscreen, renderId, visible]);
 

@@ -2,7 +2,6 @@ import { openUrl } from "@liveagent/app/shims/tauriOpener";
 import { ChevronDown, ChevronUp, Copy, ExternalLink } from "@liveagent/ui/components/IconSet";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import { cjk } from "@streamdown/cjk";
-import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import {
   type ComponentProps,
@@ -35,10 +34,12 @@ import {
   rememberExternalLinkConfirmation,
   shouldSkipExternalLinkConfirmation,
 } from "../lib/externalLinkPreference";
+import { parseChatMarkdownBlocks } from "../lib/markdownBlocks";
 import {
   getCollapsedCodeBlockPreview,
   resolveCodeBlockRenderPolicy,
 } from "../lib/markdownCodeBlockPolicy";
+import { throttledCodePlugin } from "../lib/markdownCodeHighlight";
 import { normalizeLatexDelimiters } from "../lib/normalizeLatexDelimiters";
 import { copyTextToClipboard } from "../lib/shared/clipboard";
 import { cn } from "../lib/shared/utils";
@@ -216,7 +217,8 @@ export type MarkdownProps = {
   onOpenFileLink?: (link: ChatFileLink) => void;
 };
 
-const streamdownPlugins = { code, math, cjk };
+// code 走包装插件：有界 LRU + 流式增长块 300ms 节流（见 markdownCodeHighlight.ts）。
+const streamdownPlugins = { code: throttledCodePlugin, math, cjk };
 const remarkPlugins = [...Object.values(defaultRemarkPlugins), remarkBreaks];
 const chatRemarkPlugins = [...remarkPlugins, remarkChatFileLinks];
 
@@ -795,6 +797,7 @@ export const Markdown = memo(function Markdown(props: MarkdownProps) {
         mode={streaming ? "streaming" : "static"}
         dir="auto"
         parseIncompleteMarkdown
+        parseMarkdownIntoBlocksFn={parseChatMarkdownBlocks}
         normalizeHtmlIndentation
         isAnimating={showCaret}
         caret={streaming ? "block" : undefined}

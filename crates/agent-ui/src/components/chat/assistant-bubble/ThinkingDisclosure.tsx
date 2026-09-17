@@ -3,6 +3,7 @@ import { LazyCollapse } from "@liveagent/ui/components/chat/LazyCollapse";
 import { Markdown } from "@liveagent/ui/components/Markdown";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import type { ChatFileLink } from "@liveagent/ui/lib/chat/chatFileLinks";
+import { sliceStreamingMarkdownTail } from "@liveagent/ui/lib/chat/streamingRenderPolicy";
 import { resolveThinkingDurationMs } from "@liveagent/ui/lib/chat/thinkingDurations";
 import { useScrollFollow } from "@liveagent/ui/lib/chat-scroll/useScrollFollow";
 import { cn } from "@liveagent/ui/lib/shared/utils";
@@ -69,6 +70,11 @@ export function ThinkingDisclosure(props: {
   });
 
   const durationMs = resolveThinkingDurationMs(trackKey, active);
+
+  // 流式中只把尾部窗口交给 Markdown：视口 max-h-320px 本来只看得到尾部，
+  // 而全文重排是 O(累计思考长度)/帧。落定（active=false）后展开渲染全文。
+  const displayText =
+    active && renderMode === "streaming" ? sliceStreamingMarkdownTail(text) : text;
   const durationLabel = durationMs !== null ? formatElapsedTime(durationMs) : "";
   const settledLabel = durationLabel
     ? `${t("chat.thoughtFor")} ${durationLabel}`
@@ -117,7 +123,7 @@ export function ThinkingDisclosure(props: {
             >
               <div ref={setScrollContent} className="border-l border-border/55 pl-3">
                 <Markdown
-                  content={text}
+                  content={displayText}
                   className="font-chat thinking-markdown"
                   renderMode={renderMode}
                   readOnly={readOnly}

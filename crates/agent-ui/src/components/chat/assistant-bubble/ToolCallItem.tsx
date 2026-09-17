@@ -58,6 +58,9 @@ import { ShellToolDisplay, ToolArgsDisplay, ToolResultDisplay } from "./ToolResu
 // 省略仍由 CSS truncate 决定;仅防御超长单行命令(如内联脚本)把常驻 DOM
 // 与原生 title 撑爆。完整命令在展开区可查看。
 const INLINE_COMMAND_PREVIEW_MAX_CHARS = 600;
+// Write/Edit 参数引用静止多久后视为流式结束，改算精确行级 diff。大于正常的
+// 流式 flush 间隔（≤ 96ms），小到用户几乎察觉不到估算→精确的切换。
+const FILE_CHANGE_ARGS_SETTLE_MS = 400;
 
 function capInlineCommandPreview(text: string) {
   return text.length > INLINE_COMMAND_PREVIEW_MAX_CHARS
@@ -205,9 +208,27 @@ function ToolCallItem({
               includeName: false,
               includeManagerAction: false,
             });
+  // 流式 Edit 参数每个 delta 都会换新 arguments 引用并重派生统计；exact 行级
+  // diff（Myers，上限 200K 字符）只在参数定稿后才算，流式期走行数估算，避免
+  // 每帧全量 diff 卡主线程。isRunning 不能作定稿信号：两端都在 toolcall_start
+  // 就标记 running，此时参数仍在流式。定稿判据：已有结果 / 卡在审批门（参数
+  // 必然完整），或 arguments 引用静止超过一个短窗口（流式结束）。
+  const isFileChangeTool = item.toolCall.name === "Write" || item.toolCall.name === "Edit";
+  const fileChangeArgsDefinitive = Boolean(result) || isApprovalPending;
+  const [quiescentArgs, setQuiescentArgs] = useState<unknown>(null);
+  useEffect(() => {
+    if (!isFileChangeTool || fileChangeArgsDefinitive) return;
+    const args = item.toolCall.arguments;
+    const timer = setTimeout(() => setQuiescentArgs(args), FILE_CHANGE_ARGS_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [fileChangeArgsDefinitive, isFileChangeTool, item.toolCall.arguments]);
+  const fileChangeArgsFinal = fileChangeArgsDefinitive || quiescentArgs === item.toolCall.arguments;
   const fileChangeStats = useMemo(
-    () => (isRedactedToolContent ? undefined : deriveFileChangeStats(item.toolCall)),
-    [isRedactedToolContent, item.toolCall],
+    () =>
+      isRedactedToolContent
+        ? undefined
+        : deriveFileChangeStats(item.toolCall, { preferEstimate: !fileChangeArgsFinal }),
+    [fileChangeArgsFinal, isRedactedToolContent, item.toolCall],
   );
   const fileOperation = useMemo(() => getFileOperationDisplay(item), [item]);
   const meta = getToolMeta(item.toolCall.name);

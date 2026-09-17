@@ -1,8 +1,21 @@
 import { AnimatePresence, domAnimation, LazyMotion, useReducedMotion } from "motion/react";
 import * as m from "motion/react-m";
-import { type ReactNode, useEffect, useState } from "react";
+import { memo, type ReactNode, useEffect, useState } from "react";
 import { UI_MOTION_TRANSITION } from "../../lib/shared/motion";
 import { cn } from "../../lib/shared/utils";
+
+// Retained-closed bodies exist to keep inner state (running tool output)
+// alive, not to stay visually fresh: while closed the subtree is invisible,
+// yet streaming props would otherwise keep re-rendering it on every flush.
+// The memo comparator claims equality whenever the body is frozen, so React
+// bails out of the whole hidden subtree; reopening compares unequal and
+// renders fresh content immediately.
+const CollapseBody = memo(
+  function CollapseBody(props: { frozen: boolean; children: () => ReactNode }) {
+    return props.children();
+  },
+  (_previous, next) => next.frozen,
+);
 
 // 内容首次展开时才挂载；AnimatePresence 负责等退出动画完成后再卸载。
 // 运行中的内容可在收起后继续保留内部状态。
@@ -59,7 +72,7 @@ export function LazyCollapse(props: {
                 transition={transition}
                 className="origin-top"
               >
-                {children()}
+                <CollapseBody frozen={!open}>{children}</CollapseBody>
               </m.div>
             </m.div>
           ) : null}
