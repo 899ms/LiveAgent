@@ -26,15 +26,24 @@ const settingsShellSource = readFileSync(
 );
 const themeSource = readStyleSource(new URL("../../../agent-ui/src/styles/tokens.css", import.meta.url));
 
-test("empty hook events render only the content-area add action", () => {
-  assert.match(hooksSource, /activeHooks\.length > 0 \? \([\s\S]*?<Button[\s\S]*?onClick=\{openAdd\}/);
-  assert.match(hooksSource, /activeHooks\.length === 0 \? \([\s\S]*settings\.hooksAdd/);
+// Hooks 页重写为单一布局：标题旁常驻一个「添加」按钮（无论有无 hook），空态卡片
+// 只作说明不再重复放按钮；不再靠 web:max-* 断点翻转头部方向，而是用包裹布局。
+test("hook events render exactly one add action beside the event title", () => {
+  const addButtons = hooksSource.match(/onClick=\{openAdd\}/g) ?? [];
+  assert.equal(addButtons.length, 1, "one add action in the section header");
+  assert.match(hooksSource, /<Button size="sm" onClick=\{openAdd\}>[\s\S]*?settings\.hooksAdd/);
+  assert.match(hooksSource, /activeHooks\.length === 0 \? \([\s\S]*?settings\.hooksEmptyTitle/);
+  assert.doesNotMatch(
+    hooksSource,
+    /activeHooks\.length === 0 \? \([\s\S]*?settings\.hooksAdd[\s\S]*?\) : \(/,
+    "empty state must not duplicate the add action",
+  );
 });
 
-test("mobile hook headers keep an existing hook action beside its title", () => {
-  assert.match(hooksSource, /web:max-820:flex-row! web:max-820:items-start! web:max-820:gap-10px!/);
-  assert.match(hooksSource, /web:max-380:flex-col! web:max-380:items-stretch!/);
-  assert.match(hooksSource, /settings-section-action[^"\n]*web:max-820:flex-none/);
+test("mobile hook headers wrap instead of relying on breakpoint overrides", () => {
+  assert.match(hooksSource, /flex flex-wrap items-center justify-between gap-3/);
+  assert.match(hooksSource, /grid items-start gap-6 md:grid-cols-\[13rem_minmax\(0,1fr\)\]/);
+  assert.doesNotMatch(hooksSource, /web:max-820:|web:max-380:/);
 });
 
 test("mobile device rows move text actions below the client details", () => {
@@ -62,15 +71,15 @@ test("mobile cron details give configuration more room and compact log summaries
   );
 });
 
+// 工具栏改为包裹布局：窄屏下 tabs 与动作组自然换行，动作组在 640px 以下撑满
+// 一行并平分；自定义设置从 Sheet 改为 fullscreen-mobile 的 Dialog。
 test("mobile provider toolbar stacks tabs above a full-width action group", () => {
-  assert.match(providersSource, /flex min-h-0 flex-1 flex-col web:max-820:min-w-0/);
+  assert.match(providersSource, /flex min-h-0 flex-1 flex-col gap-4/);
+  assert.match(providersSource, /flex shrink-0 flex-wrap items-center justify-between gap-3/);
+  assert.match(providersSource, /max-w-full overflow-x-auto pb-1/);
   assert.match(
     providersSource,
-    /web:max-820:flex web:max-820:w-full web:max-820:flex-col web:max-820:items-stretch/,
-  );
-  assert.match(
-    providersSource,
-    /inline-flex h-36px[^"\n]*max-640:w-full max-640:flex-none/,
+    /inline-flex min-w-0 shrink-0 flex-wrap items-center gap-2[\s\S]{0,200}?max-640:w-full max-640:\[&>\.settings-provider-action\]:flex-1/,
   );
   assert.match(
     providersSource,
@@ -82,6 +91,6 @@ test("mobile provider toolbar stacks tabs above a full-width action group", () =
   );
   assert.match(
     providersSource,
-    /<SheetContent[\s\S]*?web:max-820:inset-0/,
+    /<DialogContent[\s\S]*?layout="fullscreen-mobile"/,
   );
 });

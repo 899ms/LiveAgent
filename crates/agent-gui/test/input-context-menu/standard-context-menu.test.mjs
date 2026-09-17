@@ -147,6 +147,12 @@ test("composer menu survives focus transfer from the editor and Escape restores 
     });
     const menu = document.querySelector('[role="menu"]');
     assert.ok(menu, "editor blur must not close the newly opened menu");
+    // Base UI 把焦点移进弹窗是异步的（定位就绪后的一帧）；等它落地，而不是假设与
+    // contextmenu 同步完成。期间菜单必须一直开着（编辑器失焦不能关掉它）。
+    for (let attempt = 0; attempt < 10 && !menu.contains(document.activeElement); attempt += 1) {
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+      assert.ok(document.querySelector('[role="menu"]'), "menu must stay open while focus settles");
+    }
     assert.ok(menu.contains(document.activeElement));
     await key("Escape");
     assert.equal(document.querySelector('[role="menu"]'), null);

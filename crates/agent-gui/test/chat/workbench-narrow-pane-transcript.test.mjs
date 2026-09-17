@@ -40,7 +40,8 @@ test("composer derives its body-aligned width from the live transcript width", (
     composerSource,
     /max-w-transcript-gui/,
   );
-  assert.match(composerSource, /w-inset-2p25rem/);
+  // 桌面列贴满容器宽度（水平内边距由外层 stage 统一提供），宽度上限仍跟随转录列。
+  assert.match(composerSource, /"pointer-events-auto relative w-full max-w-transcript-gui"/);
   // 头像列退役后输入框不再需要补偿性右移：该位移原本是为了抵消正文被
   // 28px 头像 + 12px 间隙挤出的不对称，现在正文本身已居中。
   assert.doesNotMatch(composerSource, /translate-x-18px/);
@@ -66,7 +67,10 @@ test("width handles sit on the transcript column, not on the unreduced variable"
 
 test("FloorNavRail clamps its panel to the container, not the viewport", () => {
   const source = read("../../../agent-ui/src/pages/chat/transcript/FloorNavRail.tsx");
-  assert.match(source, /max-w-container-inset-2rem/);
+  // 触控面板改走 Popover 定位器：--available-width 由 Base UI 按碰撞边界实算，
+  // 在 Pane 内等价于容器钳宽，而不是视口。
+  assert.match(source, /max-w-\(--available-width\)/);
+  assert.match(source, /max-h-\(--available-height\)/);
   assert.equal(
     source.includes("max-w-[calc(100vw"),
     false,

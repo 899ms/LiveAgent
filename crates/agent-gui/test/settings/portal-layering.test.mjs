@@ -66,7 +66,8 @@ test("the shared model picker can render options without a collapsible group", (
 
 test("all shared popup primitives use the semantic popover layer", () => {
   for (const [name, source] of popupPortalSources) {
-    assert.match(source, /<\w+(?:Primitive)?\.Portal>/, `${name} should render through a Portal`);
+    // 允许 Portal 带属性（如 dropdown-menu 的 container={portalContainer}）。
+    assert.match(source, /<\w+(?:Primitive)?\.Portal(?:\s[^>]*)?>/, `${name} should render through a Portal`);
     assert.match(source, /className="layer-popover(?: isolate)?"/, `${name} should use layer-popover`);
   }
 });

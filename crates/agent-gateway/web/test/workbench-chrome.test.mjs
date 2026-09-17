@@ -19,6 +19,14 @@ const sidebarSource = readFileSync(
   new URL("../../../agent-ui/src/components/chat/ChatHistorySidebar.tsx", import.meta.url),
   "utf8",
 );
+const sidebarShellSource = readFileSync(
+  new URL("../../../agent-ui/src/components/ui/sidebar.tsx", import.meta.url),
+  "utf8",
+);
+const sheetSource = readFileSync(
+  new URL("../../../agent-ui/src/components/ui/sheet.tsx", import.meta.url),
+  "utf8",
+);
 
 test("gateway mounts workbench chrome outside the shared application view", () => {
   assert.match(gatewayAppViewSource, /<main className=\{GATEWAY_MAIN_SHELL_CLASS\}>/);
@@ -99,8 +107,10 @@ test("mobile sidebar stays above the interactive workbench header", () => {
     webStyleClassesSource,
     /max-820:\[&_\[data-app-workbench-chrome\]\]:z-\(--layer-raised\)/,
   );
-  assert.match(
-    sidebarSource,
-    /web:max-820:z-\(--layer-panel\)/,
-  );
+  // 移动端侧栏不再是行内 fixed 元素，而是 ui/sidebar 壳在窄屏下换成的 Sheet（Portal
+  // + layer-modal）：模态层本身就高于工作台的 layer-raised，无需自带 z-index。
+  assert.match(sidebarShellSource, /if \(isMobile\) \{[\s\S]*?<Sheet open=\{openMobile\}/);
+  assert.match(sidebarShellSource, /data-mobile="true"/);
+  assert.match(sheetSource, /"layer-modal fixed flex max-h-full min-h-0 min-w-0 flex-col overflow-hidden"/);
+  assert.doesNotMatch(sidebarSource, /web:max-820:z-/);
 });

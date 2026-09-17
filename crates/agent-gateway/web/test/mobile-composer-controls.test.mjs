@@ -55,5 +55,10 @@ test("model picker does not autofocus search on touch", () => {
   assert.match(modelControlsSource, /openType === "touch"/);
   assert.match(modelControlsSource, /\(hover: none\) and \(pointer: coarse\)/);
   assert.match(modelControlsSource, /return popoverContentRef\.current \?\? false;/);
-  assert.match(modelControlsSource, /return searchInputRef\.current;/);
+  // 模型页的搜索框只在非粗指针下获得焦点（触控下会弹软键盘）。
+  assert.match(
+    modelControlsSource,
+    /view === "model" && !isCoarsePointer\(\) && searchInputRef\.current/,
+  );
+  assert.match(modelControlsSource, /searchInputRef\.current\.focus\(\);/);
 });

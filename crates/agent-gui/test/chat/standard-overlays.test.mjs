@@ -1,16 +1,35 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createRequire } from "node:module";
 import { createDomTestEnv } from "../helpers/dom-test-env.mjs";
+import { createTsModuleLoader } from "../helpers/load-ts-module.mjs";
 
+// @tanstack/virtual-core 是 workspace 内的 TS 源码包（exports 直指 src/index.ts），宿主
+// Node 的 ESM 解析不认其无扩展名的相对 import。和 floor-nav-scroll 一样：经 TS loader
+// 预加载 core，再让 react-virtual 也走 loader（这样它对 core 的 import 才能命中 mock）。
+const virtualCore = createTsModuleLoader().loadModule(
+  new URL("../../../virtual-core/src/index.ts", import.meta.url).pathname,
+);
+let realUseVirtualizer;
 const locale = { locale: "en-US", t: (key) => key };
 const env = await createDomTestEnv({ mocks: {
+  "@tanstack/virtual-core": virtualCore,
+  "@tanstack/react-virtual": { useVirtualizer: (...args) => realUseVirtualizer(...args) },
   "@liveagent/ui/components/IconSet": new Proxy({}, { get: () => () => null }),
   "@liveagent/ui/i18n/index": { useLocale: () => locale },
 } });
+realUseVirtualizer = env.loadModule(
+  createRequire(new URL("../../package.json", import.meta.url)).resolve("@tanstack/react-virtual"),
+).useVirtualizer;
 globalThis.DOMRect = window.DOMRect;
 globalThis.HTMLInputElement = window.HTMLInputElement;
 globalThis.HTMLTextAreaElement = window.HTMLTextAreaElement;
 window.HTMLElement.prototype.scrollIntoView = () => {};
+// FloorNavRail 是虚拟列表：jsdom 里滑动容器 clientHeight 为 0 时一个楼层都不会挂载。
+Object.defineProperty(HTMLElement.prototype, "clientHeight", { configurable: true, get: () => 600 });
+Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get: () => 396 });
+Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get: () => 40 });
+HTMLElement.prototype.scrollTo = function ({ top = 0 } = {}) { this.scrollTop = top; };
 const { React, act, createRoot } = env;
 const { ProviderHeaderNameInput } = env.loadModule("@liveagent/ui/pages/settings/ProviderHeaderNameInput.tsx");
 const { Popup, CommitMentionTooltip } = env.loadModule("@liveagent/ui/components/chat/MentionComposerOverlays.tsx");

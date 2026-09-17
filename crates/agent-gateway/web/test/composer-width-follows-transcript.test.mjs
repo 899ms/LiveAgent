@@ -73,14 +73,20 @@ test("两条路径的 ChatComposerBar 都渲染在 stage 之内，宽度变量�
   );
 });
 
-test("层底部的实底条两端共用：盖住 16px 悬浮留白，正文不能从裙边下方漏出", () => {
+test("层底部的实底条两端共用：盖住底部悬浮留白，正文不能从裙边下方漏出", () => {
   const start = composerSource.indexOf("ref={composerLayerRef}");
   const end = composerSource.indexOf("ref={composerColumnRef}");
   assert.ok(start > 0 && end > start, "composer 层与卡片列的锚点存在");
   const region = composerSource.slice(start, end);
-  assert.ok(
-    region.includes('className="pointer-events-none absolute inset-x-0 bottom-0 bg-background"'),
-    "层底部应有全宽实底条",
+  // 实底条从卡片圆角下方开始一直盖到层底（而不是固定 1rem）：下方留白、页脚
+  // 都被遮住，圆角以上仍透出转录。
+  assert.ok(region.includes("data-composer-backing"), "层底部应有实底条");
+  assert.match(
+    region,
+    /"pointer-events-none absolute bottom-0 top-\[calc\(var\(--radius\)\+var\(--radius-16px\)\)\] bg-background"/,
   );
+  // 两端共用：只允许 surface 分支决定水平内缩（桌面端给原生滚动条留槽），不许
+  // 把整条退回桌面独占。
+  assert.match(region, /surface === "desktop" \? "inset-x-5" : "inset-x-0"/);
   assert.ok(!region.includes('surface === "desktop" ? ('), "实底条不许退回桌面独占");
 });

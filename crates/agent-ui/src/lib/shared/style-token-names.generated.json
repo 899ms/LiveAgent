@@ -1,7 +1,6 @@
 {
   "shadow": [
     "chat-user-bubble-editor",
-    "editor-context-menu",
     "gateway-bubble",
     "gateway-history-switch-overlay-card",
     "hub-frost-hero",

@@ -119,6 +119,13 @@ export type ComposerModelControlsProps = {
   onChatRuntimeControlsChange: (patch: Partial<ChatRuntimeControls>) => void;
 };
 
+// Touch / coarse-pointer must not land on the search field: that opens the IME.
+// Focus the popup itself, matching Base UI's default touch behavior.
+const isCoarsePointer = () =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+
 export const ComposerModelControls = memo(function ComposerModelControls(
   props: ComposerModelControlsProps,
 ) {
@@ -218,18 +225,18 @@ export const ComposerModelControls = memo(function ComposerModelControls(
   };
   useEffect(() => {
     if (!isModelPickerOpen) return;
+    // Model page: pointer users get the search field ready to type; touch
+    // users land on the back button so the keyboard does not pop up.
+    if (view === "model" && !isCoarsePointer() && searchInputRef.current) {
+      searchInputRef.current.focus();
+      return;
+    }
     const selector = view === "root" ? "button" : "[data-model-back]";
     popoverContentRef.current?.querySelector<HTMLButtonElement>(selector)?.focus();
   }, [view, isModelPickerOpen]);
   const resolveModelPickerInitialFocus = (openType: string) => {
-    // Touch / coarse-pointer must not land on the search field: that opens the IME.
-    // Focus the popup itself, matching Base UI's default touch behavior.
     const openedByTouch = openType === "touch";
-    const coarsePointer =
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-    if (openedByTouch || coarsePointer) {
+    if (openedByTouch || isCoarsePointer()) {
       return popoverContentRef.current ?? false;
     }
     return popoverContentRef.current;

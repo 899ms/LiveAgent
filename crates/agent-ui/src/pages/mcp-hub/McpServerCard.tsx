@@ -294,11 +294,7 @@ export const McpServerCard = memo(function McpServerCard(props: {
         ) : null}
 
         <div className="grid shrink-0 grid-cols-mcp-actions items-center gap-1.5 @max-[520px]:ml-auto">
-          <ToolPolicyToggle
-            value={policy}
-            ariaLabel={displayName}
-            onChange={onPolicyChange}
-          />
+          <ToolPolicyToggle value={policy} ariaLabel={displayName} onChange={onPolicyChange} />
           <Button
             type="button"
             variant="ghost"

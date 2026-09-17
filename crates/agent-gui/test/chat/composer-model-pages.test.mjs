@@ -5,7 +5,7 @@ import { createDomTestEnv } from "../helpers/dom-test-env.mjs";
 test("composer model pages preserve selection, reasoning, search and return navigation", async () => {
   const icon = () => null;
   const env = await createDomTestEnv({ mocks: {
-    "@liveagent/ui/components/IconSet": Object.fromEntries(["ArrowDownAZ", "Check", "ChevronDown", "ChevronRight", "Globe", "GlobeOff", "Layers", "Lightbulb", "LightbulbOff", "Search", "SquarePen"].map(name => [name, icon])),
+    "@liveagent/ui/components/IconSet": new Proxy({}, { get: (_target, name) => (name === "__esModule" ? true : icon) }),
     "@liveagent/ui/components/ProviderBrandIcon": { ProviderBrandIcon: icon },
     "@liveagent/ui/i18n/index": { useLocale: () => ({ t: key => key }) },
   } });
@@ -49,7 +49,10 @@ test("composer model pages preserve selection, reasoning, search and return navi
     await clickText("chat.runtime.reasoningsettings.reasoning.low");
     await env.act(async () => document.querySelector('input[value="high"]').click());
     assert.deepEqual(patches.at(-1), { thinkingEnabled: true, reasoning: "high" });
-    await clickText("chat.runtime.reasoning");
+    // 推理页的返回按钮附带当前模型标签，文本不再精确等于标题：用语义钩子定位。
+    const back = document.querySelector("[data-model-back]");
+    assert.ok(back && back.textContent.includes("chat.runtime.reasoning"), "reasoning page back button");
+    await env.act(async () => back.click());
     assert.ok([...document.querySelectorAll('button')].some(n => n.textContent.includes('settings.reasoning.high')));
   } finally { await env.act(async () => root.unmount()); env.cleanup(); }
 });
