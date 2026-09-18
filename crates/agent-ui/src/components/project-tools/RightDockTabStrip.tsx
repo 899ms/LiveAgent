@@ -5,7 +5,12 @@ import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { cn } from "../../lib/shared/utils";
 import type { TerminalSession } from "../../lib/terminal/types";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "../ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "../ui/context-menu";
 import {
   formatTerminalSessionTitle,
   type RightDockLeasedToolKind,
@@ -96,10 +101,10 @@ type DockTabDescriptor = {
 // NOTE: `transform` is deliberately absent from the transition list — drag
 // positioning drives `transform` via inline styles with its own transitions.
 const TAB_BASE_CLASS =
-  "project-tools-panel-tab group relative flex h-8 max-w-[12rem] shrink-0 select-none items-center gap-1 rounded-md border border-transparent px-1.5 text-xs text-muted-foreground transition-[background-color,border-color,color,opacity,box-shadow] hover:bg-muted/80 hover:text-foreground";
+  "group relative flex h-8 max-w-48 shrink-0 select-none items-center gap-1 rounded-md border border-transparent px-1.5 text-xs text-muted-foreground transition-[background-color,border-color,color,opacity,box-shadow] hover:bg-muted/80 hover:text-foreground web:max-820:max-w-project-tools-panel-tab-max-w web:max-380:max-w-project-tools-panel-tab-max-w-2 web:max-380:pl-6px web:max-380:pr-6px";
 
 const CLOSE_BUTTON_CLASS =
-  "relative z-10 ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:bg-background hover:text-foreground focus-visible:bg-background focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+  "relative z-10 ml-0.5 flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:bg-background hover:text-foreground focus-visible:bg-background focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
 
 export function RightDockTabStrip(props: RightDockTabStripProps) {
   const {
@@ -135,10 +140,10 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
     kind: RightDockLeasedToolKind,
   ): Pick<DockTabDescriptor, "menuItems" | "dragProps"> => ({
     menuItems: onOpenToolInWorkbench ? (
-      <DropdownMenuItem onSelect={() => onOpenToolInWorkbench(kind)} className="gap-2 text-xs">
-        <Columns2 className="h-3.5 w-3.5" />
+      <ContextMenuItem onSelect={() => onOpenToolInWorkbench(kind)} className="gap-2">
+        <Columns2 className="size-3.5" />
         {t("workbench.openInSplit")}
-      </DropdownMenuItem>
+      </ContextMenuItem>
     ) : undefined,
     dragProps: onToolTabDragStart
       ? {
@@ -175,33 +180,14 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
           type="button"
           aria-label={tab.label}
           aria-haspopup={tab.menuItems ? "menu" : undefined}
-          className="absolute inset-0 z-0 rounded-md bg-transparent p-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className={cn(
+            "absolute inset-0 z-0 rounded-md bg-transparent p-0",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          )}
           onClick={() => {
             if (consumeSuppressedTabClick(tab.id)) return;
             tab.onActivate();
           }}
-          onContextMenu={
-            tab.menuItems
-              ? (event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setMenuTabId(tab.id);
-                }
-              : undefined
-          }
-          onKeyDown={
-            tab.menuItems
-              ? (event) => {
-                  // Keyboard equivalent of right-click: the workbench actions
-                  // must not be drag-only.
-                  if (event.key !== "ContextMenu" && !(event.key === "F10" && event.shiftKey)) {
-                    return;
-                  }
-                  event.preventDefault();
-                  setMenuTabId(tab.id);
-                }
-              : undefined
-          }
         />
         {tab.dragProps ? (
           <button
@@ -210,8 +196,11 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
             aria-label={t("workbench.dragPane")}
             title={t("workbench.dragPane")}
             className={cn(
-              "relative z-10 flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/45 opacity-70 transition-[background-color,color,opacity] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              "cursor-grab touch-none hover:bg-background/80 hover:text-foreground hover:opacity-100 focus-visible:bg-background focus-visible:text-foreground focus-visible:opacity-100 active:cursor-grabbing",
+              "relative z-10 flex h-6 w-5 shrink-0 items-center justify-center",
+              "rounded text-muted-foreground/45 opacity-70 transition-[background-color,color,opacity]",
+              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              "cursor-grab touch-none",
+              "hover:bg-background/80 hover:text-foreground hover:opacity-100 focus-visible:bg-background focus-visible:text-foreground focus-visible:opacity-100 active:cursor-grabbing",
             )}
             onPointerDown={(event) => {
               // The reorder handle sits above the tab body and used to
@@ -221,21 +210,24 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
               tab.dragProps?.onPointerDown(event);
             }}
           >
-            <GripVertical className="h-3.5 w-3.5" />
+            <GripVertical className="size-3.5" />
           </button>
         ) : (
           renderTabDragHandle(tab.id, tab.label)
         )}
         <div
           aria-hidden="true"
-          className="pointer-events-none relative z-10 flex h-full min-w-0 flex-1 items-center gap-1.5 text-left text-inherit"
+          className={cn(
+            "pointer-events-none relative z-10 flex h-full min-w-0 flex-1 items-center",
+            "gap-1.5 text-left text-inherit",
+          )}
         >
           {tab.icon}
           <span className="min-w-0 truncate">{tab.label}</span>
           {tab.running !== undefined ? (
             <span
               className={cn(
-                "h-1.5 w-1.5 shrink-0 rounded-full",
+                "size-1.5 shrink-0 rounded-full",
                 tab.running ? "bg-emerald-500" : "bg-muted-foreground/50",
               )}
             />
@@ -265,27 +257,26 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
             tab.onClose();
           }}
         >
-          {tab.closeIcon ?? <X className="h-3 w-3" />}
+          {tab.closeIcon ?? <X className="size-3" />}
         </button>
       </div>
     );
 
     if (!tab.menuItems) return tabBody;
     return (
-      <DropdownMenu
+      <ContextMenu
         key={tab.id}
         open={menuTabId === tab.id}
         onOpenChange={(open) => setMenuTabId(open ? tab.id : "")}
-        modal={false}
       >
         {/* biome-ignore lint/complexity/noUselessFragments: DropdownMenu keeps trigger and popup siblings under one provider child */}
         <>
-          {tabBody}
-          <DropdownMenuContent align="start" sideOffset={4} className="min-w-44">
+          <ContextMenuTrigger render={tabBody} />
+          <ContextMenuContent variant="soft" align="start" sideOffset={4} className="min-w-44">
             {tab.menuItems}
-          </DropdownMenuContent>
+          </ContextMenuContent>
         </>
-      </DropdownMenu>
+      </ContextMenu>
     );
   };
 
@@ -300,7 +291,7 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
           return renderDockTab({
             id: tab.id,
             label,
-            icon: <Cpu className="h-3.5 w-3.5 shrink-0" />,
+            icon: <Cpu className="size-3.5 shrink-0" />,
             isActive: currentActiveTab === "backgroundTasks",
             running: backgroundTasksRunning > 0,
             closeLabel,
@@ -317,7 +308,7 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
           return renderDockTab({
             id: tab.id,
             label: t(definition.titleKey),
-            icon: definition.icon("h-3.5 w-3.5 shrink-0"),
+            icon: definition.icon("size-3.5 shrink-0"),
             isActive: currentActiveTab === tab.kind,
             closeLabel,
             closeTitle: closeLabel,
@@ -336,18 +327,15 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
         // 拖入画板(租约)的会话不在 dock 列表里,这里的 tab 都可自由进入
         // 工作台;菜单是拖拽之外的键盘/指针等价入口。
         const menuItems = onOpenTerminalInWorkbench ? (
-          <DropdownMenuItem
-            onSelect={() => onOpenTerminalInWorkbench(session)}
-            className="gap-2 text-xs"
-          >
-            <Columns2 className="h-3.5 w-3.5" />
+          <ContextMenuItem onSelect={() => onOpenTerminalInWorkbench(session)} className="gap-2">
+            <Columns2 className="size-3.5" />
             {t("workbench.openInSplit")}
-          </DropdownMenuItem>
+          </ContextMenuItem>
         ) : null;
         return renderDockTab({
           id: session.id,
           label: sessionTitle,
-          icon: <Terminal className="h-3.5 w-3.5 shrink-0" />,
+          icon: <Terminal className="size-3.5 shrink-0" />,
           isActive: currentActiveTab === "terminal" && activeSession?.id === session.id,
           running: session.running,
           isPendingClose,
@@ -356,7 +344,7 @@ export function RightDockTabStrip(props: RightDockTabStripProps) {
           closeTitle: isPendingClose
             ? t("projectTools.confirmCloseTerminal")
             : t("projectTools.closeTerminal"),
-          closeIcon: isPendingClose ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />,
+          closeIcon: isPendingClose ? <Check className="size-3" /> : <X className="size-3" />,
           closeDisabled: closingSessionIds.has(session.id),
           dragProps: onTerminalTabDragStart
             ? {
