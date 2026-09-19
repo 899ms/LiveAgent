@@ -28,6 +28,7 @@ export function ReleaseAnnouncementDialog({
   const title = releaseTitle(announcement) || `LiveAgent v${announcement.currentVersion}`;
   const releaseDate = formatReleaseDate(announcement.date);
   const meta = [
+    controller.preview ? t("appUpdate.announcementPreview") : null,
     `v${announcement.currentVersion}`,
     releaseDate ? `${t("settings.aboutReleaseDate")} ${releaseDate}` : null,
   ]
@@ -71,12 +72,25 @@ export function ReleaseAnnouncementDialog({
             <span />
           )}
           <div className="flex items-center justify-end gap-2 max-[820px]:w-full max-[820px]:[&>button]:flex-1">
-            <Button type="button" variant="outline" size="sm" onClick={controller.dismissForNow}>
-              {t("appUpdate.announcementLater")}
-            </Button>
-            <Button type="button" size="sm" onClick={controller.acknowledge}>
-              {t("appUpdate.announcementAcknowledge")}
-            </Button>
+            {controller.preview ? (
+              <Button type="button" size="sm" onClick={controller.dismissForNow}>
+                {t("appUpdate.announcementClosePreview")}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={controller.dismissForNow}
+                >
+                  {t("appUpdate.announcementLater")}
+                </Button>
+                <Button type="button" size="sm" onClick={controller.acknowledge}>
+                  {t("appUpdate.announcementAcknowledge")}
+                </Button>
+              </>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>

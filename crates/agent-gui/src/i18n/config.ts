@@ -41,6 +41,8 @@ export const GUI_TRANSLATION_OVERRIDES: Record<Locale, Record<string, string>> =
     "appUpdate.announcementOpenRelease": "查看完整发布页",
     "appUpdate.announcementLater": "稍后查看",
     "appUpdate.announcementAcknowledge": "知道了",
+    "appUpdate.announcementPreview": "调试预览",
+    "appUpdate.announcementClosePreview": "关闭预览",
     "chat.memoryExtraction.done": "记忆整理完成。",
     "chat.memoryExtraction.noop": "本轮无需更新记忆。",
     "chat.memoryExtraction.partial": "记忆部分更新（{accepted} 条已应用，{rejected} 条被拒）。",
@@ -75,6 +77,10 @@ export const GUI_TRANSLATION_OVERRIDES: Record<Locale, Record<string, string>> =
     "settings.aboutAnnouncementUnavailable": "暂无更新公告",
     "settings.aboutAnnouncementUnavailableDesc": "当前安装版本没有对应的发布说明。",
     "settings.aboutAnnouncementLoadFailed": "加载更新公告失败",
+    "settings.aboutDebugMode": "调试模式",
+    "settings.aboutDebugModeDesc": "仅开发构建可见；预览最新更新公告，不会修改已读状态。",
+    "settings.aboutPreviewAnnouncement": "预览更新公告",
+    "settings.aboutDebugAnnouncementUnavailableDesc": "没有找到可供预览的发布说明。",
     "settings.aboutCheckUpdate": "检查更新",
     "settings.aboutRestartBeforeCheck": "请先重启应用",
     "settings.aboutRestartBeforeCheckDesc": "更新已安装，请重启应用后再检查。",
@@ -323,6 +329,8 @@ export const GUI_TRANSLATION_OVERRIDES: Record<Locale, Record<string, string>> =
     "appUpdate.announcementOpenRelease": "View full release",
     "appUpdate.announcementLater": "View later",
     "appUpdate.announcementAcknowledge": "Got it",
+    "appUpdate.announcementPreview": "Debug preview",
+    "appUpdate.announcementClosePreview": "Close Preview",
     "chat.memoryExtraction.done": "Memory updated.",
     "chat.memoryExtraction.noop": "No memory updates needed this turn.",
     "chat.memoryExtraction.partial":
@@ -362,6 +370,11 @@ export const GUI_TRANSLATION_OVERRIDES: Record<Locale, Record<string, string>> =
     "settings.aboutAnnouncementUnavailableDesc":
       "There are no release notes for the installed version.",
     "settings.aboutAnnouncementLoadFailed": "Failed to load update announcement",
+    "settings.aboutDebugMode": "Debug Mode",
+    "settings.aboutDebugModeDesc":
+      "Visible only in development builds. Preview the latest announcement without changing its read state.",
+    "settings.aboutPreviewAnnouncement": "Preview Announcement",
+    "settings.aboutDebugAnnouncementUnavailableDesc": "No release notes are available for preview.",
     "settings.aboutCheckUpdate": "Check",
     "settings.aboutRestartBeforeCheck": "Restart the app first",
     "settings.aboutRestartBeforeCheckDesc":

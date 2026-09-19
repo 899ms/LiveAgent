@@ -565,23 +565,17 @@ fn build_updater(
         .map_err(|error| format!("failed to initialize updater: {error}"))
 }
 
-#[tauri::command]
-pub async fn app_release_announcement(
-    app: AppHandle,
-) -> Result<Option<AppReleaseAnnouncementResponse>, String> {
-    let repository = update_repository();
-    let current_version = current_version(&app);
-    let Some(release) = fetch_current_release(&repository, &current_version).await? else {
-        return Ok(None);
-    };
-    let Some(body) = release.body.map(|body| body.trim().to_string()) else {
-        return Ok(None);
-    };
+fn release_announcement_response(
+    repository: String,
+    current_version: String,
+    release: GitHubReleaseResponse,
+) -> Option<AppReleaseAnnouncementResponse> {
+    let body = release.body.map(|body| body.trim().to_string())?;
     if body.is_empty() {
-        return Ok(None);
+        return None;
     }
 
-    Ok(Some(AppReleaseAnnouncementResponse {
+    Some(AppReleaseAnnouncementResponse {
         current_version,
         date: release.published_at,
         body,
@@ -594,7 +588,51 @@ pub async fn app_release_announcement(
         release_name: release.name,
         release_url: release.html_url,
         repository,
-    }))
+    })
+}
+
+#[tauri::command]
+pub async fn app_release_announcement(
+    app: AppHandle,
+) -> Result<Option<AppReleaseAnnouncementResponse>, String> {
+    let repository = update_repository();
+    let current_version = current_version(&app);
+    let Some(release) = fetch_current_release(&repository, &current_version).await? else {
+        return Ok(None);
+    };
+
+    Ok(release_announcement_response(
+        repository,
+        current_version,
+        release,
+    ))
+}
+
+#[tauri::command]
+pub async fn app_release_announcement_preview(
+) -> Result<Option<AppReleaseAnnouncementResponse>, String> {
+    #[cfg(not(debug_assertions))]
+    {
+        Err("release announcement preview is only available in debug builds".to_string())
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let repository = update_repository();
+        let Some(selected_release) = select_release_manifest(&repository, true).await? else {
+            return Ok(None);
+        };
+        let preview_version = version_from_tag(&selected_release.tag_name);
+        let Some(release) = fetch_current_release(&repository, &preview_version).await? else {
+            return Ok(None);
+        };
+
+        Ok(release_announcement_response(
+            repository,
+            preview_version,
+            release,
+        ))
+    }
 }
 
 #[tauri::command(rename_all = "snake_case")]

@@ -121,6 +121,26 @@ export function AboutSection(props: AboutSectionProps) {
     }
   }
 
+  async function handlePreviewAnnouncement() {
+    try {
+      const announcement = await releaseAnnouncement.openPreviewAnnouncement();
+      if (!announcement) {
+        toast.warning(t("settings.aboutAnnouncementUnavailable"), {
+          id: `${toastScope}-announcement-preview`,
+          appearance: "notice",
+          description: t("settings.aboutDebugAnnouncementUnavailableDesc"),
+        });
+      }
+    } catch (error) {
+      const description = errorMessage(error);
+      toast.error(t("settings.aboutAnnouncementLoadFailed"), {
+        id: `${toastScope}-announcement-preview`,
+        appearance: "notice",
+        ...(description ? { description } : {}),
+      });
+    }
+  }
+
   async function handleInstallUpdate() {
     const toastId = `${toastScope}-update`;
     toast.warning(t("settings.aboutInstalling"), {
@@ -313,6 +333,27 @@ export function AboutSection(props: AboutSectionProps) {
               </Button>
             }
           />
+
+          {import.meta.env.DEV ? (
+            <SettingsRow
+              title={t("settings.aboutDebugMode")}
+              description={t("settings.aboutDebugModeDesc")}
+              control={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handlePreviewAnnouncement()}
+                  disabled={releaseAnnouncement.loading}
+                >
+                  {releaseAnnouncement.loading ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : null}
+                  {t("settings.aboutPreviewAnnouncement")}
+                </Button>
+              }
+            />
+          ) : null}
 
           <SettingsRow
             title={t("settings.aboutPrereleaseTitle")}

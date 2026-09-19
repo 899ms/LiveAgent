@@ -118,7 +118,9 @@ function createControllerHarness(result) {
       "@tauri-apps/api/core": {
         async invoke(command) {
           invokeCalls.push(command);
-          assert.equal(command, "app_release_announcement");
+          assert.ok(
+            ["app_release_announcement", "app_release_announcement_preview"].includes(command),
+          );
           return result;
         },
       },
@@ -182,6 +184,43 @@ test("first launch opens once, dismiss stays session-local, and acknowledge pers
     controller = harness.render();
     assert.equal(controller.open, false);
     assert.equal(storage.value(), "1.3.6");
+  } finally {
+    if (previousStorage) {
+      Object.defineProperty(globalThis, "localStorage", previousStorage);
+    } else {
+      delete globalThis.localStorage;
+    }
+  }
+});
+
+test("debug preview opens the dialog without changing the acknowledged version", async () => {
+  const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const storage = memoryStorage("1.3.5");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: storage,
+  });
+
+  try {
+    const harness = createControllerHarness({
+      currentVersion: "1.3.6-beta.1",
+      releaseTag: "v1.3.6-beta.1",
+      body: "## Preview",
+      channel: "prerelease",
+      repository: "Stack-Cairn/LiveAgent",
+    });
+    let controller = harness.render();
+    await controller.openPreviewAnnouncement();
+
+    controller = harness.render();
+    assert.equal(controller.open, true);
+    assert.equal(controller.preview, true);
+    assert.deepEqual(harness.invokeCalls, ["app_release_announcement_preview"]);
+
+    controller.acknowledge();
+    controller = harness.render();
+    assert.equal(controller.open, false);
+    assert.equal(storage.value(), "1.3.5");
   } finally {
     if (previousStorage) {
       Object.defineProperty(globalThis, "localStorage", previousStorage);

@@ -21,9 +21,11 @@ export type AppReleaseAnnouncement = {
 export type ReleaseAnnouncementController = {
   announcement?: AppReleaseAnnouncement;
   open: boolean;
+  preview: boolean;
   loading: boolean;
   message?: string;
   openAnnouncement: () => Promise<AppReleaseAnnouncement | undefined>;
+  openPreviewAnnouncement: () => Promise<AppReleaseAnnouncement | undefined>;
   dismissForNow: () => void;
   acknowledge: () => void;
 };
@@ -75,6 +77,7 @@ export function useReleaseAnnouncementController({
 }: UseReleaseAnnouncementControllerOptions): ReleaseAnnouncementController {
   const [announcement, setAnnouncement] = useState<AppReleaseAnnouncement>();
   const [open, setOpen] = useState(false);
+  const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>();
   const announcementRef = useRef<AppReleaseAnnouncement | undefined>(undefined);
@@ -110,17 +113,45 @@ export function useReleaseAnnouncementController({
 
   const openAnnouncement = useCallback(async () => {
     const result = await loadAnnouncement();
-    if (result) setOpen(true);
+    if (result) {
+      setAnnouncement(result);
+      setPreview(false);
+      setOpen(true);
+    }
     return result;
   }, [loadAnnouncement]);
+
+  const openPreviewAnnouncement = useCallback(async () => {
+    setLoading(true);
+    setMessage(undefined);
+    try {
+      const result = await invoke<AppReleaseAnnouncement | null>(
+        "app_release_announcement_preview",
+      );
+      const next = result?.body?.trim() ? result : undefined;
+      if (next) {
+        setAnnouncement(next);
+        setPreview(true);
+        setOpen(true);
+      }
+      return next;
+    } catch (error) {
+      setMessage(errorMessage(error));
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const dismissForNow = useCallback(() => setOpen(false), []);
 
   const acknowledge = useCallback(() => {
-    const version = announcementRef.current?.currentVersion || currentVersion;
-    markReleaseAnnouncementSeen(version);
+    if (!preview) {
+      const version = announcementRef.current?.currentVersion || currentVersion;
+      markReleaseAnnouncementSeen(version);
+    }
     setOpen(false);
-  }, [currentVersion]);
+  }, [currentVersion, preview]);
 
   useEffect(() => {
     const version = currentVersion.trim();
@@ -144,12 +175,24 @@ export function useReleaseAnnouncementController({
     () => ({
       announcement,
       open,
+      preview,
       loading,
       message,
       openAnnouncement,
+      openPreviewAnnouncement,
       dismissForNow,
       acknowledge,
     }),
-    [announcement, open, loading, message, openAnnouncement, dismissForNow, acknowledge],
+    [
+      announcement,
+      open,
+      preview,
+      loading,
+      message,
+      openAnnouncement,
+      openPreviewAnnouncement,
+      dismissForNow,
+      acknowledge,
+    ],
   );
 }
