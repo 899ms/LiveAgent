@@ -1307,7 +1307,7 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
       <Sidebar
         label={t("sidebar.navigation")}
         data-app-frame-column="sidebar"
-        className="chat-history-sidebar zone-font-scale bg-settings-rail [&_button:not(:disabled)]:cursor-pointer"
+        className="chat-history-sidebar zone-font-scale bg-settings-rail dark:border-border/30 [&_button:not(:disabled)]:cursor-pointer"
         style={{ "--zone-font-scale": fontScale } as CSSProperties}
       >
         {reorder.draggingKey && draggedTitle ? (
