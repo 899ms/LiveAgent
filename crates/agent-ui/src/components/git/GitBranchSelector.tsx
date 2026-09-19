@@ -1010,9 +1010,19 @@ export function GitBranchSelector(props: {
           ),
         )}
         {[...folders].map(([name, children]) => (
-          <details key={name} open={normalizedFilter ? true : undefined} className="group/folder">
-            <summary className="cursor-pointer rounded-md px-2 py-1 text-xs hover:bg-muted">
-              {name} <span className="text-muted-foreground">{children.length}</span>
+          <details
+            key={name}
+            open={normalizedFilter ? true : undefined}
+            className="[&[open]>summary>svg:first-child]:rotate-90"
+          >
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1 text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <ChevronRight
+                aria-hidden="true"
+                className="size-3.5 shrink-0 text-muted-foreground"
+              />
+              <Folder aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 truncate">{name}</span>
+              <span className="ml-auto text-muted-foreground">{children.length}</span>
             </summary>
             <div className="ml-3 border-l border-border/40 pl-1">
               {renderBranchTree(children, remote, depth + 1)}

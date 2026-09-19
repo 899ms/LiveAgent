@@ -110,7 +110,7 @@ type PendingWorkspaceProjectAction = {
 
 const MOBILE_SIDEBAR_MEDIA_QUERY = "(max-width: 820px)";
 const HISTORY_ROW_ESTIMATED_HEIGHT = 30;
-const HISTORY_ROW_GAP = 2;
+const HISTORY_ROW_GAP = 1;
 const HISTORY_ROW_OVERSCAN_COUNT = 8;
 const PROJECT_LIST_COLLAPSED_MAX = 30;
 const EMPTY_PROJECT_PATH_KEYS = new Set<string>();
@@ -1204,7 +1204,7 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
     return (
       <div
         data-testid={`workspace-conversations-${project.id}`}
-        className={cn("mb-2 ml-3 pl-2", indented && "ml-7")}
+        className={cn("mb-2 ml-3 space-y-px pl-2", indented && "ml-7")}
       >
         {visible.map((item) => renderHistoryRow(item))}
         {!state || (state.loading && visible.length === 0) ? (
@@ -1225,7 +1225,7 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
             disabled={sectionsDisabled || state?.loading}
             onClick={() => void onLoadWorkspaceHistory?.(project.path, !state?.error)}
             className={cn(
-              "flex h-30px w-full items-center rounded-md px-2",
+              "flex sidebar-list-row w-full items-center rounded-md px-2",
               "text-left text-sm font-normal leading-5 text-foreground/60",
               "hover:bg-foreground/[0.06] hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
             )}
@@ -1390,12 +1390,12 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
                   isActive={activeView === "chat"}
                   onClick={onNewConversation}
                   className={cn(
-                    "h-8 w-full justify-start gap-2.5 rounded-md px-2.5",
+                    "sidebar-list-row w-full justify-start gap-2.5 rounded-md px-2.5",
                     "text-sm font-normal leading-5 shadow-none transition-colors",
                     "web:text-sm! web:leading-20px! web:font-normal",
                     activeView === "chat"
-                      ? "bg-foreground/10 font-medium text-foreground hover:bg-foreground/10"
-                      : "text-foreground/75 hover:bg-foreground/5 hover:text-foreground",
+                      ? "bg-settings-active font-medium text-foreground hover:bg-settings-active"
+                      : "text-foreground/75 hover:bg-settings-tile-hover hover:text-foreground",
                   )}
                 >
                   <CirclePlus className="size-4 shrink-0 text-foreground/85" />
@@ -1417,11 +1417,11 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
                         aria-current={active ? "page" : undefined}
                         onClick={() => onOpenResourceHub(id)}
                         className={cn(
-                          "sidebar-hub-menu-item h-8 w-full justify-start gap-2.5 rounded-md px-2.5",
+                          "sidebar-hub-menu-item sidebar-list-row w-full justify-start gap-2.5 rounded-md px-2.5",
                           "text-sm font-normal leading-5 shadow-none transition-colors",
                           active
-                            ? "bg-foreground/10 font-medium text-foreground hover:bg-foreground/10 focus-visible:bg-foreground/10"
-                            : "text-foreground/75 hover:bg-foreground/5 hover:text-foreground focus-visible:bg-foreground/5",
+                            ? "bg-settings-active font-medium text-foreground hover:bg-settings-active focus-visible:bg-settings-active"
+                            : "text-foreground/75 hover:bg-settings-tile-hover hover:text-foreground focus-visible:bg-settings-tile-hover",
                         )}
                         title={t(labelKey)}
                       >
@@ -1475,7 +1475,7 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
                       </SidebarGroupLabel>
                     </div>
                     {!pinnedCollapsed && (
-                      <SidebarGroupContent className="space-y-0.5 px-2">
+                      <SidebarGroupContent className="space-y-px px-2">
                         {pinnedEntries.map((entry) =>
                           entry.kind === "conversation"
                             ? renderHistoryRow(entry.item, true)
@@ -1594,12 +1594,12 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
                         "bg-primary/[0.045] ring-1 ring-primary/40 ring-inset",
                     )}
                   >
-                    <SidebarGroupContent className="space-y-0.5 px-2 pb-0.5">
+                    <SidebarGroupContent className="space-y-px px-2 pb-px">
                       {showWorkspaceFolderDrop ? (
                         <div
                           role="status"
                           aria-live="polite"
-                          className="flex h-30px items-center gap-2 px-2 text-xs text-muted-foreground"
+                          className="flex sidebar-list-row items-center gap-2 px-2 text-xs text-muted-foreground"
                         >
                           <FolderOpen className="size-4 shrink-0" />
                           <span className="truncate">{t("chat.workspaceDropFolder")}</span>
@@ -1963,7 +1963,7 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
                           key={virtualRow.key}
                           data-index={virtualRow.index}
                           ref={historyVirtualizer.measureElement}
-                          className="absolute inset-x-0 top-0 pb-0.5"
+                          className="absolute inset-x-0 top-0 pb-px"
                           style={{ transform: `translateY(${virtualRow.start}px)` }}
                         >
                           {virtualRow.index === firstUnpinnedHistoryIndex ? (
@@ -2020,8 +2020,8 @@ export const ChatHistorySidebar = memo(function ChatHistorySidebar(props: ChatHi
               data-testid="open-settings"
               onClick={() => onOpenSettings()}
               className={cn(
-                "h-8 w-full justify-start gap-2.5 rounded-md px-2.5",
-                "text-sm font-normal text-foreground/75 shadow-none hover:bg-foreground/5 hover:text-foreground",
+                "sidebar-list-row w-full justify-start gap-2.5 rounded-md px-2.5",
+                "text-sm font-normal text-foreground/75 shadow-none hover:bg-settings-tile-hover hover:text-foreground",
               )}
               title={t("tooltip.settings")}
             >

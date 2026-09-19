@@ -148,7 +148,7 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
                 onClick={onBack}
                 className={cn(
                   "settings-back-button flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5",
-                  "text-sm text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground",
+                  "text-sm text-muted-foreground transition-colors duration-150 hover:bg-settings-tile-hover hover:text-foreground",
                   "web:max-820:min-h-34px web:max-820:w-auto web:max-820:px-10px web:max-820:py-8px",
                 )}
               >
@@ -163,7 +163,7 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
               onClick={onBack}
               className={cn(
                 "settings-back-button flex w-full cursor-pointer items-center justify-start gap-1 rounded-md px-2 py-1.5 text-left",
-                "text-sm text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground",
+                "text-sm text-muted-foreground transition-colors duration-150 hover:bg-settings-tile-hover hover:text-foreground",
               )}
             >
               <ArrowLeft className="size-3.5 shrink-0" />
@@ -216,13 +216,13 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
                         data-settings-nav-id={definition.id}
                         data-active={active ? "true" : "false"}
                         className={cn(
-                          "group relative flex w-full cursor-pointer items-center gap-2.5 rounded-md",
+                          "sidebar-list-row group relative flex w-full cursor-pointer items-center gap-2.5 rounded-md web:max-820:h-auto",
                           "px-2.5 py-1.5 text-left text-sm leading-tight transition-colors duration-150",
                           "web:max-820:w-auto web:max-820:flex-none web:max-820:whitespace-nowrap web:max-820:bg-settings-tile web:max-820:px-10px web:max-820:py-8px",
                           "web:max-820:[&_>_div]:gap-8px web:max-520:px-9px web:max-520:py-7px",
                           active
-                            ? "bg-foreground/10 font-medium text-foreground"
-                            : "text-foreground/75 hover:bg-foreground/5 hover:text-foreground",
+                            ? "bg-settings-active font-medium text-foreground"
+                            : "text-foreground/75 hover:bg-settings-tile-hover hover:text-foreground",
                         )}
                       >
                         <span

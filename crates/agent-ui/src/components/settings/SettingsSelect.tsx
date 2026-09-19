@@ -4,11 +4,12 @@ import { SelectContent, SelectTrigger } from "../ui/select";
 
 export const SETTINGS_PICKER_TRIGGER_CLASS = cn(
   "inline-flex h-8 w-fit max-w-260px items-center gap-1.5",
-  "whitespace-nowrap rounded-lg border-0 bg-background px-3 py-0",
+  "whitespace-nowrap rounded-lg border-0 bg-control-surface px-3 py-0",
   "text-sm font-normal leading-none",
   "transition-colors duration-150 hover:bg-settings-tile-hover",
-  "focus-visible:ring-2 focus-visible:ring-foreground/10",
-  "[&_svg]:size-3.5 [&_svg]:opacity-40",
+  "dark:ring-1 dark:ring-inset dark:ring-foreground/15 dark:hover:bg-settings-active",
+  "focus-visible:ring-2 focus-visible:ring-ring",
+  "[&_svg]:size-3.5 [&_svg]:opacity-70",
 );
 
 export function SettingsSelectTrigger({

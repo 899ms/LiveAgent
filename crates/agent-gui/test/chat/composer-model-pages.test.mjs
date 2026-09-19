@@ -9,6 +9,8 @@ test("composer model pages preserve selection, reasoning, search and return navi
     "@liveagent/ui/components/ProviderBrandIcon": { ProviderBrandIcon: icon },
     "@liveagent/ui/i18n/index": { useLocale: () => ({ t: key => key }) },
   } });
+  // JSDOM does not implement the Web Animations API used by Base UI ScrollArea.
+  window.HTMLElement.prototype.getAnimations ??= () => [];
   const { ComposerModelControls } = env.loadModule("@liveagent/ui/components/chat/ComposerModelControls.tsx");
   const { toModelValue } = env.loadModule("@liveagent/ui/lib/models/modelValue.ts");
   const values = [], patches = [];
@@ -37,12 +39,22 @@ test("composer model pages preserve selection, reasoning, search and return navi
     await clickText("chat.selectModelAlpha");
     assert.ok(document.querySelector('input[placeholder="chat.searchModel"]'));
     assert.ok([...document.querySelectorAll('button')].some(n => n.textContent === 'Beta'), "all provider groups are visible");
+    const secondGroup = [...document.querySelectorAll('[data-model-group]')].find(node => node.textContent.includes('Second'));
+    assert.ok(secondGroup);
+    await env.act(async () => secondGroup.click());
+    assert.equal(secondGroup.getAttribute('aria-expanded'), 'false');
+    assert.equal([...document.querySelectorAll('[data-model-option]')].some(n => n.textContent === 'Beta'), false, 'collapsed models leave the keyboard navigation order');
+    await env.act(async () => secondGroup.click());
+    assert.equal(secondGroup.getAttribute('aria-expanded'), 'true');
+    assert.ok([...document.querySelectorAll('[data-model-option]')].some(n => n.textContent === 'Beta'));
+    await env.act(async () => secondGroup.click());
     const search = document.querySelector('input[placeholder="chat.searchModel"]');
     await env.act(async () => {
       Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(search, "Second");
       search.dispatchEvent(new window.Event("input", { bubbles: true }));
     });
     assert.equal([...document.querySelectorAll('button')].some(n => n.textContent === 'Alpha'), false);
+    assert.equal(secondGroup.getAttribute('aria-expanded'), 'true', 'search expands matching groups');
     await clickText("Beta");
     assert.deepEqual(values, [{ customProviderId: "two", model: "Beta" }]);
     await open();
