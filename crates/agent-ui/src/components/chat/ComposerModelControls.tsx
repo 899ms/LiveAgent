@@ -31,6 +31,7 @@ import {
 } from "@liveagent/ui/components/ui/dropdown-menu";
 import { menuSurfaceClassName } from "@liveagent/ui/components/ui/menu-surface";
 import { Popover, PopoverContent, PopoverTrigger } from "@liveagent/ui/components/ui/popover";
+import { ScrollArea } from "@liveagent/ui/components/ui/scroll-area";
 import { Switch } from "@liveagent/ui/components/ui/switch";
 import { useLocale } from "@liveagent/ui/i18n/index";
 import {
@@ -148,6 +149,7 @@ export const ComposerModelControls = memo(function ComposerModelControls(
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
   const [providerFilter, setProviderFilter] = useState("");
+  const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(() => new Set());
   const [view, setView] = useState<"root" | "model" | "reasoning">("root");
   const [providerSortMode, setProviderSortMode] = useState<ProviderSortMode>(() =>
     readStoredProviderSortMode(),
@@ -281,7 +283,9 @@ export const ComposerModelControls = memo(function ComposerModelControls(
             if (event.target instanceof HTMLInputElement && event.target.type === "radio") return;
             const items = Array.from(
               event.currentTarget.querySelectorAll<HTMLButtonElement>(
-                view === "model" ? "button[data-model-option]" : "button:not(:disabled)",
+                view === "model"
+                  ? "button[data-model-option], button[data-model-group]"
+                  : "button:not(:disabled)",
               ),
             );
             const index = items.indexOf(document.activeElement as HTMLButtonElement);
@@ -430,7 +434,10 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                     <input
                       ref={searchInputRef}
                       value={modelSearch}
-                      onChange={(event) => setModelSearch(event.target.value)}
+                      onChange={(event) => {
+                        setModelSearch(event.target.value);
+                        setCollapsedProviders(new Set());
+                      }}
                       placeholder={t("chat.searchModel")}
                       aria-label={t("chat.searchModel")}
                       className="min-w-0 w-full bg-transparent outline-none"
@@ -498,10 +505,10 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                     )}
                   </Button>
                 </div>
-                <div
+                <ScrollArea
                   className={cn(
-                    "min-h-0 overflow-y-auto overscroll-contain",
-                    "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:size-0",
+                    "h-70 max-h-[50dvh] min-h-0 min-w-0 w-full [&_[data-scroll-viewport]]:overscroll-contain [&_[data-scroll-viewport]]:pr-3 [&_[data-scroll-viewport]>div]:min-w-0!",
+                    "[&_[data-scroll-area-scrollbar]]:z-20 [&_[data-scroll-area-scrollbar]]:opacity-100 [&_[data-scroll-area-scrollbar]>div]:min-h-6 [&_[data-scroll-area-scrollbar]>div]:bg-muted-foreground/60",
                   )}
                 >
                   {(() => {
@@ -529,7 +536,31 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                     return filteredGroups.map((group) => (
                       <div key={group.id} className="group/provider space-y-0.5 pb-1.5 last:pb-0">
                         <div className="sticky top-0 z-10 flex h-6 items-center justify-between gap-2 bg-popover px-2.5 text-tiny font-medium uppercase tracking-wide text-muted-foreground">
-                          <span className="min-w-0 truncate">{group.name}</span>
+                          <button
+                            type="button"
+                            data-model-group=""
+                            aria-expanded={!collapsedProviders.has(group.id)}
+                            aria-controls={`${executionModeRadioName}-models-${group.id}`}
+                            className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => {
+                              setCollapsedProviders((previous) => {
+                                const next = new Set(previous);
+                                if (next.has(group.id)) next.delete(group.id);
+                                else next.add(group.id);
+                                return next;
+                              });
+                            }}
+                          >
+                            <ChevronRight
+                              aria-hidden="true"
+                              className={cn(
+                                "size-3 shrink-0",
+                                !collapsedProviders.has(group.id) && "rotate-90",
+                              )}
+                            />
+                            <span className="min-w-0 truncate">{group.name}</span>
+                            <span className="ml-auto tabular-nums">{group.opts.length}</span>
+                          </button>
                           <Button
                             variant="ghost"
                             size="icon-xs"
@@ -543,59 +574,72 @@ export const ComposerModelControls = memo(function ComposerModelControls(
                             <SquarePen className="size-3" />
                           </Button>
                         </div>
-                        {group.opts.map((option) => {
-                          const isSelected = option.value === selectedValue;
-                          return (
-                            <button
-                              type="button"
-                              key={option.value}
-                              data-model-option=""
-                              aria-pressed={isSelected}
-                              onClick={() => {
-                                const parsed = parseModelValue(option.value);
-                                if (!parsed) return;
-                                onSelectModel(parsed);
-                                setIsModelPickerOpen(false);
-                              }}
-                              className={cn(
-                                "flex h-8 w-full items-center justify-between gap-2 rounded-lg px-2.5",
-                                "text-left hover:bg-settings-active/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                                isSelected && "bg-settings-active/60",
-                              )}
-                            >
-                              <span className="min-w-0 flex-1 truncate" title={option.model}>
-                                {option.label}
-                              </span>
-                              <span className="flex shrink-0 items-center gap-1 text-tiny text-muted-foreground/80">
-                                {option.reasoning && (
-                                  <span className="rounded bg-muted/60 px-1 py-px">
-                                    {t("settings.modelBadgeReasoning")}
+                        <div
+                          id={`${executionModeRadioName}-models-${group.id}`}
+                          className="space-y-0.5"
+                        >
+                          {!collapsedProviders.has(group.id) &&
+                            group.opts.map((option) => {
+                              const isSelected = option.value === selectedValue;
+                              return (
+                                <button
+                                  type="button"
+                                  key={option.value}
+                                  data-model-option=""
+                                  aria-pressed={isSelected}
+                                  onClick={() => {
+                                    const parsed = parseModelValue(option.value);
+                                    if (!parsed) return;
+                                    onSelectModel(parsed);
+                                    setIsModelPickerOpen(false);
+                                  }}
+                                  className={cn(
+                                    "flex h-8 w-full items-center justify-between gap-2 rounded-lg px-2.5",
+                                    "text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                                    isSelected
+                                      ? "bg-settings-active font-medium text-foreground hover:bg-settings-active"
+                                      : "text-foreground/90 hover:bg-settings-tile-hover hover:text-foreground",
+                                  )}
+                                >
+                                  <span className="min-w-0 flex-1 truncate" title={option.model}>
+                                    {option.label}
                                   </span>
-                                )}
-                                {option.vision && (
-                                  <span className="rounded bg-muted/60 px-1 py-px">
-                                    {t("settings.modelBadgeVision")}
+                                  <span
+                                    className={cn(
+                                      "flex shrink-0 items-center gap-1 text-tiny font-normal text-muted-foreground",
+                                      isSelected && "dark:text-foreground/75",
+                                    )}
+                                  >
+                                    {option.reasoning && (
+                                      <span className="rounded bg-muted/60 px-1 py-px">
+                                        {t("settings.modelBadgeReasoning")}
+                                      </span>
+                                    )}
+                                    {option.vision && (
+                                      <span className="rounded bg-muted/60 px-1 py-px">
+                                        {t("settings.modelBadgeVision")}
+                                      </span>
+                                    )}
+                                    {option.contextWindow && (
+                                      <span>
+                                        {new Intl.NumberFormat("en", {
+                                          notation: "compact",
+                                          maximumFractionDigits: 1,
+                                        }).format(option.contextWindow)}
+                                      </span>
+                                    )}
                                   </span>
-                                )}
-                                {option.contextWindow && (
-                                  <span>
-                                    {new Intl.NumberFormat("en", {
-                                      notation: "compact",
-                                      maximumFractionDigits: 1,
-                                    }).format(option.contextWindow)}
+                                  <span className="size-3.5 shrink-0">
+                                    {isSelected && <Check className="size-3.5" />}
                                   </span>
-                                )}
-                              </span>
-                              <span className="size-3.5 shrink-0">
-                                {isSelected && <Check className="size-3.5" />}
-                              </span>
-                            </button>
-                          );
-                        })}
+                                </button>
+                              );
+                            })}
+                        </div>
                       </div>
                     ));
                   })()}
-                </div>
+                </ScrollArea>
               </>
             ) : (
               <div className="space-y-1 overflow-y-auto">

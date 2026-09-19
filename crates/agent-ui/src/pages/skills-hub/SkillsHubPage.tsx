@@ -1564,7 +1564,6 @@ export function SkillsHubPage(props: SkillsHubPageProps) {
                         loadError={loadError}
                         skillsEnabled={skillsEnabled}
                         rootDir={rootDir}
-                        layoutGroupId={`${toastScope}-installed-skills`}
                         category={installedCategory}
                         categoryCounts={installedCategoryCounts}
                         onSelectCategory={setInstalledCategory}

@@ -5,8 +5,6 @@ import { useLocale } from "@liveagent/ui/i18n/index";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import type { ClawHubCategorySlug } from "@liveagent/ui/lib/skills/clawHubCategories";
 import { isAlwaysEnabledSkillName, type SkillSummary } from "@liveagent/ui/lib/skills/index";
-import { domAnimation, LayoutGroup, LazyMotion, useReducedMotion } from "motion/react";
-import * as m from "motion/react-m";
 import { InstalledSkillCard } from "./InstalledSkillCard";
 import { StoreCategoryChips, type StoreCategoryValue } from "./SkillCategoryControls";
 import { SkillsContentLoadingState } from "./SkillsLoading";
@@ -26,7 +24,6 @@ type InstalledSkillsViewProps = {
   loadError: string | null;
   skillsEnabled: boolean;
   rootDir: string;
-  layoutGroupId: string;
   category: StoreCategoryValue;
   categoryCounts: ReadonlyMap<StoreCategoryValue, number>;
   onSelectCategory: (category: StoreCategoryValue) => void;
@@ -53,7 +50,6 @@ export function InstalledSkillsView({
   loadError,
   skillsEnabled,
   rootDir,
-  layoutGroupId,
   category,
   categoryCounts,
   onSelectCategory,
@@ -71,7 +67,6 @@ export function InstalledSkillsView({
   onDelete,
 }: InstalledSkillsViewProps) {
   const { t } = useLocale();
-  const prefersReducedMotion = useReducedMotion();
 
   return (
     <div
@@ -150,50 +145,34 @@ export function InstalledSkillsView({
         ) : null}
 
         {items.length > 0 ? (
-          <LazyMotion features={domAnimation}>
-            <LayoutGroup id={layoutGroupId}>
-              <div className={SKILL_LIST_GRID_CLASS}>
-                {items.map(({ skill, categories }) => {
-                  const alwaysEnabled = isAlwaysEnabledSkillName(skill.name);
-                  return (
-                    <m.div
-                      key={`${skill.name}-${rootDir}`}
-                      layout={prefersReducedMotion ? false : "position"}
-                      transition={{
-                        layout: {
-                          type: "spring",
-                          stiffness: 420,
-                          damping: 36,
-                          mass: 0.7,
-                        },
-                      }}
-                      className="min-w-0"
-                    >
-                      <InstalledSkillCard
-                        skill={skill}
-                        primaryCategory={categories[0] ?? "other"}
-                        alwaysEnabled={alwaysEnabled}
-                        checked={alwaysEnabled || selected.has(skill.name)}
-                        skillsEnabled={skillsEnabled}
-                        bulkMode={bulkMode}
-                        bulkSelected={bulkSelection.has(skill.name)}
-                        deleting={deletingSkillName === skill.name}
-                        deleteDisabled={deletingSkillName !== null}
-                        searchQuery={searchQuery}
-                        onToggle={onToggle}
-                        onEnterBulkMode={onEnterBulkMode}
-                        onToggleBulkSelection={onToggleBulkSelection}
-                        onBulkCardClick={onBulkCardClick}
-                        onOpenPreview={onOpenPreview}
-                        onDelete={onDelete}
-                        onSelectCategory={onSelectCategory}
-                      />
-                    </m.div>
-                  );
-                })}
-              </div>
-            </LayoutGroup>
-          </LazyMotion>
+          <div className={SKILL_LIST_GRID_CLASS}>
+            {items.map(({ skill, categories }) => {
+              const alwaysEnabled = isAlwaysEnabledSkillName(skill.name);
+              return (
+                <div key={`${skill.name}-${rootDir}`} className="min-w-0">
+                  <InstalledSkillCard
+                    skill={skill}
+                    primaryCategory={categories[0] ?? "other"}
+                    alwaysEnabled={alwaysEnabled}
+                    checked={alwaysEnabled || selected.has(skill.name)}
+                    skillsEnabled={skillsEnabled}
+                    bulkMode={bulkMode}
+                    bulkSelected={bulkSelection.has(skill.name)}
+                    deleting={deletingSkillName === skill.name}
+                    deleteDisabled={deletingSkillName !== null}
+                    searchQuery={searchQuery}
+                    onToggle={onToggle}
+                    onEnterBulkMode={onEnterBulkMode}
+                    onToggleBulkSelection={onToggleBulkSelection}
+                    onBulkCardClick={onBulkCardClick}
+                    onOpenPreview={onOpenPreview}
+                    onDelete={onDelete}
+                    onSelectCategory={onSelectCategory}
+                  />
+                </div>
+              );
+            })}
+          </div>
         ) : null}
 
         {(filter.trim() || category !== "all") && items.length === 0 && hasSkills ? (

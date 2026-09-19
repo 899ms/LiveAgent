@@ -470,6 +470,9 @@
     --settings-tile: 0 0% 96.5%;
     --settings-tile-hover: 0 0% 94%;
     --settings-active: 0 0% 88.5%;
+    --control-surface: var(--background);
+    --segmented-track: var(--settings-active);
+    --segmented-selected: var(--background);
 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
@@ -539,39 +542,42 @@
   .dark {
     color-scheme: dark;
 
-    --background: 224 22% 9%;
-    --foreground: 210 30% 96%;
+    --background: 0 0% 9.4%;
+    --foreground: 0 0% 98%;
 
-    --card: 224 22% 10%;
-    --card-foreground: 210 30% 96%;
+    --card: 0 0% 12.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 224 20% 12%;
-    --popover-foreground: 210 30% 96%;
+    --popover: 0 0% 12.9%;
+    --popover-foreground: 0 0% 98%;
 
     --primary: 210 30% 96%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
-    --secondary: 220 18% 17%;
-    --secondary-foreground: 210 30% 96%;
+    --secondary: 0 0% 15.7%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 220 18% 17%;
-    --muted-foreground: 215 18% 76%;
+    --muted: 0 0% 15.7%;
+    --muted-foreground: 0 0% 72%;
 
     --settings-rail: 0 0% 0%;
-    --settings-tile: 224 18% 13%;
-    --settings-tile-hover: 224 16% 16%;
-    --settings-active: 0 0% 10%;
+    --settings-tile: 0 0% 12.9%;
+    --settings-tile-hover: 0 0% 18.8%;
+    --settings-active: 0 0% 25.5%;
+    --control-surface: 0 0% 18.8%;
+    --segmented-track: 0 0% 9.4%;
+    --segmented-selected: 0 0% 25.5%;
 
-    --accent: 220 18% 17%;
-    --accent-foreground: 210 30% 96%;
+    --accent: 0 0% 18.8%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: var(--color-red-300);
     --destructive-foreground: var(--color-red-950);
     --success: var(--color-emerald-300);
     --success-foreground: var(--color-emerald-950);
 
-    --border: 220 14% 26%;
-    --input: 220 14% 26%;
+    --border: 0 0% 26%;
+    --input: 0 0% 26%;
     --ring: 212.7 26.8% 83.9%;
 
     /* Chip / pill buttons (dark) */

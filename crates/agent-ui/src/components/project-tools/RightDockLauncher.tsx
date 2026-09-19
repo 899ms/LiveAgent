@@ -3,7 +3,7 @@ import { useLocale } from "@liveagent/ui/i18n/index";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { cn } from "../../lib/shared/utils";
 import type { TerminalShellOption } from "../../lib/terminal/types";
-import { buttonVariants } from "../ui/button";
+import { Button, buttonVariants } from "../ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -266,7 +266,8 @@ export function RightDockChooser(props: RightDockChooserProps) {
       </div>
       <div className="flex w-full max-w-xs flex-col gap-2">
         {tools.map((tool) => (
-          <button
+          <Button
+            variant="outline"
             key={tool.key}
             type="button"
             onClick={tool.onClick}
@@ -274,10 +275,10 @@ export function RightDockChooser(props: RightDockChooserProps) {
             disabled={tool.disabled}
             title={tool.titleAttr}
             className={cn(
-              "group flex items-center gap-3",
+              "group flex h-auto w-full items-center justify-start gap-3 whitespace-normal",
               "rounded-lg border border-border/60 bg-background px-3.5 py-3",
-              "text-left text-sm text-foreground transition-all",
-              "hover:border-border hover:bg-muted/60 hover:shadow-sm disabled:pointer-events-none disabled:opacity-50",
+              "text-left text-sm text-foreground",
+              "hover:bg-settings-tile-hover",
             )}
           >
             <div
@@ -294,7 +295,7 @@ export function RightDockChooser(props: RightDockChooserProps) {
                 {tool.description}
               </div>
             </div>
-          </button>
+          </Button>
         ))}
       </div>
       {loading ? (

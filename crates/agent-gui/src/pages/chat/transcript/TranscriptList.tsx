@@ -40,6 +40,11 @@ import {
 } from "../../../lib/tools/toolApproval";
 import { AssistantActivityRow } from "./AssistantActivityRow";
 import { AssistantRenderUnit } from "./AssistantRenderUnit";
+import {
+  initialTranscriptLayout,
+  readTranscriptScrollPosition,
+  saveTranscriptScrollPosition,
+} from "./initialTranscriptLayout";
 import { extractRenderUnitRange } from "./renderUnitRangeExtractor";
 import { createReplyHoverStore } from "./replyHoverStore";
 import { ReplyHoverProvider } from "./rowInteraction";
@@ -102,6 +107,7 @@ export type TranscriptListProps = {
   // virtualizer's resize-compensation carve-out for live-row growth.
   isViewportFollowing?: () => boolean;
   viewportFollowing: boolean;
+  onRestoreFollowing?: (following: boolean) => void;
   isSending: boolean;
   isCompactionRunning: boolean;
   showUsage: boolean;
@@ -112,6 +118,7 @@ export type TranscriptListProps = {
   // 楼层导航：跳转句柄挂载点（与 followRef 同一模式），以及「视口顶部
   // 当前处于哪条用户消息行」变化时的上报回调。
   navRef?: MutableRefObject<TranscriptNavHandle | null>;
+  saveReadingPositionRef?: MutableRefObject<(() => void) | null>;
   onAnchorUserRowChange?: (rowKey: string | null) => void;
   onResendFromEdit: (
     messageRef: HistoryMessageRef,
@@ -142,6 +149,7 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     layoutWidth,
     isViewportFollowing,
     viewportFollowing,
+    onRestoreFollowing,
     isSending,
     isCompactionRunning,
     showUsage,
@@ -150,6 +158,7 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     gitClient,
     onOpenFileLink,
     navRef,
+    saveReadingPositionRef,
     onAnchorUserRowChange,
     onResendFromEdit,
     onBranchConversation,
@@ -252,6 +261,17 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
         : null) ?? [],
   );
 
+  const [savedScrollPosition] = useState(() => readTranscriptScrollPosition(conversationId));
+  const initialLayout = useMemo(
+    () =>
+      initialTranscriptLayout(
+        rows,
+        initialMeasurementsCache,
+        scrollViewport?.clientHeight ?? 0,
+        savedScrollPosition,
+      ),
+    [rows, initialMeasurementsCache, scrollViewport, savedScrollPosition],
+  );
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement,
@@ -261,6 +281,11 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     overscan: 0,
     enabled: scrollViewport !== null,
     initialMeasurementsCache,
+    initialOffset: initialLayout.offset,
+    initialRect: {
+      width: scrollViewport?.clientWidth ?? 0,
+      height: scrollViewport?.clientHeight ?? 0,
+    },
     // Defer measurement-driven DOM writes out of WebKit's resize delivery.
     useAnimationFrameWithResizeObserver: true,
     // Pixel overscan covers the next paint; avoid synchronously rendering
@@ -418,18 +443,73 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
     onAnchorChange: onAnchorUserRowChange,
   });
 
-  // First paint of a conversation lands at the bottom before the user sees
-  // anything: scrollToEnd re-targets as dynamic measurements land, replacing
-  // the old estimated-pin → measure → re-pin dance. The component remounts
-  // per conversation (keyed by the parent), so this runs once per open.
-  const scrollToEndOnceRef = useRef(false);
+  // Restore once before paint. Detached readers return to their message
+  // anchor; new conversations and followers land at the latest message.
+  const restoredScrollRef = useRef(false);
   useLayoutEffect(() => {
-    if (scrollToEndOnceRef.current || scrollViewport === null || rows.length === 0) {
+    if (restoredScrollRef.current || scrollViewport === null || rows.length === 0) {
       return;
     }
-    scrollToEndOnceRef.current = true;
-    virtualizer.scrollToEnd();
-  }, [scrollViewport, rows.length, virtualizer]);
+    restoredScrollRef.current = true;
+    const follow = savedScrollPosition?.following ?? true;
+    onRestoreFollowing?.(follow);
+    if (follow) virtualizer.scrollToEnd();
+    else virtualizer.scrollToOffset(initialLayout.offset);
+  }, [
+    scrollViewport,
+    rows.length,
+    virtualizer,
+    savedScrollPosition,
+    initialLayout.offset,
+    onRestoreFollowing,
+  ]);
+
+  // Reconcile against the actual message element, not just estimated sizes:
+  // Markdown/table measurements can change after the initial range mounts.
+  useLayoutEffect(() => {
+    if (
+      !scrollViewport ||
+      savedScrollPosition?.following !== false ||
+      savedScrollPosition.anchorKey === undefined ||
+      savedScrollPosition.anchorViewportTop === undefined
+    )
+      return;
+    const { anchorKey, anchorViewportTop } = savedScrollPosition;
+    let frame = 0;
+    let cancelled = false;
+    let stableFrames = 0;
+    const started = performance.now();
+    const cancel = () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+    const reconcile = () => {
+      if (cancelled) return;
+      const element = virtualizer.elementsCache.get(anchorKey);
+      if (element) {
+        const delta =
+          element.getBoundingClientRect().top -
+          scrollViewport.getBoundingClientRect().top -
+          anchorViewportTop;
+        if (Math.abs(delta) > 1) {
+          virtualizer.scrollToOffset(scrollViewport.scrollTop + delta);
+          stableFrames = 0;
+        } else stableFrames++;
+      }
+      if (stableFrames < 2 && performance.now() - started < 240)
+        frame = requestAnimationFrame(reconcile);
+    };
+    scrollViewport.addEventListener("wheel", cancel, { passive: true });
+    scrollViewport.addEventListener("pointerdown", cancel);
+    window.addEventListener("keydown", cancel);
+    reconcile();
+    return () => {
+      cancel();
+      scrollViewport.removeEventListener("wheel", cancel);
+      scrollViewport.removeEventListener("pointerdown", cancel);
+      window.removeEventListener("keydown", cancel);
+    };
+  }, [scrollViewport, savedScrollPosition, virtualizer]);
 
   // First-layout settle watch: the transcript stays hidden (parent-gated)
   // until the initial scroll-to-end and its estimate→measure corrections
@@ -448,7 +528,7 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
       settledRef.current = true;
       onFirstLayoutSettledRef.current?.();
     };
-    if (!hasRows || isSending) {
+    if (!hasRows || isSending || initialLayout.measuredViewport) {
       settle();
       return;
     }
@@ -471,19 +551,73 @@ export const TranscriptList = memo(function TranscriptList(props: TranscriptList
       frame = requestAnimationFrame(check);
     });
     return () => cancelAnimationFrame(frame);
-  }, [hasRows, isSending, onFirstLayoutSettled, scrollViewport, virtualizer]);
+  }, [
+    hasRows,
+    isSending,
+    initialLayout.measuredViewport,
+    onFirstLayoutSettled,
+    scrollViewport,
+    virtualizer,
+  ]);
+
+  // Capture while the virtualizer is alive: its own unmount cleanup clears
+  // origin compensation before our cleanup runs, making a late read wrong.
+  const readingPositionRef = useRef<ReturnType<typeof readTranscriptScrollPosition>>(undefined);
+  const captureReadingPositionRef = useRef(() => {});
+  const savedBeforeLeaveRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!scrollViewport) return;
+    const capture = () => {
+      if (savedBeforeLeaveRef.current) return;
+      const offset = virtualizer.getSettledScrollOffset();
+      // Measurement starts include the origin shift; use DOM coordinates
+      // for the anchor delta, and settled coordinates only for the fallback.
+      const rawOffset = scrollViewport.scrollTop;
+      const anchor = virtualizer.getVirtualItemForOffset(rawOffset);
+      const anchorElement = anchor ? virtualizer.elementsCache.get(anchor.key) : undefined;
+      readingPositionRef.current = {
+        offset,
+        following: isViewportFollowing?.() ?? viewportFollowing,
+        anchorKey: anchor?.key,
+        anchorOffset: anchor ? rawOffset - anchor.start : 0,
+        anchorViewportTop: anchorElement
+          ? anchorElement.getBoundingClientRect().top - scrollViewport.getBoundingClientRect().top
+          : undefined,
+      };
+    };
+    captureReadingPositionRef.current = capture;
+    capture();
+    scrollViewport.addEventListener("scroll", capture, { passive: true });
+    return () => scrollViewport.removeEventListener("scroll", capture);
+  }, [scrollViewport, virtualizer, isViewportFollowing, viewportFollowing]);
 
   // Snapshot measured heights for the next open of this conversation.
   const saveMeasurementsRef = useRef(() => {});
   saveMeasurementsRef.current = () => {
     if (!scrollViewport) return;
+    if (readingPositionRef.current && !savedBeforeLeaveRef.current) {
+      saveTranscriptScrollPosition(conversationId, readingPositionRef.current);
+    }
     transcriptMeasurementsLru.save(
       conversationId,
       buildVersionedTranscriptLayoutKey(scrollViewport.clientWidth, layoutWidth),
       virtualizer.takeSnapshot(),
     );
   };
-  useEffect(() => () => saveMeasurementsRef.current(), []);
+  useLayoutEffect(() => {
+    if (!saveReadingPositionRef) return;
+    saveReadingPositionRef.current = () => {
+      savedBeforeLeaveRef.current = false;
+      captureReadingPositionRef.current();
+      saveMeasurementsRef.current();
+      savedBeforeLeaveRef.current = true;
+    };
+    return () => {
+      saveReadingPositionRef.current = null;
+    };
+  }, [saveReadingPositionRef]);
+  // Save before the next conversation's layout effects move the shared viewport.
+  useLayoutEffect(() => () => saveMeasurementsRef.current(), []);
 
   return (
     <ReplyHoverProvider value={replyHoverStore}>

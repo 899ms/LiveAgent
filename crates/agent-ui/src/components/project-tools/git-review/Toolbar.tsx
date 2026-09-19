@@ -33,6 +33,7 @@ import {
 } from "@liveagent/ui/lib/git/types";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { cn } from "../../../lib/shared/utils";
+import { SettingsToggleGroup, SettingsToggleGroupItem } from "../../settings/SettingsToggleGroup";
 import {
   AlertDialog,
   AlertDialogActions,
@@ -61,6 +62,7 @@ import {
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
 import { Input } from "../../ui/input";
+import { Tabs, TabsList, TabsTrigger } from "../../ui/tabs";
 import { useRightDockToolContext } from "../RightDockContext";
 import {
   type GitBranchFromCommitState,
@@ -73,9 +75,6 @@ import {
   remoteSetupSubmitKey,
 } from "./model";
 import type { GitReviewData } from "./useGitReviewData";
-
-const GIT_REVIEW_STACKED_PANE_BUTTON_CLASS =
-  "inline-flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 export function GitRemoteSetupModal(props: {
   open: boolean;
@@ -397,14 +396,16 @@ export function GitOperationNoticeToast({
             </div>
           ) : null}
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           type="button"
           onClick={onDismiss}
           className="mt-0.5 shrink-0 rounded p-0.5 opacity-55 transition-opacity hover:opacity-100"
           aria-label="Dismiss"
         >
           <X className="size-3.5" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -607,47 +608,38 @@ function GitReviewScopeDial(props: {
       key: "repository" as const,
       label: repositoryLabel,
       Icon: Folder,
-      activeTone: "text-sky-600 dark:text-sky-300",
     },
     {
       key: "branch" as const,
       label: branchLabel,
       Icon: GitBranch,
-      activeTone: "text-emerald-600 dark:text-emerald-300",
     },
   ];
   return (
-    <div className="relative h-7 w-52px shrink-0">
+    <SettingsToggleGroup
+      value={[value]}
+      onValueChange={(values) => {
+        const next = values[0];
+        if (next === "repository" || next === "branch") onChange(next);
+      }}
+      className="shrink-0"
+      aria-label={`${repositoryLabel} / ${branchLabel}`}
+    >
       {items.map((item) => {
         const isActive = item.key === value;
         return (
-          <button
+          <SettingsToggleGroupItem
             key={item.key}
-            type="button"
-            aria-pressed={isActive}
+            value={item.key}
             aria-label={item.label}
             title={item.label}
-            onClick={() => {
-              if (!isActive) onChange(item.key);
-            }}
-            className={cn(
-              "group absolute top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center",
-              "justify-center outline-hidden transition-[left] duration-200 ease-out motion-reduce:transition-none",
-              isActive ? "left-3 z-10" : "left-10",
-            )}
+            className="min-w-7 px-1.5"
           >
-            <item.Icon
-              className={cn(
-                "size-18px transition-all duration-200 ease-out motion-reduce:transition-none",
-                isActive
-                  ? cn("scale-100", item.activeTone)
-                  : "scale-[0.7] text-muted-foreground/50 group-hover:text-muted-foreground group-focus-visible:text-muted-foreground",
-              )}
-            />
-          </button>
+            <item.Icon className={cn("size-3.5", isActive && "text-foreground")} />
+          </SettingsToggleGroupItem>
         );
       })}
-    </div>
+    </SettingsToggleGroup>
   );
 }
 
@@ -958,65 +950,55 @@ export function GitReviewToolbar(props: {
         </div>
       ) : null}
       <div className="mt-3 flex items-center gap-2">
-        <div className="inline-flex shrink-0 rounded-md border border-border bg-muted/25 p-0.5 text-xs">
-          <button
-            type="button"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 font-medium text-muted-foreground",
-              "transition-colors hover:text-foreground",
-              reviewMode === "changes" && "bg-background text-foreground shadow-sm",
-            )}
-            onClick={() => setReviewMode("changes")}
-          >
-            <GitBranch className="size-3.5" />
-            {t("projectTools.gitReview.localChangesView")}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 font-medium text-muted-foreground",
-              "transition-colors hover:text-foreground",
-              reviewMode === "history" && "bg-background text-foreground shadow-sm",
-            )}
-            onClick={() => setReviewMode("history")}
-          >
-            <History className="size-3.5" />
-            {t("projectTools.gitReview.commitHistoryView")}
-          </button>
-        </div>
+        <Tabs
+          value={reviewMode}
+          onValueChange={(value) => {
+            if (value === "changes" || value === "history") setReviewMode(value);
+          }}
+        >
+          <TabsList variant="segmented" aria-label={t("projectTools.gitReview.commitHistoryTitle")}>
+            <TabsTrigger value="changes" variant="segmented" className="gap-1.5">
+              <GitBranch className="size-3.5" />
+              {t("projectTools.gitReview.localChangesView")}
+            </TabsTrigger>
+            <TabsTrigger value="history" variant="segmented" className="gap-1.5">
+              <History className="size-3.5" />
+              {t("projectTools.gitReview.commitHistoryView")}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         {!useSplitReviewLayout ? (
-          <div className="ml-auto inline-flex shrink-0 rounded-md border border-border bg-muted/25 p-0.5">
-            <button
-              type="button"
+          <SettingsToggleGroup
+            className="ml-auto shrink-0"
+            value={[stackedPane]}
+            onValueChange={(values) => {
+              const pane = values[0];
+              if (pane === "list" || pane === "detail")
+                onStackedPaneChange(pane, pane === "list" ? "back" : "forward");
+            }}
+            aria-label={t("projectTools.gitReview.listPane")}
+          >
+            <SettingsToggleGroupItem
+              value="list"
               aria-label={t("projectTools.gitReview.listPane")}
-              aria-pressed={stackedPane === "list"}
               title={t("projectTools.gitReview.listPane")}
-              className={cn(
-                GIT_REVIEW_STACKED_PANE_BUTTON_CLASS,
-                stackedPane === "list" && "bg-background text-foreground shadow-sm",
-              )}
-              onClick={() => onStackedPaneChange("list", "back")}
+              className="min-w-7 px-1.5"
             >
               {reviewMode === "changes" ? (
                 <GitBranch className="size-3.5" />
               ) : (
                 <History className="size-3.5" />
               )}
-            </button>
-            <button
-              type="button"
+            </SettingsToggleGroupItem>
+            <SettingsToggleGroupItem
+              value="detail"
               aria-label={t("projectTools.gitReview.detailPane")}
-              aria-pressed={stackedPane === "detail"}
               title={t("projectTools.gitReview.detailPane")}
-              className={cn(
-                GIT_REVIEW_STACKED_PANE_BUTTON_CLASS,
-                stackedPane === "detail" && "bg-background text-foreground shadow-sm",
-              )}
-              onClick={() => onStackedPaneChange("detail", "forward")}
+              className="min-w-7 px-1.5"
             >
               <Eye className="size-3.5" />
-            </button>
-          </div>
+            </SettingsToggleGroupItem>
+          </SettingsToggleGroup>
         ) : null}
       </div>
       {!canWrite && disabledMessage ? (

@@ -100,7 +100,7 @@ for (const { label, loader, sources } of implementations) {
     assert.equal(sorting.isInstalledSkillSort(null), false);
   });
 
-  test(`${label} uses Motion layout for installed-skill reordering`, () => {
+  test(`${label} reorders installed skills immediately without motion`, () => {
     const source = normalizeClassGroups(
       resolveStyleValues(sources.map((file) => readFileSync(file, "utf8")).join("\n")),
     );
@@ -112,14 +112,8 @@ for (const { label, loader, sources } of implementations) {
     assert.match(source, /<Select[\s\S]*value=\{installedSort\}/);
     assert.match(source, /<SelectItem[\s\S]*value=\{option\.value\}/);
     assert.match(source, /overflow-y-auto[^"]*\[overflow-anchor:none\]/);
-    assert.match(source, /<LazyMotion features=\{domAnimation\}>/);
-    assert.match(source, /<LayoutGroup id=\{layoutGroupId\}>/);
-    assert.match(source, /layoutGroupId=\{`\$\{toastScope\}-installed-skills`\}/);
-    assert.match(source, /<m\.div/);
-    assert.match(source, /layout=\{prefersReducedMotion \? false : "position"\}/);
-    assert.match(source, /type: "spring"/);
-    assert.match(source, /stiffness: 420/);
-    assert.match(source, /damping: 36/);
+    assert.doesNotMatch(source, /LazyMotion|LayoutGroup|layoutGroupId|<m\.div/);
+    assert.doesNotMatch(source, /type: "spring"/);
     assert.doesNotMatch(source, /data-flip-key/);
     assert.doesNotMatch(source, /querySelectorAll<HTMLElement>\("\[data-flip-key\]"\)/);
     assert.doesNotMatch(source, /element\.style\.(translate|transition|willChange|zIndex)/);

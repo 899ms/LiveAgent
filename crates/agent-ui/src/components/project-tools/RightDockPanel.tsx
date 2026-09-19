@@ -850,22 +850,19 @@ export const RightDockPanel = memo(function RightDockPanel(props: RightDockPanel
 
           <div
             className={cn(
-              "flex h-11 shrink-0 items-center gap-2 border-b border-border px-3",
-              "web:max-820:h-auto web:max-820:min-h-44px web:max-820:gap-6px web:max-820:px-8px web:max-820:pt-6px web:max-820:pb-8px",
+              "flex h-10 shrink-0 items-center gap-2 border-b border-border/60 pl-1 pr-2",
+              "web:max-820:min-h-44px web:max-820:gap-6px",
             )}
           >
             <div
-              className={cn(
-                "flex min-w-0 flex-1 flex-col justify-center gap-1",
-                "web:flex web:flex-col web:gap-3px web:justify-center web:max-820:gap-4px",
-              )}
+              className={cn("flex h-full min-w-0 flex-1 flex-col justify-center")}
               onWheel={handleTabsWheel}
             >
               <div
                 ref={tabsScrollRef}
                 className={cn(
-                  "project-tools-panel-tabs flex h-8 min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden",
-                  "overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:size-0 desktop:h-10! desktop:py-1!",
+                  "project-tools-panel-tabs flex h-full min-w-0 items-stretch overflow-x-auto overflow-y-hidden",
+                  "overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:size-0",
                 )}
               >
                 <RightDockTabStrip
