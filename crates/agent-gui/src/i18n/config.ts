@@ -70,8 +70,6 @@ export const GUI_TRANSLATION_OVERRIDES: Record<Locale, Record<string, string>> =
     "settings.aboutReleaseNotes": "发布说明",
     "settings.aboutCurrentVersion": "当前版本",
     "settings.aboutOpenRelease": "发布页",
-    "settings.aboutAnnouncementSectionTitle": "更新公告",
-    "settings.aboutAnnouncementSectionDesc": "单独查看当前安装版本的发布内容。",
     "settings.aboutUpdateAnnouncement": "更新公告",
     "settings.aboutUpdateAnnouncementDesc":
       "查看当前安装版本的更新内容；每个新版本首次启动时自动显示。",
@@ -364,9 +362,6 @@ export const GUI_TRANSLATION_OVERRIDES: Record<Locale, Record<string, string>> =
     "settings.aboutReleaseNotes": "Release Notes",
     "settings.aboutCurrentVersion": "Current Version",
     "settings.aboutOpenRelease": "Release",
-    "settings.aboutAnnouncementSectionTitle": "Update Announcement",
-    "settings.aboutAnnouncementSectionDesc":
-      "View the release details for the currently installed version separately.",
     "settings.aboutUpdateAnnouncement": "Update Announcement",
     "settings.aboutUpdateAnnouncementDesc":
       "View what changed in the installed version. Each new version opens this once on first launch.",

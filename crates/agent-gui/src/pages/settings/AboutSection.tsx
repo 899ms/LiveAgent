@@ -318,31 +318,6 @@ export function AboutSection(props: AboutSectionProps) {
           />
 
           <SettingsRow
-            title={t("settings.aboutPrereleaseTitle")}
-            description={t("settings.aboutPrereleaseDesc")}
-            control={
-              <AgentActivationSwitch
-                checked={includePrereleases}
-                title={t("settings.aboutPrereleaseToggle")}
-                onToggle={() =>
-                  setSettings((prev) =>
-                    updateUpdateSettings(prev, {
-                      includePrereleases: !prev.updates.includePrereleases,
-                    }),
-                  )
-                }
-              />
-            }
-          />
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection
-        title={t("settings.aboutAnnouncementSectionTitle")}
-        description={t("settings.aboutAnnouncementSectionDesc")}
-      >
-        <SettingsCard>
-          <SettingsRow
             title={t("settings.aboutUpdateAnnouncement")}
             description={t("settings.aboutUpdateAnnouncementDesc")}
             control={
@@ -379,6 +354,24 @@ export function AboutSection(props: AboutSectionProps) {
               }
             />
           ) : null}
+
+          <SettingsRow
+            title={t("settings.aboutPrereleaseTitle")}
+            description={t("settings.aboutPrereleaseDesc")}
+            control={
+              <AgentActivationSwitch
+                checked={includePrereleases}
+                title={t("settings.aboutPrereleaseToggle")}
+                onToggle={() =>
+                  setSettings((prev) =>
+                    updateUpdateSettings(prev, {
+                      includePrereleases: !prev.updates.includePrereleases,
+                    }),
+                  )
+                }
+              />
+            }
+          />
         </SettingsCard>
       </SettingsSection>
     </div>
