@@ -109,7 +109,7 @@ function ProxySettingsRow({
         <span
           className={cn(
             "inline-flex shrink-0 items-center gap-1.5",
-            "rounded-lg bg-background px-3 py-2",
+            "rounded-lg bg-control-surface px-3 py-2 dark:ring-1 dark:ring-inset dark:ring-foreground/15 dark:group-hover:bg-settings-active",
             "text-xs font-medium text-foreground/80 transition-colors duration-150 group-hover:bg-settings-tile-hover",
           )}
         >

@@ -19,6 +19,9 @@
   --color-settings-tile: hsl(var(--settings-tile));
   --color-settings-tile-hover: hsl(var(--settings-tile-hover));
   --color-settings-active: hsl(var(--settings-active));
+  --color-control-surface: hsl(var(--control-surface));
+  --color-segmented-track: hsl(var(--segmented-track));
+  --color-segmented-selected: hsl(var(--segmented-selected));
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-popover: hsl(var(--popover));

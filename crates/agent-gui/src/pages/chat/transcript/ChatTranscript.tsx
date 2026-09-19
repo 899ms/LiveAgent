@@ -107,6 +107,7 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
   const floors = useMemo(() => buildFloorEntries(historyItems), [historyItems]);
   const [activeFloorKey, setActiveFloorKey] = useState<string | null>(null);
   const transcriptNavRef = useRef<TranscriptNavHandle | null>(null);
+  const saveReadingPositionRef = useRef<(() => void) | null>(null);
   const handleFloorJump = useCallback(
     (rowKey: string) => {
       // 粘底跟随激活时程序化滚动会被立即拽回底部——先按「跳入历史」语义解除
@@ -145,19 +146,17 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
   const isTranscriptBusy = isHistorySwitching || isTranscriptSettling;
 
   useLayoutEffect(() => {
-    followRef.current = scrollFollowHandle;
+    const handle = {
+      ...scrollFollowHandle,
+      saveReadingPosition: () => saveReadingPositionRef.current?.(),
+    };
+    followRef.current = handle;
     return () => {
-      if (followRef.current === scrollFollowHandle) {
+      if (followRef.current === handle) {
         followRef.current = null;
       }
     };
   }, [followRef, scrollFollowHandle]);
-
-  // Conversation switches always land pinned to the latest message.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: conversationId is an intentional reset signal even though the scroll handle performs the action.
-  useLayoutEffect(() => {
-    scrollFollowHandle.stickToBottom();
-  }, [conversationId, scrollFollowHandle]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: conversationId intentionally closes any menu left open by the previous transcript.
   useEffect(() => {
@@ -229,12 +228,7 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
             </div>
           ) : null}
 
-          <div
-            className={cn(
-              "select-text transition-opacity duration-150 motion-reduce:transition-none",
-              isTranscriptSettling ? "opacity-0" : "opacity-100",
-            )}
-          >
+          <div className={cn("select-text", isTranscriptSettling && "invisible")}>
             <RowInteractionProvider value={rowInteractionStore}>
               {/* Keyed remount per conversation: per-conversation state
                   (row model, entrance registry, virtualizer measurements)
@@ -252,6 +246,7 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
                 layoutWidth={contentWidth}
                 isViewportFollowing={scrollFollowHandle.isFollowing}
                 viewportFollowing={following}
+                onRestoreFollowing={scrollFollowHandle.restoreFollowing}
                 isSending={isSending}
                 isCompactionRunning={isCompactionRunning}
                 showUsage={showUsage}
@@ -260,6 +255,7 @@ export const ChatTranscript = memo(function ChatTranscript(props: ChatTranscript
                 onOpenFileLink={onOpenFileLink}
                 gitClient={gitClient}
                 navRef={transcriptNavRef}
+                saveReadingPositionRef={saveReadingPositionRef}
                 onAnchorUserRowChange={setActiveFloorKey}
                 onResendFromEdit={onResendFromEdit}
                 onBranchConversation={onBranchConversation}

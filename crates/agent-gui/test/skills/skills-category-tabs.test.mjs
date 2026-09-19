@@ -40,6 +40,16 @@ test("skill category navigation uses the shared standard Tabs components", () =>
   assert.doesNotMatch(controlsSource, /ToggleGroup/);
 });
 
+test("installed skill filtering renders directly without animated layout reordering", () => {
+  const installedSource = readFileSync(
+    new URL("../../../agent-ui/src/pages/skills-hub/InstalledSkillsView.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(installedSource, /motion\/react|LayoutGroup|LazyMotion|<m\.|layoutGroupId/);
+  assert.match(installedSource, /<div className=\{SKILL_LIST_GRID_CLASS\}>/);
+  assert.match(installedSource, /key=\{`\$\{skill.name\}-\$\{rootDir\}`\}/);
+});
+
 test("installed skill categories reuse the quiet store tabs with icons", () => {
   assert.match(hubSource, /<StoreCategoryChips[\s\S]*value=\{category\}/);
   assert.doesNotMatch(hubSource, /appearance="outlined"/);

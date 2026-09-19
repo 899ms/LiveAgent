@@ -896,11 +896,14 @@ function ChatPageContent(props: ChatPageProps) {
     if (currentConversationIdRef.current !== targetConversationId) {
       return;
     }
+    scrollFollowRef.current?.saveReadingPosition?.();
     composerRef.current?.clear();
     setPendingUploadsForConversation(targetConversationId, []);
     setErrorMessage(null);
     setHookWarning(null);
-    scrollFollowRef.current?.stickToBottom();
+    // This also runs before switching away: do not move the old viewport
+    // before TranscriptList snapshots its reading position. Manual sends
+    // own their explicit stickToBottom call in useSendChatTurn.
   }
 
   const composerDraftCacheRef = useRef(conversationRuntimeRegistry.drafts);

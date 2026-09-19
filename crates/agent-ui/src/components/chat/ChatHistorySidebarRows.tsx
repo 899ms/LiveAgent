@@ -803,13 +803,13 @@ export const HistoryRow = memo(function HistoryRow(props: HistoryRowProps) {
       style={props.dropPosition ? { contain: "layout style", zIndex: 1 } : undefined}
       className={cn(
         props.isDragging && "opacity-35",
-        "chat-history-row group/item relative grid h-30px grid-cols-[minmax(0,1fr)_auto] items-center rounded-md",
+        "chat-history-row group/item relative grid sidebar-list-row grid-cols-[minmax(0,1fr)_auto] items-center rounded-md",
         "pl-1 transition-colors [contain:layout_paint_style]",
         isSelectionMode && isSelected
           ? "bg-primary/10 text-foreground hover:bg-primary/[0.14]"
           : isActive
-            ? "bg-foreground/10 font-medium text-foreground hover:bg-foreground/10"
-            : "text-foreground/75 hover:bg-foreground/5 hover:text-foreground",
+            ? "bg-settings-active font-medium text-foreground hover:bg-settings-active"
+            : "text-foreground/75 hover:bg-settings-tile-hover hover:text-foreground",
         isSelectionMode && isSelectionDisabled && "opacity-50",
         !isSelectionMode && shouldShowMobilePressFeedback && "bg-foreground/[0.09] text-foreground",
       )}
@@ -866,7 +866,7 @@ export const HistoryRow = memo(function HistoryRow(props: HistoryRowProps) {
               aria-pressed={isSelectionMode ? isSelected : undefined}
               disabled={isInteractionDisabled || (isSelectionMode && isSelectionDisabled)}
               className={cn(
-                "flex h-30px w-full min-w-0 items-center gap-2 rounded-md px-2 py-0",
+                "flex sidebar-list-row w-full min-w-0 items-center gap-2 rounded-md px-2 py-0",
                 "bg-transparent hover:bg-transparent active:bg-transparent data-active:bg-transparent",
                 "text-left outline-hidden transition-colors",
                 "focus-visible:ring-2 focus-visible:ring-ring web:max-820:[-webkit-touch-callout:none] web:max-820:select-none web:max-820:touch-pan-y",
@@ -1129,8 +1129,8 @@ export function ProjectGroupHeader(props: {
     return (
       // Same geometry as the non-renaming header below, chevron included, so
       // the name stays put when the row flips into and out of edit mode.
-      <div className="flex h-30px items-center rounded-lg pl-1">
-        <div className="flex h-30px min-w-0 flex-1 items-center gap-2 px-2">
+      <div className="flex sidebar-list-row items-center rounded-lg pl-1">
+        <div className="flex sidebar-list-row min-w-0 flex-1 items-center gap-2 px-2">
           <span className="flex size-4 shrink-0 items-center justify-center">
             <ChevronRight
               aria-hidden="true"
@@ -1170,11 +1170,11 @@ export function ProjectGroupHeader(props: {
   }
 
   return (
-    <div className="group/project-group flex h-30px items-center rounded-lg pl-1 transition-colors hover:bg-foreground/[0.04]">
+    <div className="group/project-group flex sidebar-list-row items-center rounded-lg pl-1 transition-colors hover:bg-settings-tile-hover">
       <button
         type="button"
         className={cn(
-          "flex h-30px min-w-0 flex-1 items-center gap-2 rounded-md px-2",
+          "flex sidebar-list-row min-w-0 flex-1 items-center gap-2 rounded-md px-2",
           "text-left outline-hidden transition-colors",
           "hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
         )}
@@ -1509,7 +1509,7 @@ export const ProjectRow = memo(function ProjectRow(props: {
       data-sidebar-reorder-key={props.reorderKey}
       className={cn(
         props.isDragging && "opacity-35",
-        "group/project relative grid h-30px grid-cols-[minmax(0,1fr)_auto] items-center rounded-md pl-1",
+        "group/project relative grid sidebar-list-row grid-cols-[minmax(0,1fr)_auto] items-center rounded-md pl-1",
         "transition-colors",
         indented && "pl-5",
         isMissing
@@ -1517,8 +1517,8 @@ export const ProjectRow = memo(function ProjectRow(props: {
           : isArchived
             ? "text-muted-foreground/60 hover:bg-foreground/[0.03]"
             : isActive
-              ? "bg-foreground/10 font-medium text-foreground hover:bg-foreground/10"
-              : "text-foreground/75 hover:bg-foreground/5 hover:text-foreground",
+              ? "bg-settings-active font-medium text-foreground hover:bg-settings-active"
+              : "text-foreground/75 hover:bg-settings-tile-hover hover:text-foreground",
       )}
     >
       <SidebarDropIndicator position={props.dropPosition} />
@@ -1535,7 +1535,7 @@ export const ProjectRow = memo(function ProjectRow(props: {
               aria-expanded={props.onToggleExpanded ? props.expanded : undefined}
               draggable={false}
               className={cn(
-                "flex h-30px min-w-0 items-center gap-2 rounded-md px-2 py-0",
+                "flex sidebar-list-row min-w-0 items-center gap-2 rounded-md px-2 py-0",
                 "bg-transparent hover:bg-transparent active:bg-transparent data-active:bg-transparent",
                 "text-left outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-ring",
                 isMissing
