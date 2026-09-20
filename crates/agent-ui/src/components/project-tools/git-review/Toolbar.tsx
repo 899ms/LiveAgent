@@ -19,6 +19,7 @@ import {
   History,
   Loader2,
   RefreshCw,
+  Search,
   Sparkles,
   Trash2,
   Upload,
@@ -480,6 +481,7 @@ function GitReviewBranchMenu(props: { data: GitReviewData; writeDisabled: boolea
   const [branches, setBranches] = useState<GitBranchInfo[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [branchesError, setBranchesError] = useState("");
+  const [filter, setFilter] = useState("");
   const requestIdRef = useRef(0);
   const operationBusy = busy !== "";
 
@@ -512,8 +514,23 @@ function GitReviewBranchMenu(props: { data: GitReviewData; writeDisabled: boolea
     );
   }
 
-  const localBranches = branches.filter((branch) => branch.kind === "local");
-  const remoteBranches = branches.filter((branch) => branch.kind === "remote");
+  // Same matching rule as the composer GitBranchSelector: case-insensitive
+  // substring over the full ref name so `origin/feat` narrows remotes too.
+  const normalizedFilter = filter.trim().toLowerCase();
+  const matchesFilter = (branch: GitBranchInfo) =>
+    !normalizedFilter || branch.fullName.toLowerCase().includes(normalizedFilter);
+  const localBranches = branches.filter(
+    (branch) => branch.kind === "local" && matchesFilter(branch),
+  );
+  const remoteBranches = branches.filter(
+    (branch) => branch.kind === "remote" && matchesFilter(branch),
+  );
+  const hiddenRemoteCount = Math.max(
+    0,
+    remoteBranches.length - GIT_REVIEW_REMOTE_BRANCH_DISPLAY_LIMIT,
+  );
+  const noMatches =
+    normalizedFilter !== "" && localBranches.length === 0 && remoteBranches.length === 0;
 
   const renderBranchRow = (branch: GitBranchInfo, isCurrent: boolean, labelText: string) => (
     <DropdownMenuItem
@@ -540,7 +557,11 @@ function GitReviewBranchMenu(props: { data: GitReviewData; writeDisabled: boolea
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) void loadBranches();
+        if (next) {
+          void loadBranches();
+        } else {
+          setFilter("");
+        }
       }}
     >
       <DropdownMenuTrigger
@@ -556,30 +577,74 @@ function GitReviewBranchMenu(props: { data: GitReviewData; writeDisabled: boolea
         <span className="min-w-0 flex-1 truncate text-left">{title}</span>
         <ChevronDown className="size-3 shrink-0 text-muted-foreground opacity-70" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent variant="soft" align="start" className="min-w-56 max-w-72">
-        <DropdownMenuLabel>{t("projectTools.gitReview.switchBranch")}</DropdownMenuLabel>
-        {branchesLoading ? (
-          <div className="flex items-center justify-center px-2 py-3">
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+      <DropdownMenuContent
+        variant="soft"
+        align="start"
+        className="flex max-h-[min(400px,75dvh)] w-72 flex-col overflow-hidden p-0"
+      >
+        <DropdownMenuLabel className="shrink-0">
+          {t("projectTools.gitReview.switchBranch")}
+        </DropdownMenuLabel>
+        <div className="shrink-0 border-b border-border/60 px-2 pb-1.5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              onKeyDown={(event) => {
+                // Keep keystrokes out of the menu typeahead; Escape clears
+                // the filter without closing the menu.
+                event.stopPropagation();
+                if (event.nativeEvent.isComposing) return;
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setFilter("");
+                }
+              }}
+              variant="plain"
+              placeholder={t("git.branchSelector.filterBranches")}
+              aria-label={t("git.branchSelector.filterBranches")}
+              className="h-8 pl-7 text-xs"
+            />
           </div>
-        ) : branchesError ? (
-          <div className="p-2 text-xs text-destructive">{branchesError}</div>
-        ) : (
-          <>
-            {localBranches.length > 0 ? (
-              <DropdownMenuLabel>{t("git.branchSelector.localBranches")}</DropdownMenuLabel>
-            ) : null}
-            {localBranches.map((branch) => renderBranchRow(branch, branch.current, branch.name))}
-            {remoteBranches.length > 0 ? (
-              <DropdownMenuLabel>{t("git.branchSelector.remoteBranches")}</DropdownMenuLabel>
-            ) : null}
-            {remoteBranches.slice(0, GIT_REVIEW_REMOTE_BRANCH_DISPLAY_LIMIT).map((branch) => {
-              const isCurrentUpstream =
-                branch.current || (state.upstream !== "" && branch.fullName === state.upstream);
-              return renderBranchRow(branch, isCurrentUpstream, branch.fullName);
-            })}
-          </>
-        )}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-1">
+          {branchesLoading ? (
+            <div className="flex items-center justify-center px-2 py-3">
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : branchesError ? (
+            <div className="p-2 text-xs text-destructive">{branchesError}</div>
+          ) : (
+            <>
+              {localBranches.length > 0 ? (
+                <DropdownMenuLabel>{t("git.branchSelector.localBranches")}</DropdownMenuLabel>
+              ) : null}
+              {localBranches.map((branch) => renderBranchRow(branch, branch.current, branch.name))}
+              {remoteBranches.length > 0 ? (
+                <DropdownMenuLabel>{t("git.branchSelector.remoteBranches")}</DropdownMenuLabel>
+              ) : null}
+              {remoteBranches.slice(0, GIT_REVIEW_REMOTE_BRANCH_DISPLAY_LIMIT).map((branch) => {
+                const isCurrentUpstream =
+                  branch.current || (state.upstream !== "" && branch.fullName === state.upstream);
+                return renderBranchRow(branch, isCurrentUpstream, branch.fullName);
+              })}
+              {hiddenRemoteCount > 0 ? (
+                <div className="px-2 py-1 text-xs text-muted-foreground">
+                  {t("git.branchSelector.moreRemoteBranches").replace(
+                    "{count}",
+                    String(hiddenRemoteCount),
+                  )}
+                </div>
+              ) : null}
+              {noMatches ? (
+                <div className="p-2 text-xs text-muted-foreground">
+                  {t("git.branchSelector.noMatches")}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
