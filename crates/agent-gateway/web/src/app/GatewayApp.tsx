@@ -465,6 +465,7 @@ function useGatewayAppController() {
   >(() => "");
   const {
     activateWorkspaceProject,
+    activateConversationWorkspace,
     activateSearchConversationWorkspace,
     clearSearchConversationWorkspace,
     searchConversationWorkdir,
@@ -1142,6 +1143,7 @@ function useGatewayAppController() {
     handleSidebarSelectConversation,
     startNewConversation,
   } = createGatewayConversationActions({
+    activateConversationWorkspace,
     activateSearchConversationWorkspace,
     clearSearchConversationWorkspace,
     activeView,
