@@ -31,6 +31,7 @@ export const ZH_CN_SETTINGS_TRANSLATIONS = {
   "settings.groupAutomation": "自动化",
   "settings.groupConnectivity": "连接",
   "settings.backToChat": "返回对话",
+  "settings.backToChatHint": "返回对话（Esc）",
   "settings.title": "设置",
   "settings.searchPlaceholder": "搜索设置…",
   "settings.searchNoResults": "未找到匹配的设置",

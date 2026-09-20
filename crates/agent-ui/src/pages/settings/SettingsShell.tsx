@@ -2,6 +2,7 @@ import { ArrowLeft, Search } from "@liveagent/ui/components/IconSet";
 import { useEffect, useMemo, useState } from "react";
 import type { SettingsSaveState, UiExtensionRegistry } from "../../contracts/registry";
 import { useLocale } from "../../i18n";
+import { useSettingsEscapeToClose } from "../../lib/settings/useSettingsEscapeToClose";
 import { cn } from "../../lib/shared/utils";
 
 const WEB_SETTINGS_CONTENT_RESPONSIVE_CLASS = cn(
@@ -109,6 +110,9 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
     }
   }, [section, sections]);
 
+  // Above the early return below: hooks cannot be called conditionally.
+  useSettingsEscapeToClose(onBack);
+
   const activeSection = sections.find((definition) => definition.id === section) ?? sections[0];
   if (!activeSection) return null;
 
@@ -146,6 +150,7 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
               <button
                 type="button"
                 onClick={onBack}
+                aria-keyshortcuts="Escape"
                 className={cn(
                   "settings-back-button flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5",
                   "text-sm text-muted-foreground transition-colors duration-150 hover:bg-settings-tile-hover hover:text-foreground",
@@ -161,6 +166,8 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
             <button
               type="button"
               onClick={onBack}
+              aria-keyshortcuts="Escape"
+              title={t("settings.backToChatHint")}
               className={cn(
                 "settings-back-button flex w-full cursor-pointer items-center justify-start gap-1 rounded-md px-2 py-1.5 text-left",
                 "text-sm text-muted-foreground transition-colors duration-150 hover:bg-settings-tile-hover hover:text-foreground",
@@ -168,6 +175,14 @@ export function SettingsShell<Context>(props: SettingsShellProps<Context>) {
             >
               <ArrowLeft className="size-3.5 shrink-0" />
               <span>{t("settings.backToChat")}</span>
+              <kbd
+                className={cn(
+                  "ml-auto rounded border border-border/60 px-1.5 py-0.5",
+                  "font-sans text-tiny leading-none text-muted-foreground/70",
+                )}
+              >
+                Esc
+              </kbd>
             </button>
             <div className="relative mt-2.5">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/75" />

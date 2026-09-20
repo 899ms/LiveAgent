@@ -18,11 +18,14 @@ export type AppReleaseAnnouncement = {
   repository: string;
 };
 
+export type ReleaseAnnouncementLoadingAction = "announcement" | "preview";
+
 export type ReleaseAnnouncementController = {
   announcement?: AppReleaseAnnouncement;
   open: boolean;
   preview: boolean;
   loading: boolean;
+  loadingAction?: ReleaseAnnouncementLoadingAction;
   message?: string;
   openAnnouncement: () => Promise<AppReleaseAnnouncement | undefined>;
   openPreviewAnnouncement: () => Promise<AppReleaseAnnouncement | undefined>;
@@ -78,7 +81,7 @@ export function useReleaseAnnouncementController({
   const [announcement, setAnnouncement] = useState<AppReleaseAnnouncement>();
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<ReleaseAnnouncementLoadingAction>();
   const [message, setMessage] = useState<string>();
   const announcementRef = useRef<AppReleaseAnnouncement | undefined>(undefined);
   const requestRef = useRef<Promise<AppReleaseAnnouncement | undefined> | null>(null);
@@ -90,7 +93,7 @@ export function useReleaseAnnouncementController({
     }
     if (requestRef.current) return requestRef.current;
 
-    setLoading(true);
+    setLoadingAction("announcement");
     setMessage(undefined);
     const request = invoke<AppReleaseAnnouncement | null>("app_release_announcement")
       .then((result) => {
@@ -105,7 +108,7 @@ export function useReleaseAnnouncementController({
       })
       .finally(() => {
         if (requestRef.current === request) requestRef.current = null;
-        setLoading(false);
+        setLoadingAction(undefined);
       });
     requestRef.current = request;
     return request;
@@ -122,7 +125,7 @@ export function useReleaseAnnouncementController({
   }, [loadAnnouncement]);
 
   const openPreviewAnnouncement = useCallback(async () => {
-    setLoading(true);
+    setLoadingAction("preview");
     setMessage(undefined);
     try {
       const result = await invoke<AppReleaseAnnouncement | null>(
@@ -139,7 +142,7 @@ export function useReleaseAnnouncementController({
       setMessage(errorMessage(error));
       throw error;
     } finally {
-      setLoading(false);
+      setLoadingAction(undefined);
     }
   }, []);
 
@@ -171,12 +174,15 @@ export function useReleaseAnnouncementController({
       .catch(() => undefined);
   }, [currentVersion, enabled, loadAnnouncement]);
 
+  const loading = loadingAction !== undefined;
+
   return useMemo(
     () => ({
       announcement,
       open,
       preview,
       loading,
+      loadingAction,
       message,
       openAnnouncement,
       openPreviewAnnouncement,
@@ -188,6 +194,7 @@ export function useReleaseAnnouncementController({
       open,
       preview,
       loading,
+      loadingAction,
       message,
       openAnnouncement,
       openPreviewAnnouncement,

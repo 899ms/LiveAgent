@@ -327,8 +327,11 @@ export function AboutSection(props: AboutSectionProps) {
                 size="sm"
                 onClick={() => void handleOpenAnnouncement()}
                 disabled={releaseAnnouncement.loading}
+                aria-busy={releaseAnnouncement.loadingAction === "announcement"}
               >
-                {releaseAnnouncement.loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                {releaseAnnouncement.loadingAction === "announcement" ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : null}
                 {t("settings.aboutOpenAnnouncement")}
               </Button>
             }
@@ -345,8 +348,9 @@ export function AboutSection(props: AboutSectionProps) {
                   size="sm"
                   onClick={() => void handlePreviewAnnouncement()}
                   disabled={releaseAnnouncement.loading}
+                  aria-busy={releaseAnnouncement.loadingAction === "preview"}
                 >
-                  {releaseAnnouncement.loading ? (
+                  {releaseAnnouncement.loadingAction === "preview" ? (
                     <Loader2 className="size-3.5 animate-spin" />
                   ) : null}
                   {t("settings.aboutPreviewAnnouncement")}

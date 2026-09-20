@@ -144,6 +144,52 @@ function createControllerHarness(result) {
   };
 }
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+}
+
+test("reports which announcement action owns the loading state", async () => {
+  const announcement = {
+    currentVersion: "1.3.6",
+    releaseTag: "v1.3.6",
+    body: "## Highlights",
+    channel: "stable",
+    repository: "Stack-Cairn/LiveAgent",
+  };
+
+  const announcementRequest = deferred();
+  const announcementHarness = createControllerHarness(announcementRequest.promise);
+  let controller = announcementHarness.render();
+  const openRequest = controller.openAnnouncement();
+  controller = announcementHarness.render();
+  assert.equal(controller.loading, true);
+  assert.equal(controller.loadingAction, "announcement");
+  announcementRequest.resolve(announcement);
+  await openRequest;
+  controller = announcementHarness.render();
+  assert.equal(controller.loading, false);
+  assert.equal(controller.loadingAction, undefined);
+
+  const previewRequest = deferred();
+  const previewHarness = createControllerHarness(previewRequest.promise);
+  controller = previewHarness.render();
+  const openPreviewRequest = controller.openPreviewAnnouncement();
+  controller = previewHarness.render();
+  assert.equal(controller.loading, true);
+  assert.equal(controller.loadingAction, "preview");
+  previewRequest.resolve(announcement);
+  await openPreviewRequest;
+  controller = previewHarness.render();
+  assert.equal(controller.loading, false);
+  assert.equal(controller.loadingAction, undefined);
+});
+
 test("first launch opens once, dismiss stays session-local, and acknowledge persists", async () => {
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const storage = memoryStorage();
