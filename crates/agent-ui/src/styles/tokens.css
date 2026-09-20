@@ -1130,6 +1130,16 @@
 
 /* Fixed presentation values consumed by CSS and drawing-library adapters. */
 :root {
+  /* Workbench chrome height. macOS overrides this at runtime from the live
+     traffic-light geometry; every other platform keeps this value. Declared
+     statically so the header never collapses to an inline fallback when the
+     publishing component remounts. */
+  --app-header-height: 48px;
+  /* Single source of truth for full-viewport surfaces. Stacking h-100vh,
+     h-100svh and [height:100dvh] on one element left the winner up to class
+     ordering, and svh/dvh disagree whenever a mobile URL bar collapses — which
+     showed up as a height jump. Resolve it once here instead. */
+  --app-viewport-height: 100vh;
   --ui-color-rgba-100-116-139-0-35: rgba(100, 116, 139, 0.35);
   --ui-color-0b0f14: #0b0f14;
   --terminal-dark-background: var(--ui-color-0b0f14);
@@ -1220,6 +1230,15 @@
   --ui-color-06b6d4: #06b6d4;
   --terminal-light-bright-cyan: var(--ui-color-06b6d4);
   --terminal-light-bright-white: var(--ui-color-f8fafc);
+}
+
+/* Prefer dvh where supported: it tracks the mobile URL bar continuously instead
+   of stepping between the small and large viewport, which is what made the
+   settings overlay jump on Android Chrome. */
+@supports (height: 100dvh) {
+  :root {
+    --app-viewport-height: 100dvh;
+  }
 }
 
 @theme inline {

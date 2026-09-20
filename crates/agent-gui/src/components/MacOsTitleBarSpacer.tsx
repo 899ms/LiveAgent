@@ -22,6 +22,8 @@ const MAC_OS_TRAFFIC_LIGHT_GROUP_WIDTH = 52;
 const MAC_OS_TRAFFIC_LIGHT_GROUP_HEIGHT = 12;
 const MAC_OS_TITLEBAR_TOGGLE_BUTTON_SIZE = 28;
 const MAC_OS_TITLEBAR_TOGGLE_GAP = 22;
+/** Keep in sync with the `--app-header-height` declaration in agent-ui tokens.css. */
+const APP_HEADER_HEIGHT_FALLBACK = "48px";
 
 function isValidMetrics(
   metrics: MacOsTrafficLightMetrics | null,
@@ -90,6 +92,29 @@ export function MacOsTitleBarSpacer({ className }: { className?: string }) {
 }
 
 /**
+ * Publishes `--app-header-height` from the live traffic-light geometry.
+ *
+ * Mount this at the application root, not inside a view subtree: the workbench
+ * chrome reads the variable on every surface, so tearing it down when one view
+ * unmounts would snap the header back to its 48px fallback mid-transition.
+ * On unmount it restores the default instead of removing the property.
+ */
+export function useMacOsAppHeaderHeight() {
+  const enabled = isMacOsTauri();
+  const trafficLightMetrics = useMacOsTrafficLightMetrics(enabled);
+  useEffect(() => {
+    if (!enabled) return;
+    const center =
+      (trafficLightMetrics?.top ?? MAC_OS_TRAFFIC_LIGHT_TOP) +
+      (trafficLightMetrics?.height ?? MAC_OS_TRAFFIC_LIGHT_GROUP_HEIGHT) / 2;
+    document.documentElement.style.setProperty("--app-header-height", `${center * 2}px`);
+    return () => {
+      document.documentElement.style.setProperty("--app-header-height", APP_HEADER_HEIGHT_FALLBACK);
+    };
+  }, [enabled, trafficLightMetrics]);
+}
+
+/**
  * Inline sidebar controls in the shared application titlebar.
  * Stays beside the traffic lights in both states so repeated clicks hit the same target.
  */
@@ -107,16 +132,6 @@ export function MacOsTitleBarToggle({
   const { t } = useLocale();
   const [show] = useState(isMacOsTauri);
   const trafficLightMetrics = useMacOsTrafficLightMetrics(show);
-  useEffect(() => {
-    if (!show) return;
-    const center =
-      (trafficLightMetrics?.top ?? MAC_OS_TRAFFIC_LIGHT_TOP) +
-      (trafficLightMetrics?.height ?? MAC_OS_TRAFFIC_LIGHT_GROUP_HEIGHT) / 2;
-    document.documentElement.style.setProperty("--app-header-height", `${center * 2}px`);
-    return () => {
-      document.documentElement.style.removeProperty("--app-header-height");
-    };
-  }, [show, trafficLightMetrics]);
   if (!show) return null;
   const trafficLightLeft = trafficLightMetrics?.left ?? MAC_OS_TRAFFIC_LIGHT_LEFT;
   const trafficLightWidth = trafficLightMetrics?.width ?? MAC_OS_TRAFFIC_LIGHT_GROUP_WIDTH;

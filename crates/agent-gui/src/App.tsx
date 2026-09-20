@@ -26,6 +26,7 @@ import {
 } from "react";
 import { AppBootShell } from "./components/app/AppBootShell";
 import { useNativeInputContextMenu } from "./components/input-context-menu/NativeInputContextMenu";
+import { useMacOsAppHeaderHeight } from "./components/MacOsTitleBarSpacer";
 import { WindowsTitleBar } from "./components/WindowsTitleBar";
 import { useAppUpdateController } from "./lib/appUpdates";
 import { setRetryErrorExtension } from "./lib/providers/runtime/streamRetry";
@@ -93,7 +94,7 @@ function interpolateMessage(template: string, values: Record<string, string>) {
 
 const GATEWAY_SETTINGS_SYNC_EVENT = "gateway:settings-sync";
 
-function AppChrome(props: { children: ReactNode; standaloneTitleBar?: boolean }) {
+function AppChrome(props: { children: ReactNode }) {
   // Plain inputs get a shared cut/copy/paste menu; everything else keeps the
   // suppressed native menu (surfaces with their own menus opt out upstream).
   const { onRootContextMenu, onRootMouseDownCapture, menu } = useNativeInputContextMenu();
@@ -104,7 +105,9 @@ function AppChrome(props: { children: ReactNode; standaloneTitleBar?: boolean })
       onContextMenu={onRootContextMenu}
       onMouseDownCapture={onRootMouseDownCapture}
     >
-      {props.standaloneTitleBar ? <WindowsTitleBar /> : null}
+      {/* No conditional title bar here: adding or removing a 32px sibling when the
+          settings overlay opens would resize the chat subtree underneath it and make
+          the whole page jump. The overlay carries its own title bar instead. */}
       <div className="relative min-h-0 flex-1 overflow-hidden bg-background">{props.children}</div>
       {menu}
     </div>
@@ -215,6 +218,8 @@ function applyRuntimeSystemDefaults(settings: AppSettings, defaultWorkdir: strin
 }
 
 export default function App() {
+  // Root-level so the header height survives view switches; see the hook's note.
+  useMacOsAppHeaderHeight();
   const {
     settingsOpen,
     overlay,
@@ -716,7 +721,7 @@ export default function App() {
   return (
     <LocaleContext.Provider value={localeContextValue}>
       <Toaster />
-      <AppChrome standaloneTitleBar={visible}>
+      <AppChrome>
         {backgroundHostsReady ? (
           <Suspense fallback={null}>
             <CronPromptRunner settings={settings} />
@@ -745,33 +750,38 @@ export default function App() {
         {visible && (
           <div
             className={cn(
-              "absolute inset-0 z-50 transition-all duration-300 ease-out",
+              "absolute inset-0 z-50 flex flex-col transition-all duration-300 ease-out",
               active ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6",
             )}
             onTransitionEnd={handleTransitionEnd}
           >
-            <AppErrorBoundary>
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center bg-background text-sm text-muted-foreground">
-                    {translate("app.loading", settings.locale)}
-                  </div>
-                }
-              >
-                <SettingsPage
-                  settings={settings}
-                  setSettings={setSettings}
-                  saveState={settingsSaveState}
-                  onBack={closeSettings}
-                  initialSection={settingsSection}
-                  initialProviderId={settingsProviderId}
-                  appUpdate={appUpdate}
-                  sttSettingsService={desktopSttSettingsService}
-                  onSttProviderChange={setSttProviderOverride}
-                  reloadSettings={reloadPersistedSettings}
-                />
-              </Suspense>
-            </AppErrorBoundary>
+            {/* The overlay owns its title bar so the chat subtree below keeps a
+                constant height across open/close. */}
+            <WindowsTitleBar />
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              <AppErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="flex size-full items-center justify-center bg-background text-sm text-muted-foreground">
+                      {translate("app.loading", settings.locale)}
+                    </div>
+                  }
+                >
+                  <SettingsPage
+                    settings={settings}
+                    setSettings={setSettings}
+                    saveState={settingsSaveState}
+                    onBack={closeSettings}
+                    initialSection={settingsSection}
+                    initialProviderId={settingsProviderId}
+                    appUpdate={appUpdate}
+                    sttSettingsService={desktopSttSettingsService}
+                    onSttProviderChange={setSttProviderOverride}
+                    reloadSettings={reloadPersistedSettings}
+                  />
+                </Suspense>
+              </AppErrorBoundary>
+            </div>
           </div>
         )}
         {windowPinned && (

@@ -31,6 +31,7 @@ export const EN_US_SETTINGS_TRANSLATIONS = {
   "settings.groupAutomation": "Automation",
   "settings.groupConnectivity": "Connectivity",
   "settings.backToChat": "Back to Chat",
+  "settings.backToChatHint": "Back to chat (Esc)",
   "settings.title": "Settings",
   "settings.searchPlaceholder": "Search settings…",
   "settings.searchNoResults": "No matching settings",
