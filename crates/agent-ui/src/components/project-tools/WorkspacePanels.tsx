@@ -21,6 +21,9 @@ import {
   PROJECT_TOOLS_RESIZE_END_EVENT,
 } from "./rightDockModel";
 
+// Matches the `duration-200` flex-grow transition below, plus a small margin.
+const TOOLS_PANEL_TRANSITION_MS = 240;
+
 type PanelsState = {
   open: boolean;
   width: number;
@@ -179,6 +182,7 @@ export function WorkspaceToolsPanel({ children }: { children: ReactNode }) {
     width,
     mobile,
     resizing,
+    immediate,
     onClose,
     startResize,
     panelRef,
@@ -190,6 +194,25 @@ export function WorkspaceToolsPanel({ children }: { children: ReactNode }) {
   const wasOpen = useRef(false);
   const savedWidth = Math.max(toolsMinimum, Math.min(toolsMaximum, width));
   const initialSize = useRef(open && !mobile ? savedWidth : 0).current;
+  // The open/close animation only transitions the panel's flex-grow. While it
+  // runs, the content keeps its saved pixel width anchored to the right so it
+  // slides in instead of reflowing. Once settled, the content must follow the
+  // real panel width: the panel keeps its percentage share when the group
+  // shrinks (e.g. the left sidebar expands), so a fixed pixel width would
+  // overflow past the panel's left edge and get clipped under the main column.
+  const [settled, setSettled] = useState(open && !mobile && immediate);
+  useEffect(() => {
+    if (!open || mobile) {
+      setSettled(false);
+      return;
+    }
+    if (immediate) {
+      setSettled(true);
+      return;
+    }
+    const timer = setTimeout(() => setSettled(true), TOOLS_PANEL_TRANSITION_MS);
+    return () => clearTimeout(timer);
+  }, [open, mobile, immediate]);
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
@@ -226,7 +249,7 @@ export function WorkspaceToolsPanel({ children }: { children: ReactNode }) {
         {!mobile ? (
           <div
             className="absolute inset-y-0 right-0 h-full"
-            style={{ width: resizing ? "100%" : savedWidth }}
+            style={{ width: resizing || settled ? "100%" : savedWidth }}
           >
             {children}
           </div>
