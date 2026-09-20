@@ -61,8 +61,9 @@ test("mobile sidebar uses a real Sheet dialog with a label and Escape dismissal"
   } finally { await h.destroy(); mobile = false; }
 });
 
-test("standard resizable panels restore width, preserve main content, and save keyboard resizing", async () => {
-  mobile = false;
+// react-resizable-panels measures panels; jsdom returns 0 for everything, so
+// fake a 1000px group with a 1px separator.
+function installPanelLayoutMocks() {
   const oldRect = HTMLElement.prototype.getBoundingClientRect;
   const widthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
   const leftDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetLeft");
@@ -77,6 +78,12 @@ test("standard resizable panels restore width, preserve main content, and save k
   } });
   Object.defineProperty(HTMLElement.prototype, "offsetLeft", { configurable: true, get() { return this.id === "workspace-tools" ? 601 : this.hasAttribute("data-separator") ? 600 : 0; } });
   HTMLElement.prototype.getBoundingClientRect = function () { return { x: 0, y: 0, left: 0, top: 0, right: 1000, bottom: 700, width: 1000, height: 700, toJSON() {} }; };
+  return () => { HTMLElement.prototype.getBoundingClientRect = oldRect; Object.defineProperty(HTMLElement.prototype, "offsetWidth", widthDescriptor); Object.defineProperty(HTMLElement.prototype, "offsetLeft", leftDescriptor); };
+}
+
+test("standard resizable panels restore width, preserve main content, and save keyboard resizing", async () => {
+  mobile = false;
+  const restoreLayout = installPanelLayoutMocks();
   const { WorkspacePanelGroup, WorkspaceMainPanel, WorkspaceToolsPanel } = env.loadModule("@liveagent/ui/components/project-tools/WorkspacePanels.tsx");
   const container = document.createElement("div"); document.body.appendChild(container);
   const root = createRoot(container);
@@ -121,7 +128,32 @@ test("standard resizable panels restore width, preserve main content, and save k
     await act(async () => { mobile = false; mediaListeners.forEach(listener => listener()); });
     assert.equal(document.querySelectorAll("#tools-content").length, 1);
     assert.equal(document.getElementById("main-draft"), draft);
-  } finally { await act(async () => root.unmount()); container.remove(); HTMLElement.prototype.getBoundingClientRect = oldRect; Object.defineProperty(HTMLElement.prototype, "offsetWidth", widthDescriptor); Object.defineProperty(HTMLElement.prototype, "offsetLeft", leftDescriptor); }
+  } finally { await act(async () => root.unmount()); container.remove(); restoreLayout(); }
+});
+
+test("tools panel content follows the panel width once the open animation settles", async () => {
+  mobile = false;
+  const restoreLayout = installPanelLayoutMocks();
+  const { WorkspacePanelGroup, WorkspaceMainPanel, WorkspaceToolsPanel } = env.loadModule("@liveagent/ui/components/project-tools/WorkspacePanels.tsx");
+  const container = document.createElement("div"); document.body.appendChild(container);
+  const root = createRoot(container);
+  const content = () => document.getElementById("tools-content").parentElement;
+  try {
+    await act(async () => root.render(React.createElement(WorkspacePanelGroup, { open: true, width: 400, onClose: () => {}, onWidthChange: () => {} },
+      React.createElement(WorkspaceMainPanel, null, "Main"),
+      React.createElement(WorkspaceToolsPanel, null, React.createElement("div", { id: "tools-content" }, "Tools")))));
+    // While the flex-grow transition runs the content keeps its saved pixel width (slide-in).
+    assert.equal(content().style.width, "400px");
+    // Afterwards it must track the real panel width, otherwise a narrower group
+    // (left sidebar expanded) leaves it overflowing and clipped on the left.
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 300)); });
+    assert.equal(content().style.width, "100%");
+    // Immediate mode never waits.
+    await act(async () => root.render(React.createElement(WorkspacePanelGroup, { open: true, width: 400, immediate: true, onClose: () => {}, onWidthChange: () => {} },
+      React.createElement(WorkspaceMainPanel, null, "Main"),
+      React.createElement(WorkspaceToolsPanel, null, React.createElement("div", { id: "tools-content" }, "Tools")))));
+    assert.equal(content().style.width, "100%");
+  } finally { await act(async () => root.unmount()); container.remove(); restoreLayout(); }
 });
 
 test("desktop preference survives mobile dismissal and shortcut ignores text editing", async () => {
