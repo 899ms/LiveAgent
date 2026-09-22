@@ -67,7 +67,10 @@ const SECTIONS = [
   // zai (Z.AI, international brand) is a superset of zhipuai with identical
   // ids and limits for the overlap; keep the domestic brand as the key.
   { key: "zhipuai", sources: ["zai", "zhipuai"], min: 10 },
-  { key: "moonshotai", sources: ["moonshotai-cn", "moonshotai"], min: 8 },
+  // Kimi 下架了 k2-0711/0905-preview、k2-thinking(-turbo)、k2-turbo-preview、
+  // k2.5 等老模型后，上游 moonshot 分区只剩 4 个现役模型（kimi-k3、kimi-k2.6、
+  // kimi-k2.7-code(-highspeed)）；min 给 1 个余量容忍后续继续下架。
+  { key: "moonshotai", sources: ["moonshotai-cn", "moonshotai"], min: 3 },
   { key: "minimax", sources: ["minimax-cn", "minimax"], min: 5 },
   { key: "stepfun", sources: ["stepfun"], min: 4 },
   { key: "xiaomi", sources: ["xiaomi"], min: 4 },
