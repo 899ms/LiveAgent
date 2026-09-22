@@ -58,6 +58,9 @@ const MIN_CODEX_MODELS = 5;
 // "tencent" (coding plan) host third-party models (glm/kimi/MiniMax/deepseek
 // deployments with platform-clamped limits), so they come last and their
 // copies of another vendor's models are dropped in favor of the official ones.
+// The runtime thinking supplement mirrors this order as
+// OFFICIAL_SECTION_ORDER in crates/agent-ui/src/lib/models/thinkingLive.ts —
+// keep both lists in sync when adding or removing sources here.
 const SECTIONS = [
   { key: "anthropic", sources: ["anthropic"], min: 8 },
   { key: "google", sources: ["google"], min: 15 },

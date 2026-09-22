@@ -4,6 +4,7 @@ import { Pin } from "@liveagent/ui/components/IconSet";
 import { useConfirmDialog } from "@liveagent/ui/components/ui/confirm-dialog";
 import { Toaster } from "@liveagent/ui/components/ui/toaster";
 import { LocaleContext, t as translate, useLocaleContextValue } from "@liveagent/ui/i18n/index";
+import { loadThinkingLiveSupplement } from "@liveagent/ui/lib/models/thinkingLive";
 import {
   applyGatewaySettingsSyncPayload,
   buildGatewaySettingsSyncPayload,
@@ -254,6 +255,12 @@ export default function App() {
   useEffect(() => {
     setSttProviderOverride(null);
   }, [settings.stt.provider]);
+
+  // 思考档位运行期补充（models.dev）：启动后台拉一次，TTL 内幂等；失败静默，
+  // 档位解析维持在「快照 + 兜底」的现状。
+  useEffect(() => {
+    void loadThinkingLiveSupplement();
+  }, []);
   const [systemThemeVersion, setSystemThemeVersion] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: The version is an explicit invalidation signal for the system media query, which resolveEffectiveTheme reads outside React.
   const effectiveTheme = useMemo(

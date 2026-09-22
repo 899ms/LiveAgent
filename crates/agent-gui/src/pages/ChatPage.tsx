@@ -44,6 +44,7 @@ import {
   useInsertCodeReviewSkill,
 } from "@liveagent/ui/lib/chat/useComposerActions";
 import { useMentionApps } from "@liveagent/ui/lib/chat/useMentionApps";
+import { useThinkingLiveVersion } from "@liveagent/ui/lib/models/useThinkingLive";
 import { setPreferredMonacoNlsLocale } from "@liveagent/ui/lib/monacoNls";
 import { releaseProjectToolFromDock } from "@liveagent/ui/lib/projectTools/releaseProjectToolFromDock";
 import { useRightDockSettings } from "@liveagent/ui/lib/projectTools/useRightDockSettings";
@@ -303,6 +304,9 @@ function ChatPageContent(props: ChatPageProps) {
   setPreferredMonacoNlsLocale(settings.locale);
   const effectiveTheme = resolveEffectiveTheme(settings.theme);
   const { t, locale } = useLocale();
+  // 运行期思考档位补充（models.dev/thinkingLive）异步到达时借本订阅触发重绘：
+  // buildBackgroundPaneBinding 在渲染期直接解析档位，靠组件重渲染周期跟进。
+  useThinkingLiveVersion();
   // Ref arguments are evaluated on every render. Build the initial context
   // lazily so theme/sidebar updates never walk the entire conversation again.
   const [initialConversation] = useState(createConversationIdentity);

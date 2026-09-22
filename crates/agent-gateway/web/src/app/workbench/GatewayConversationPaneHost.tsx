@@ -40,6 +40,7 @@ import {
   type PendingUploadedFile,
 } from "@liveagent/ui/lib/chat/uploadedFiles";
 import { useScrollFollow } from "@liveagent/ui/lib/chat-scroll/useScrollFollow";
+import { useThinkingLiveVersion } from "@liveagent/ui/lib/models/useThinkingLive";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import { toTrajectoryMessages } from "@liveagent/ui/lib/trajectory/transcriptMessages";
 import {
@@ -464,6 +465,10 @@ export function GatewayConversationPaneHost(props: GatewayConversationPaneHostPr
   const selectedProvider = selection
     ? context.settings.customProviders.find((item) => item.id === selection.customProviderId)
     : undefined;
+  // 运行期思考档位补充到达会改变档位列表/恒开判定/当前档钳制，版本号计入依赖使
+  // memo 跟进。
+  const thinkingLiveVersion = useThinkingLiveVersion();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: thinkingLiveVersion 是刻意的失效信号，运行期档位补充到达后重钳当前档。
   const paneRuntimeControls = useMemo(
     () =>
       normalizeChatRuntimeControlsForProvider(context.settings.chatRuntimeControls, {
@@ -476,8 +481,10 @@ export function GatewayConversationPaneHost(props: GatewayConversationPaneHostPr
       selectedProvider?.requestFormat,
       selectedProvider?.type,
       selection?.model,
+      thinkingLiveVersion,
     ],
   );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: thinkingLiveVersion 是刻意的失效信号，运行期档位补充到达后重算。
   const paneReasoningOptions = useMemo(
     () =>
       getChatRuntimeReasoningLevelsForProvider({
@@ -485,11 +492,17 @@ export function GatewayConversationPaneHost(props: GatewayConversationPaneHostPr
         requestFormat: selectedProvider?.requestFormat,
         modelId: selection?.model,
       }),
-    [selectedProvider?.requestFormat, selectedProvider?.type, selection?.model],
+    [
+      selectedProvider?.requestFormat,
+      selectedProvider?.type,
+      selection?.model,
+      thinkingLiveVersion,
+    ],
   );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: thinkingLiveVersion 是刻意的失效信号，运行期档位补充到达后重算。
   const paneThinkingAlwaysOn = useMemo(
     () => isThinkingAlwaysOnForModel(selectedProvider?.type ?? "claude_code", selection?.model),
-    [selectedProvider?.type, selection?.model],
+    [selectedProvider?.type, selection?.model, thinkingLiveVersion],
   );
 
   // 提示词澄清执行器（桌面端背景 Pane 口径）：模型覆盖/回退/错误拍平在

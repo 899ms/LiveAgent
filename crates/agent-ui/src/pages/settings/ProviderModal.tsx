@@ -13,6 +13,7 @@ import {
 } from "@liveagent/app/lib/settings";
 import { useConfirmDialog } from "@liveagent/ui/components/ui/confirm-dialog";
 import { useLocale } from "@liveagent/ui/i18n/index";
+import { loadThinkingLiveSupplement } from "@liveagent/ui/lib/models/thinkingLive";
 import {
   applyCliIdentity,
   type CliIdentityProviderId,
@@ -410,6 +411,12 @@ function useProviderModalController({
     },
     [],
   );
+
+  // 打开供应商弹窗时顺带刷新思考档位运行期补充（TTL 内幂等，通常零开销）：
+  // 新建供应商录入 url+key 后，新模型的档位不依赖次日 CI 快照刷新。
+  useEffect(() => {
+    void loadThinkingLiveSupplement();
+  }, []);
 
   function markModelAsNew(modelId: string) {
     for (const timer of modelBadgeTimersRef.current.get(modelId) ?? []) clearTimeout(timer);

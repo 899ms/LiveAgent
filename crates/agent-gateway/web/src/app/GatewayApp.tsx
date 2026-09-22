@@ -10,6 +10,7 @@ import { LocaleContext, t as translate, useLocaleContextValue } from "@liveagent
 import { searchMentionConversations } from "@liveagent/ui/lib/chat/conversationSearch";
 import { useMentionApps } from "@liveagent/ui/lib/chat/useMentionApps";
 import { useScrollFollow } from "@liveagent/ui/lib/chat-scroll/useScrollFollow";
+import { loadThinkingLiveSupplement } from "@liveagent/ui/lib/models/thinkingLive";
 import { releaseProjectToolFromDock } from "@liveagent/ui/lib/projectTools/releaseProjectToolFromDock";
 import { cn } from "@liveagent/ui/lib/shared/utils";
 import type { ConversationOpenRequest } from "@liveagent/ui/lib/sidebar/openController";
@@ -419,6 +420,13 @@ function useGatewayAppController() {
       sidebarStore.stop();
     };
   }, [api, sidebarStore]);
+
+  // 思考档位运行期补充（models.dev）：启动后台拉一次，TTL 内幂等；失败静默，
+  // 档位解析维持在「快照 + 兜底」的现状。models.dev 带 ACAO:*，浏览器直连可达，
+  // 无需经 gateway 代理。
+  useEffect(() => {
+    void loadThinkingLiveSupplement();
+  }, []);
 
   // Narrow app-root subscriptions: workdirs (rare commits — project merge
   // inputs) and the byId index (list commits only; never running/idle ticks).
